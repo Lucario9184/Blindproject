@@ -17,6 +17,9 @@ class BlindAudioEngine {
     this.hindiVoice = null;
     this.hasSpokenStartupWelcome = false;
     this._speakTimer = null;
+    this._watchdogTimer = null;
+    this._activeUtterances = [];
+    window.__sanketActiveUtterances = this._activeUtterances;
     this.initVoices();
   }
 
@@ -75,6 +78,7 @@ class BlindAudioEngine {
     if (!name) {
       this.selectedVoice = null;
       this.userSelectedVoice = false;
+      this.initVoices();
       return;
     }
     if (!this.voices || !this.voices.length) return;
@@ -236,9 +240,138 @@ class BlindAudioEngine {
   }
 
   /**
+   * Internal helper that pins SpeechSynthesisUtterance against V8 garbage collection
+   * (critical during 30fps MediaPipe camera tracking) and auto-recovers if Chrome TTS stalls.
+   */
+  _dispatchUtterance(
+    spokenText,
+    {
+      voice = null,
+      lang = "",
+      rate = this.speechRate,
+      pitch = this.speechPitch,
+      interrupt = true,
+      onStart = null,
+      onComplete = null
+    } = {}
+  ) {
+    if (!("speechSynthesis" in window) || !spokenText) return;
+
+    if (this._speakTimer) {
+      clearTimeout(this._speakTimer);
+      this._speakTimer = null;
+    }
+    if (this._watchdogTimer) {
+      clearTimeout(this._watchdogTimer);
+      this._watchdogTimer = null;
+    }
+
+    const statusText = document.getElementById("audio-status-text");
+    const statusDot = document.getElementById("audio-status-dot");
+
+    const buildAndSpeak = () => {
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      } catch (e) {}
+
+      if (!this.voices || !this.voices.length) {
+        this.initVoices();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(spokenText);
+      const chosenVoice = voice || this.selectedVoice;
+      if (chosenVoice) {
+        utterance.voice = chosenVoice;
+        utterance.lang = lang || chosenVoice.lang || "en-US";
+      } else if (lang) {
+        utterance.lang = lang;
+      } else {
+        utterance.lang = "en-US";
+      }
+
+      utterance.rate = rate;
+      utterance.pitch = pitch;
+      utterance.volume = 1.0;
+
+      // Pin utterance in memory so V8 minor GC during 30fps MediaPipe frames never collects it
+      this._activeUtterances.push(utterance);
+
+      let hasStarted = false;
+      const cleanup = () => {
+        const idx = this._activeUtterances.indexOf(utterance);
+        if (idx !== -1) this._activeUtterances.splice(idx, 1);
+        if (this._watchdogTimer) {
+          clearTimeout(this._watchdogTimer);
+          this._watchdogTimer = null;
+        }
+        if (statusDot) statusDot.classList.remove("speaking");
+        if (statusText) {
+          statusText.innerHTML =
+            'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>W</strong> for Welcome EN/हिंदी, or <strong>S</strong> to Read Screen)';
+        }
+        if (typeof onComplete === "function") onComplete();
+      };
+
+      utterance.onstart = () => {
+        hasStarted = true;
+        this.hasSpokenStartupWelcome = true;
+        if (statusDot) statusDot.classList.add("speaking");
+        if (typeof onStart === "function") onStart();
+      };
+      utterance.onend = cleanup;
+      utterance.onerror = cleanup;
+
+      try {
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {}
+
+      // Watchdog: if Chrome speechSynthesis gets stuck after cancel(), resume/re-trigger
+      this._watchdogTimer = setTimeout(() => {
+        if (!hasStarted && "speechSynthesis" in window) {
+          try {
+            window.speechSynthesis.resume();
+            if (!window.speechSynthesis.speaking) {
+              window.speechSynthesis.cancel();
+              const retryUtt = new SpeechSynthesisUtterance(spokenText);
+              if (chosenVoice) retryUtt.voice = chosenVoice;
+              retryUtt.lang = utterance.lang;
+              retryUtt.rate = rate;
+              retryUtt.pitch = pitch;
+              retryUtt.volume = 1.0;
+              this._activeUtterances.push(retryUtt);
+              retryUtt.onstart = utterance.onstart;
+              retryUtt.onend = () => {
+                const rIdx = this._activeUtterances.indexOf(retryUtt);
+                if (rIdx !== -1) this._activeUtterances.splice(rIdx, 1);
+                cleanup();
+              };
+              retryUtt.onerror = retryUtt.onend;
+              window.speechSynthesis.speak(retryUtt);
+            }
+          } catch (e) {}
+        }
+      }, 280);
+    };
+
+    const isBusy =
+      window.speechSynthesis.speaking || window.speechSynthesis.pending;
+    if (interrupt && isBusy) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
+      this._activeUtterances.length = 0;
+      this._speakTimer = setTimeout(buildAndSpeak, 30);
+    } else {
+      buildAndSpeak();
+    }
+  }
+
+  /**
    * Speaks a bilingual statement in English AND Hindi aloud reliably across all browsers.
    * Combines English + phonetic Hindi in a primary guaranteed utterance so Hindi is always audible
-   * even on systems without a downloaded Devanagari TTS pack, and also uses native hi-IN when available.
+   * even on systems without a downloaded Devanagari TTS pack.
    */
   speakBilingual(
     englishText,
@@ -255,62 +388,24 @@ class BlindAudioEngine {
     }
 
     const statusText = document.getElementById("audio-status-text");
-    const statusDot = document.getElementById("audio-status-dot");
     if (statusText) {
       statusText.textContent = `Speaking (EN + हिंदी): "${englishText.slice(0, 48)}..." | "${(hindiText || "").slice(0, 42)}..."`;
     }
 
-    if (!("speechSynthesis" in window)) return;
-
-    if (this._speakTimer) {
-      clearTimeout(this._speakTimer);
-      this._speakTimer = null;
-    }
-
-    if (interrupt) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (e) {}
-    }
-
-    const spokenHindi = hindiPhonetic || hindiText || "";
+    const cleanEnglish = String(englishText || "").replace(/\s*\/\s*/g, ", ");
+    const spokenHindi = String(hindiPhonetic || hindiText || "").replace(/\s*\/\s*/g, ", ");
     const fullBilingualSpeech = spokenHindi
-      ? `${englishText} ... ${spokenHindi}`
-      : `${englishText}`;
+      ? `${cleanEnglish}. ${spokenHindi}`
+      : `${cleanEnglish}`;
 
-    this._speakTimer = setTimeout(() => {
-      try {
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-        }
-      } catch (e) {}
-
-      const utterance = new SpeechSynthesisUtterance(fullBilingualSpeech);
-      if (this.userSelectedVoice && this.selectedVoice) {
-        utterance.voice = this.selectedVoice;
-      }
-      utterance.rate = this.speechRate;
-      utterance.pitch = this.speechPitch;
-
-      const resetStatus = () => {
-        if (statusDot) statusDot.classList.remove("speaking");
-        if (statusText) {
-          statusText.innerHTML =
-            'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>W</strong> for Welcome EN/हिंदी, or <strong>S</strong> to Read Screen)';
-        }
-        if (typeof onComplete === "function") onComplete();
-      };
-
-      utterance.onstart = () => {
-        this.hasSpokenStartupWelcome = true;
-        if (statusDot) statusDot.classList.add("speaking");
-        if (typeof onStart === "function") onStart();
-      };
-      utterance.onend = resetStatus;
-      utterance.onerror = resetStatus;
-
-      window.speechSynthesis.speak(utterance);
-    }, 45);
+    this._dispatchUtterance(fullBilingualSpeech, {
+      voice: this.selectedVoice,
+      rate: this.speechRate,
+      pitch: this.speechPitch,
+      interrupt,
+      onStart,
+      onComplete
+    });
   }
 
   /**
@@ -318,66 +413,29 @@ class BlindAudioEngine {
    */
   speakHindi(hindiText, hindiPhonetic = "", { interrupt = true, assertive = true } = {}) {
     const statusText = document.getElementById("audio-status-text");
-    const statusDot = document.getElementById("audio-status-dot");
     if (statusText) {
-      statusText.textContent = `Speaking (हिंदी): "${hindiText.slice(0, 75)}"`;
+      statusText.textContent = `Speaking (हिंदी): "${(hindiText || "").slice(0, 75)}"`;
     }
 
-    if (!("speechSynthesis" in window)) return;
+    const liveVoices =
+      "speechSynthesis" in window ? window.speechSynthesis.getVoices() || [] : [];
+    const verifiedHindiVoice = liveVoices.find(
+      (v) =>
+        (v.lang === "hi-IN" || v.lang.toLowerCase().startsWith("hi")) &&
+        (v.name.includes("Google") || v.name.includes("Microsoft"))
+    );
 
-    if (this._speakTimer) {
-      clearTimeout(this._speakTimer);
-      this._speakTimer = null;
-    }
+    const textToSpeak = verifiedHindiVoice
+      ? hindiText
+      : hindiPhonetic || hindiText;
 
-    if (interrupt) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (e) {}
-    }
-
-    this._speakTimer = setTimeout(() => {
-      try {
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-        }
-      } catch (e) {}
-
-      const liveVoices = window.speechSynthesis.getVoices() || [];
-      const verifiedHindiVoice = liveVoices.find(
-        (v) =>
-          (v.lang === "hi-IN" || v.lang.toLowerCase().startsWith("hi")) &&
-          (v.name.includes("Google") || v.name.includes("Microsoft"))
-      );
-
-      const textToSpeak = verifiedHindiVoice
-        ? hindiText
-        : hindiPhonetic || hindiText;
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      if (verifiedHindiVoice) {
-        utterance.voice = verifiedHindiVoice;
-        utterance.lang = "hi-IN";
-      }
-      utterance.rate = Math.max(0.85, this.speechRate * 0.95);
-      utterance.pitch = this.speechPitch;
-
-      const resetStatus = () => {
-        if (statusDot) statusDot.classList.remove("speaking");
-        if (statusText) {
-          statusText.innerHTML =
-            'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>W</strong> for Welcome EN/हिंदी, or <strong>S</strong> to Read Screen)';
-        }
-      };
-
-      utterance.onstart = () => {
-        this.hasSpokenStartupWelcome = true;
-        if (statusDot) statusDot.classList.add("speaking");
-      };
-      utterance.onend = resetStatus;
-      utterance.onerror = resetStatus;
-
-      window.speechSynthesis.speak(utterance);
-    }, 45);
+    this._dispatchUtterance(textToSpeak, {
+      voice: verifiedHindiVoice || this.selectedVoice,
+      lang: verifiedHindiVoice ? "hi-IN" : "en-US",
+      rate: Math.max(0.85, this.speechRate * 0.95),
+      pitch: this.speechPitch,
+      interrupt
+    });
   }
 
   /**
@@ -395,54 +453,17 @@ class BlindAudioEngine {
     }
 
     const statusText = document.getElementById("audio-status-text");
-    const statusDot = document.getElementById("audio-status-dot");
     if (statusText) {
       statusText.textContent = `Speaking: "${text.slice(0, 85)}${text.length > 85 ? "..." : ""}"`;
     }
 
-    if (!("speechSynthesis" in window)) return;
-
-    if (this._speakTimer) {
-      clearTimeout(this._speakTimer);
-      this._speakTimer = null;
-    }
-
-    if (interrupt) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (e) {}
-    }
-
-    this._speakTimer = setTimeout(() => {
-      try {
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-        }
-      } catch (e) {}
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      if (this.userSelectedVoice && this.selectedVoice) {
-        utterance.voice = this.selectedVoice;
-      }
-      utterance.rate = this.speechRate;
-      utterance.pitch = this.speechPitch;
-
-      utterance.onstart = () => {
-        if (statusDot) statusDot.classList.add("speaking");
-      };
-
-      const resetStatus = () => {
-        if (statusDot) statusDot.classList.remove("speaking");
-        if (statusText) {
-          statusText.innerHTML = 'Audio Guide Ready (Press <strong>Space</strong> for Voice or <strong>S</strong> to Read Screen/Avatar)';
-        }
-      };
-
-      utterance.onend = resetStatus;
-      utterance.onerror = resetStatus;
-
-      window.speechSynthesis.speak(utterance);
-    }, 45);
+    const cleanText = String(text).replace(/\s*\/\s*/g, ", ");
+    this._dispatchUtterance(cleanText, {
+      voice: this.selectedVoice,
+      rate: this.speechRate,
+      pitch: this.speechPitch,
+      interrupt
+    });
   }
 
   stopSpeaking() {
@@ -450,6 +471,11 @@ class BlindAudioEngine {
       clearTimeout(this._speakTimer);
       this._speakTimer = null;
     }
+    if (this._watchdogTimer) {
+      clearTimeout(this._watchdogTimer);
+      this._watchdogTimer = null;
+    }
+    this._activeUtterances.length = 0;
     if ("speechSynthesis" in window) {
       try {
         window.speechSynthesis.cancel();

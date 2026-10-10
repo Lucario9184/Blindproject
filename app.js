@@ -52,9 +52,9 @@
     cameraActive: false,
     videoStream: null,
     mpHands: null,
-    precisionMode: "high", // "strict" (0.72, 6f), "high" (0.62, 4f), "fast" (0.52, 3f)
-    minConfidence: 0.62,
-    requiredStableFrames: 4,
+    precisionMode: "high", // "strict" (0.68, 5f), "high" (0.58, 3f), "fast" (0.50, 2f)
+    minConfidence: 0.58,
+    requiredStableFrames: 3,
     recognitionScope: "all", // "all", "conversational", "numbers"
     smoothedHands: [],
     motionHistory: [],
@@ -498,14 +498,14 @@
       precisionSelect.addEventListener("change", (e) => {
         state.precisionMode = e.target.value;
         if (state.precisionMode === "strict") {
-          state.minConfidence = 0.72;
-          state.requiredStableFrames = 6;
+          state.minConfidence = 0.68;
+          state.requiredStableFrames = 5;
         } else if (state.precisionMode === "fast") {
-          state.minConfidence = 0.52;
-          state.requiredStableFrames = 3;
+          state.minConfidence = 0.50;
+          state.requiredStableFrames = 2;
         } else {
-          state.minConfidence = 0.62;
-          state.requiredStableFrames = 4;
+          state.minConfidence = 0.58;
+          state.requiredStableFrames = 3;
         }
         state.candidateFrames = 0;
         state.candidateHistory = [];
@@ -527,25 +527,38 @@
 
     document.getElementById("btn-speak-panel-1").addEventListener("click", () => {
       window.audioEngine.speak(
-        "In Sign-to-Text, Braille, and Speech mode, SanketSetu tracks 21 3D hand landmarks, mirrors the sign on the on-screen ISL Avatar, translates it into 6-dot tactile Braille cells, and synthesizes natural spoken English."
+        "In Sign-to-Text, Braille, and Speech mode, SanketSetu tracks 21 3D hand landmarks, mirrors the sign on the on-screen ISL Avatar, translates it into 6-dot tactile Braille cells, and synthesizes natural spoken English and Hindi."
       );
     });
 
-    // Read Avatar & Text button in Panel 1
+    // Speak Detected Sign helper (used by Read Avatar button & clicking the Detected Sign banner)
+    const speakActiveDetectedSign = () => {
+      const sign = state.currentDetectedSign || window.ISL_SIGNS[0];
+      if (!sign) return;
+      window.audioEngine.playEarcon("sign_detected");
+      window.audioEngine.speakBilingual(
+        `${sign.word}. ${sign.spokenPhrase}`,
+        sign.hindiPhrase || sign.hindiWord || sign.spokenPhrase,
+        {
+          hindiPhonetic: sign.hindiPhonetic || sign.spokenPhrase,
+          interrupt: true,
+          assertive: true
+        }
+      );
+    };
+
     const btnReadDetAvatar = document.getElementById("btn-read-detected-avatar");
     if (btnReadDetAvatar) {
-      btnReadDetAvatar.addEventListener("click", () => {
-        const sign = state.currentDetectedSign || window.ISL_SIGNS[0];
-        window.audioEngine.playEarcon("avatar_read");
-        window.audioEngine.speakBilingual(
-          `${window.getAvatarDescription(sign)} Spoken meaning: "${sign.spokenPhrase}".`,
-          sign.hindiPhrase || sign.hindiWord || sign.spokenPhrase,
-          {
-            hindiPhonetic: sign.hindiPhonetic || sign.spokenPhrase,
-            interrupt: true,
-            assertive: true
-          }
-        );
+      btnReadDetAvatar.addEventListener("click", (e) => {
+        e.stopPropagation();
+        speakActiveDetectedSign();
+      });
+    }
+
+    const detectedBanner = document.getElementById("detected-sign-banner");
+    if (detectedBanner) {
+      detectedBanner.addEventListener("click", () => {
+        speakActiveDetectedSign();
       });
     }
 
@@ -694,9 +707,7 @@
     }
 
     try {
-      window.audioEngine.speak(
-        "Starting high-precision webcam hand tracking. Please allow camera access if prompted."
-      );
+      window.audioEngine.stopSpeaking();
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 640 },
@@ -711,6 +722,8 @@
       videoEl.srcObject = stream;
       await videoEl.play();
       state.cameraActive = true;
+      state.lastSignId = null;
+      state.lastSignTime = 0;
       btnText.textContent = "Stop Live Webcam";
       placeholder.style.display = "none";
       window.audioEngine.playEarcon("mic_on");
@@ -1188,43 +1201,29 @@
     const fiveOpenScore = matchFingerPattern(arr, [1, 1, 1, 1, 1]);
     if (fiveOpenScore > 0.60) {
       if (motion.horizWave > 0.45) {
-        addCandidate("hello", fiveOpenScore + 0.14);
-      } else if (f1.thumbTip.y < 0.36) {
-        addCandidate("father", fiveOpenScore + 0.10);
-      } else if (f1.indexTip.y < 0.48 && f1.indexMiddleSpread < 0.36) {
-        addCandidate("thankyou", fiveOpenScore + 0.11);
-      } else if (f1.palmCenter.y > 0.56 && motion.speed > 0.14) {
-        addCandidate("please", fiveOpenScore + 0.10);
-      } else if (f1.indexMiddleSpread > 0.40) {
-        addCandidate("wait", fiveOpenScore + 0.09);
-        addCandidate("num_5", fiveOpenScore + 0.08);
+        addCandidate("hello", fiveOpenScore + 0.16);
+      } else if (f1.palmCenter.y > 0.66 && motion.speed > 0.22) {
+        addCandidate("please", fiveOpenScore + 0.11);
       } else {
-        addCandidate("hello", fiveOpenScore + 0.11);
+        addCandidate("hello", fiveOpenScore + 0.13);
+        addCandidate("num_5", fiveOpenScore + 0.08);
       }
     }
 
     const indexOnlyScore = matchFingerPattern(arr, [0, 1, 0, 0, 0], [0.8, 1.4, 1.2, 1.2, 1.2]);
     if (indexOnlyScore > 0.60) {
-      if (motion.horizWave > 0.42) {
-        addCandidate("no", indexOnlyScore + 0.14);
-      } else if (f1.indexTip.y < 0.36) {
-        addCandidate("understand", indexOnlyScore + 0.11);
-      } else if (f1.indexHorizontal) {
-        addCandidate("deaf", indexOnlyScore + 0.10);
+      if (f1.indexHorizontal) {
+        addCandidate("deaf", indexOnlyScore + 0.12);
       } else {
-        addCandidate("no", indexOnlyScore + 0.09);
-        addCandidate("num_1", indexOnlyScore + 0.08);
+        addCandidate("no", indexOnlyScore + 0.13);
+        addCandidate("num_1", indexOnlyScore + 0.09);
       }
     }
 
     const twoFingerScore = matchFingerPattern(arr, [0, 1, 1, 0, 0], [0.9, 1.3, 1.3, 1.2, 1.2]);
     if (twoFingerScore > 0.60) {
-      if (f1.indexTip.y < 0.45) {
-        addCandidate("blind", twoFingerScore + 0.12);
-      } else {
-        addCandidate("blind", twoFingerScore + 0.09);
-        addCandidate("num_2", twoFingerScore + 0.08);
-      }
+      addCandidate("blind", twoFingerScore + 0.12);
+      addCandidate("num_2", twoFingerScore + 0.09);
     }
 
     const num3Score = matchFingerPattern(arr, [0, 1, 1, 1, 0]);
@@ -1235,8 +1234,8 @@
 
     const num4Score = matchFingerPattern(arr, [0, 1, 1, 1, 1], [1.2, 1.1, 1.1, 1.1, 1.1]);
     if (num4Score > 0.62 && ext.thumb < 0.55) {
+      addCandidate("thankyou", num4Score + 0.11);
       addCandidate("num_4", num4Score + 0.09);
-      addCandidate("thankyou", num4Score + 0.07);
     }
 
     const num7Score = matchFingerPattern(arr, [0, 0.55, 0, 0, 0], [0.9, 1.4, 1.2, 1.2, 1.2]);
@@ -1381,9 +1380,9 @@
   }
 
   function handleLiveGestureCandidate(signId, confidence) {
-    // Rolling 6-frame majority vote so 1-frame camera flicker never resets sign detection
+    // Rolling 5-frame majority vote so 1-frame camera flicker never resets sign detection
     state.candidateHistory.push(signId);
-    if (state.candidateHistory.length > 6) {
+    if (state.candidateHistory.length > 5) {
       state.candidateHistory.shift();
     }
 
@@ -1401,24 +1400,18 @@
     state.candidateSignId = majorityId;
     state.candidateFrames = maxCount;
 
-    // Immediate Live Preview update on frame 2 so user sees the sign converting in real time
-    if (maxCount >= 2) {
-      const previewSign = window.ISL_SIGNS.find((s) => s.id === majorityId);
-      if (previewSign && (!state.currentDetectedSign || state.currentDetectedSign.id !== previewSign.id)) {
-        const hiWordLabel = previewSign.hindiWord ? ` (${previewSign.hindiWord})` : "";
-        const hiPhraseLabel = previewSign.hindiPhrase ? ` | हिंदी: "${previewSign.hindiPhrase}"` : "";
-        document.getElementById("detected-visual").innerHTML = window.renderISLAvatarSVG(previewSign);
-        document.getElementById("detected-sign-name").textContent = `${previewSign.emoji} ${previewSign.word}${hiWordLabel}`;
-        document.getElementById("detected-sign-spoken").textContent = `"${previewSign.spokenPhrase}"${hiPhraseLabel}`;
-        document.getElementById("detected-sign-tactile").textContent = window.getAvatarDescription(previewSign);
-      }
-    }
-
     const now = Date.now();
-    if (
-      state.candidateFrames >= state.requiredStableFrames &&
-      (state.lastSignId !== majorityId || now - state.lastSignTime > 2200)
-    ) {
+    const elapsedSinceLastSign = now - state.lastSignTime;
+    const isDifferentSign = state.lastSignId !== majorityId;
+
+    // Protect ongoing voice output: wait at least 2600ms before switching to a new camera sign
+    // and 4500ms before repeating the same held sign, so spoken voice output never cuts itself off
+    const canTriggerVoiceAndSign =
+      !state.lastSignTime ||
+      (isDifferentSign && elapsedSinceLastSign > 2600) ||
+      (!isDifferentSign && elapsedSinceLastSign > 4500);
+
+    if (state.candidateFrames >= state.requiredStableFrames && canTriggerVoiceAndSign) {
       const signObj = window.ISL_SIGNS.find((s) => s.id === majorityId);
       if (signObj) {
         state.lastSignId = majorityId;
@@ -1443,7 +1436,8 @@
     document.getElementById("hud-confidence").textContent = `Confidence: ${Math.round(confidence * 100)}% (${source})`;
 
     window.audioEngine.playEarcon("sign_detected");
-    const autoSpeak = document.getElementById("chk-auto-speak-sign").checked;
+    const autoSpeakEl = document.getElementById("chk-auto-speak-sign");
+    const autoSpeak = !autoSpeakEl || autoSpeakEl.checked;
     if (autoSpeak) {
       window.audioEngine.speakBilingual(
         `${signObj.word}. ${signObj.spokenPhrase}`,
