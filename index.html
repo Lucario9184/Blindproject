@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark-hc">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SanketSetu — ISL &amp; Blind Accessibility Bridge</title>
+  <meta name="description" content="Two-way Indian Sign Language (ISL) and Blind/Visually Impaired communication platform with real-time Sign-to-Speech, Speech-to-ISL, Tactile Audio Dictionary, and 100% Eyes-Free Voice Navigation." />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- MediaPipe Hands for real-time webcam gesture recognition -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous" defer></script>
+</head>
+<body>
+  <!-- Skip Links for Screen Readers & Keyboard Users -->
+  <a href="#main-content" class="skip-link">Skip to main content (Press Enter)</a>
+  <a href="#voice-command-btn" class="skip-link">Jump to Voice Assistant (Shortcut: Alt + V)</a>
+
+  <!-- Screen Reader Live Regions -->
+  <div id="sr-assertive" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
+  <div id="sr-polite" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Top Accessibility & Audio Control Bar -->
+  <section class="a11y-bar" aria-label="Accessibility and Audio Controls">
+    <div class="a11y-bar-inner">
+      <div class="a11y-status">
+        <span class="pulse-dot" id="audio-status-dot" aria-hidden="true"></span>
+        <span id="audio-status-text">Audio Guide Ready (Press <strong>Space</strong> to Speak Command)</span>
+      </div>
+      <div class="a11y-controls" role="toolbar" aria-label="Visual and Audio Preferences">
+        <button type="button" id="btn-welcome-audio" class="a11y-btn" aria-label="Play spoken orientation guide for blind users (Shortcut: H)">
+          <span aria-hidden="true">🔊</span> Orientation Guide <kbd>H</kbd>
+        </button>
+        <button type="button" id="btn-auto-narrate" class="a11y-btn active" aria-pressed="true" aria-label="Toggle automatic voice narration on focus and hover">
+          <span aria-hidden="true">🗣️</span> Auto-Narrate: <span id="narrate-state">ON</span>
+        </button>
+        <button type="button" id="btn-earcons" class="a11y-btn active" aria-pressed="true" aria-label="Toggle sonic earcon sound effects">
+          <span aria-hidden="true">🎵</span> Sonic Cues: <span id="earcon-state">ON</span>
+        </button>
+        <button type="button" id="btn-contrast" class="a11y-btn" aria-pressed="false" aria-label="Toggle Yellow on Black Ultra High Contrast Mode (Shortcut: C)">
+          <span aria-hidden="true">👁️</span> Ultra Contrast <kbd>C</kbd>
+        </button>
+        <div class="a11y-group" role="group" aria-label="Font size controls">
+          <button type="button" id="btn-font-dec" class="a11y-btn-icon" aria-label="Decrease text size">A-</button>
+          <button type="button" id="btn-font-inc" class="a11y-btn-icon" aria-label="Increase text size">A+</button>
+        </div>
+        <div class="a11y-group" role="group" aria-label="Speech speed">
+          <label for="speech-rate" class="sr-only">Voice Speed</label>
+          <select id="speech-rate" class="a11y-select" aria-label="Select voice narration speed">
+            <option value="0.85">Speed: 0.85x (Slow)</option>
+            <option value="1" selected>Speed: 1.0x (Normal)</option>
+            <option value="1.25">Speed: 1.25x (Fast)</option>
+            <option value="1.5">Speed: 1.5x (Screen Reader Fast)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Header -->
+  <header class="site-header" role="banner">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">🤟🔊</div>
+        <div>
+          <h1 class="brand-title">SanketSetu <span class="badge-pill">ISL ⇄ Audio Bridge</span></h1>
+          <p class="brand-subtitle">Two-Way Indian Sign Language &amp; Blind Accessibility Platform</p>
+        </div>
+      </div>
+
+      <!-- Global Voice Command Button & SOS -->
+      <div class="header-actions">
+        <button type="button" id="voice-command-btn" class="btn-voice-cmd" aria-pressed="false" aria-label="Activate Voice Command Assistant. Shortcut: Alt + V or Spacebar when not typing">
+          <span class="mic-icon" aria-hidden="true">🎙️</span>
+          <span class="btn-voice-text">
+            <strong id="voice-cmd-label">Voice Command</strong>
+            <small id="voice-cmd-sub">Say "Camera", "Translate", "Dictionary", or "Sign Hello"</small>
+          </span>
+        </button>
+
+        <a href="isl-blind-bridge.zip" download="isl-blind-bridge.zip" class="btn-outline" style="text-decoration:none; padding:0.75rem 1rem;" aria-label="Download full website project folder as a ZIP file">
+          <span aria-hidden="true">⬇️</span> Download Folder (.zip)
+        </a>
+
+        <button type="button" id="btn-sos" class="btn-sos" aria-label="Emergency SOS Alert: Sounds audible siren and flashes high-visibility Indian Sign Language Help sign">
+          <span aria-hidden="true">🚨</span> SOS Help
+        </button>
+      </div>
+    </div>
+
+    <!-- Primary Navigation Tabs (Accessible via Keys 1, 2, 3, 4) -->
+    <nav class="main-nav" aria-label="Primary Modes (Use number keys 1 to 4 to switch)">
+      <div class="nav-tabs" role="tablist">
+        <button role="tab" id="tab-btn-camera" class="nav-tab active" aria-selected="true" aria-controls="panel-camera" data-tab="camera">
+          <span class="tab-num" aria-hidden="true">1</span>
+          <span class="tab-icon" aria-hidden="true">📷</span>
+          <span class="tab-label">
+            <strong>Sign-to-Speech</strong>
+            <small>Camera reads ISL signs aloud for Blind user</small>
+          </span>
+        </button>
+
+        <button role="tab" id="tab-btn-translator" class="nav-tab" aria-selected="false" aria-controls="panel-translator" data-tab="translator">
+          <span class="tab-num" aria-hidden="true">2</span>
+          <span class="tab-icon" aria-hidden="true">🗣️</span>
+          <span class="tab-label">
+            <strong>Speech-to-ISL</strong>
+            <small>Blind user speaks → Deaf user sees ISL signs</small>
+          </span>
+        </button>
+
+        <button role="tab" id="tab-btn-dictionary" class="nav-tab" aria-selected="false" aria-controls="panel-dictionary" data-tab="dictionary">
+          <span class="tab-num" aria-hidden="true">3</span>
+          <span class="tab-icon" aria-hidden="true">✋</span>
+          <span class="tab-label">
+            <strong>Tactile Audio ISL Dictionary</strong>
+            <small>Learn ISL with spoken finger-by-finger guides</small>
+          </span>
+        </button>
+
+        <button role="tab" id="tab-btn-assist" class="nav-tab" aria-selected="false" aria-controls="panel-assist" data-tab="assist">
+          <span class="tab-num" aria-hidden="true">4</span>
+          <span class="tab-icon" aria-hidden="true">🧭</span>
+          <span class="tab-label">
+            <strong>Blind Quick-Board &amp; Guide</strong>
+            <small>One-tap audio/sign phrases &amp; voice shortcuts</small>
+          </span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Main Workspace Content -->
+  <main id="main-content" class="main-container" tabindex="-1">
+
+    <!-- =================================================================
+         PANEL 1: LIVE SIGN-TO-SPEECH (CAMERA -> SPOKEN AUDIO FOR BLIND)
+         ================================================================= -->
+    <section id="panel-camera" class="tab-panel active" role="tabpanel" aria-labelledby="tab-btn-camera">
+      <div class="panel-header">
+        <div>
+          <h2>1. Live ISL Sign-to-Speech (For Blind Listeners)</h2>
+          <p>Point the camera at a person signing in Indian Sign Language (or use the Interactive Sign Simulator below). Detected signs are <strong>immediately spoken aloud</strong> and added to your conversation sentence.</p>
+        </div>
+        <div class="panel-header-actions">
+          <button type="button" id="btn-open-custom-sign" class="btn-primary" aria-label="Add or calibrate a new custom Indian Sign Language gesture">
+            ➕ Add / Train New Sign
+          </button>
+          <button type="button" id="btn-speak-panel-1" class="btn-secondary" aria-label="Read instructions for Sign to Speech camera mode">
+            🔊 Read Instructions
+          </button>
+        </div>
+      </div>
+
+      <div class="camera-grid">
+        <!-- Left: Camera Viewport & Controls -->
+        <div class="card camera-card">
+          <div class="camera-toolbar">
+            <button type="button" id="btn-toggle-camera" class="btn-primary">
+              <span aria-hidden="true">📹</span> <span id="camera-btn-text">Start Live Webcam</span>
+            </button>
+            <label class="toggle-label">
+              <input type="checkbox" id="chk-auto-speak-sign" checked />
+              <span>Speak Signs Immediately</span>
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="chk-spatial-beep" checked />
+              <span>Hand-In-Frame Audio Beep</span>
+            </label>
+            <div class="precision-select-group">
+              <label for="camera-precision-mode" class="sr-only">Camera Precision Sensitivity</label>
+              <select id="camera-precision-mode" class="a11y-select" aria-label="Select camera gesture precision and stability threshold">
+                <option value="strict">Precision: Strict (85% Conf • 12 Frames)</option>
+                <option value="high" selected>Precision: High (78% Conf • 8 Frames)</option>
+                <option value="fast">Precision: Fast (70% Conf • 5 Frames)</option>
+              </select>
+              <label for="camera-scope-mode" class="sr-only">Recognition Vocabulary Scope</label>
+              <select id="camera-scope-mode" class="a11y-select" aria-label="Select which ISL sign categories the camera detects">
+                <option value="all" selected>Detect: All Signs + Numbers (41+)</option>
+                <option value="conversational">Detect: Conversational &amp; Custom Only</option>
+                <option value="numbers">Detect: ISL Numbers (1–9) Only</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="video-container" aria-label="Webcam hand tracking view">
+            <video id="webcam-video" class="input-video" playsinline muted></video>
+            <canvas id="output-canvas" class="output-canvas" width="640" height="480"></canvas>
+
+            <div id="camera-placeholder" class="camera-placeholder">
+              <div class="placeholder-icon" aria-hidden="true">📷🤟</div>
+              <h3>3D Biomechanical ISL Hand Tracking Ready</h3>
+              <p>Click <strong>"Start Live Webcam"</strong> above for palm-normalized 21-point 3D joint-angle recognition, or test any of the <strong>32+ Signs &amp; Numbers</strong> in the Simulator below.</p>
+            </div>
+
+            <!-- Live HUD Overlay -->
+            <div class="camera-hud" aria-live="polite">
+              <div class="hud-badge" id="hand-presence-badge">No Hand in Frame</div>
+              <div class="hud-confidence" id="hud-confidence">Confidence: --</div>
+            </div>
+          </div>
+
+          <!-- Live 3D Biomechanical Telemetry & Stability Lock-In Bar -->
+          <div class="telemetry-panel" aria-label="Live 3D hand landmark precision telemetry">
+            <div class="telemetry-top-row">
+              <div class="lock-status">
+                <span class="telemetry-label">🎯 Gesture Lock-In Stability:</span>
+                <strong id="lock-candidate-label">Waiting for hand pose...</strong>
+              </div>
+              <span class="badge-subtle" id="telemetry-motion-badge">Palm Scale: -- • Motion: Steady</span>
+            </div>
+            <div class="lock-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="lock-progress-bar">
+              <div class="lock-progress-fill" id="lock-progress-fill" style="width: 0%"></div>
+            </div>
+            <div class="finger-telemetry-grid" aria-hidden="true">
+              <div class="finger-meter"><span class="f-name">Thumb</span><div class="f-bar"><div id="f-bar-thumb" class="f-fill"></div></div><span id="f-val-thumb" class="f-pct">--</span></div>
+              <div class="finger-meter"><span class="f-name">Index</span><div class="f-bar"><div id="f-bar-index" class="f-fill"></div></div><span id="f-val-index" class="f-pct">--</span></div>
+              <div class="finger-meter"><span class="f-name">Middle</span><div class="f-bar"><div id="f-bar-middle" class="f-fill"></div></div><span id="f-val-middle" class="f-pct">--</span></div>
+              <div class="finger-meter"><span class="f-name">Ring</span><div class="f-bar"><div id="f-bar-ring" class="f-fill"></div></div><span id="f-val-ring" class="f-pct">--</span></div>
+              <div class="finger-meter"><span class="f-name">Pinky</span><div class="f-bar"><div id="f-bar-pinky" class="f-fill"></div></div><span id="f-val-pinky" class="f-pct">--</span></div>
+            </div>
+          </div>
+
+          <!-- Instant Sign Simulator (Allows testing without webcam or alongside webcam) -->
+          <div class="simulator-box" aria-label="Interactive ISL Gesture Simulator">
+            <div class="simulator-header">
+              <h4>⚡ Instant ISL Gesture Simulator (Click any sign or number to trigger)</h4>
+              <span class="badge-subtle" id="sim-count-badge">32+ Signs Ready</span>
+            </div>
+            <div id="simulator-buttons" class="simulator-grid" role="group" aria-label="Simulated ISL gestures">
+              <!-- Populated dynamically from ISL_SIGNS data -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Live Spoken Output & Sentence Builder -->
+        <div class="card output-card">
+          <div class="detected-sign-banner" id="detected-sign-banner" tabindex="0" aria-label="Currently detected sign">
+            <div class="detected-visual" id="detected-visual" aria-hidden="true">👋</div>
+            <div class="detected-info">
+              <span class="eyebrow">CURRENTLY DETECTED ISL SIGN</span>
+              <h3 id="detected-sign-name">Waiting for sign...</h3>
+              <p id="detected-sign-spoken" class="spoken-phrase">"Show a hand gesture or click a simulator sign"</p>
+              <p id="detected-sign-tactile" class="tactile-hint">Blind Audio Cue: A soft chime plays each time a new sign is locked in.</p>
+            </div>
+          </div>
+
+          <!-- Accumulated Sentence Builder -->
+          <div class="sentence-builder">
+            <div class="sentence-header">
+              <h4>📝 Live Conversation Transcript</h4>
+              <div class="sentence-actions">
+                <button type="button" id="btn-speak-sentence" class="btn-primary btn-sm" aria-label="Speak full accumulated sentence aloud">
+                  🔊 Speak Full Sentence
+                </button>
+                <button type="button" id="btn-clear-sentence" class="btn-outline btn-sm" aria-label="Clear conversation sentence">
+                  🗑️ Clear
+                </button>
+              </div>
+            </div>
+            <div id="sentence-display" class="sentence-box" tabindex="0" aria-live="polite" aria-label="Accumulated signed words">
+              <span class="placeholder-muted">Signed words will accumulate here into a full sentence...</span>
+            </div>
+          </div>
+
+          <!-- Recent Sign Log with Timestamps -->
+          <div class="history-section">
+            <h4>🕒 Recent Spoken Signs Log</h4>
+            <ul id="sign-history-list" class="history-list" aria-label="Recently detected signs">
+              <li class="history-empty">No signs detected yet in this session.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================
+         PANEL 2: SPEECH-TO-ISL TRANSLATOR (VOICE -> ISL VISUALS FOR DEAF)
+         ================================================================= -->
+    <section id="panel-translator" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-translator" hidden>
+      <div class="panel-header">
+        <div>
+          <h2>2. Speech-to-ISL Translator (Blind Speaker → Deaf Viewer)</h2>
+          <p>Speak naturally into your microphone or type a message. Your words are automatically converted into <strong>Indian Sign Language (ISL) phrase cards and two-handed finger-spelling visuals</strong> with spoken confirmation for you.</p>
+        </div>
+      </div>
+
+      <div class="translator-grid">
+        <!-- Input Column -->
+        <div class="card translator-input-card">
+          <div class="voice-capture-box">
+            <button type="button" id="btn-dictate-isl" class="btn-mic-large" aria-pressed="false" aria-label="Click to start speaking your message for ISL translation">
+              <span class="mic-ring" aria-hidden="true">🎙️</span>
+              <span id="dictate-btn-title">Click to Speak Your Message</span>
+              <small id="dictate-btn-status">Spoken audio confirmation enabled for blind users</small>
+            </button>
+          </div>
+
+          <div class="input-group">
+            <label for="isl-text-input" class="field-label">Or Type / Edit Message to Translate into ISL:</label>
+            <div class="text-input-row">
+              <input type="text" id="isl-text-input" class="text-input" placeholder="e.g., Hello my friend please help me find water" value="Hello friend thank you" aria-label="Message to translate into Indian Sign Language" />
+              <button type="button" id="btn-translate-text" class="btn-primary">Translate to ISL 🤟</button>
+            </div>
+          </div>
+
+          <!-- Quick Preset Sentences for Blind Users -->
+          <div class="preset-sentences">
+            <span class="field-label">Quick Conversation Starters (Click to Translate &amp; Speak):</span>
+            <div class="chip-row" role="group" aria-label="Preset conversation sentences">
+              <button type="button" class="chip-btn" data-sentence="Hello friend how are you">👋 "Hello friend, how are you?"</button>
+              <button type="button" class="chip-btn" data-sentence="Please help me I am blind">🦯 "Please help me, I am blind"</button>
+              <button type="button" class="chip-btn" data-sentence="Where is water and food">💧 "Where is water and food?"</button>
+              <button type="button" class="chip-btn" data-sentence="Thank you very much good friend">🙏 "Thank you very much, good friend"</button>
+              <button type="button" class="chip-btn" data-sentence="Call doctor emergency help">🚑 "Call doctor, emergency help!"</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Animated ISL Visual Playback Column -->
+        <div class="card translator-stage-card">
+          <div class="stage-header">
+            <div>
+              <span class="eyebrow">ACTIVE ISL SIGN STAGE (FOR DEAF PARTNER)</span>
+              <h3 id="stage-current-token">Ready to Translate</h3>
+            </div>
+            <div class="stage-controls" role="group" aria-label="ISL animation playback controls">
+              <button type="button" id="btn-stage-prev" class="btn-outline btn-sm" aria-label="Previous sign in sentence">⏮ Prev</button>
+              <button type="button" id="btn-stage-play" class="btn-primary btn-sm" aria-label="Play or replay sign sequence">▶ Play Sequence</button>
+              <button type="button" id="btn-stage-next" class="btn-outline btn-sm" aria-label="Next sign in sentence">Next ⏭</button>
+              <button type="button" id="btn-stage-describe" class="btn-secondary btn-sm" aria-label="Speak physical hand description of current sign">🔊 Describe Hand Pose</button>
+            </div>
+          </div>
+
+          <!-- Large High-Visibility ISL Sign Stage -->
+          <div id="isl-active-stage" class="isl-stage-box" tabindex="0" aria-live="polite">
+            <div class="isl-stage-svg" id="stage-svg-container" aria-hidden="true"></div>
+            <div class="isl-stage-details">
+              <div class="stage-badges">
+                <span class="badge-isl" id="stage-type-badge">ISL Phrase</span>
+                <span class="badge-hands" id="stage-hands-badge">2-Handed ISL Sign</span>
+              </div>
+              <h4 id="stage-sign-title">Hello / Namaste</h4>
+              <p id="stage-sign-meaning" class="stage-meaning">Spoken meaning: "Hello, greetings!"</p>
+              <div class="tactile-box">
+                <strong>✋ Tactile / Physical Hand Guide (For Blind Users):</strong>
+                <p id="stage-tactile-desc">Bring both palms together in front of your chest (Namaste) or raise your dominant open palm to your forehead in a friendly salute.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sequence Breakdown Cards -->
+          <div class="sequence-strip-wrapper">
+            <h4>Sequence Breakdown (Click any sign card to inspect &amp; hear its tactile guide):</h4>
+            <div id="isl-sequence-strip" class="sequence-strip" role="list" aria-label="Translated ISL sign sequence">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================
+         PANEL 3: TACTILE AUDIO ISL DICTIONARY & BLIND LEARNING QUIZ
+         ================================================================= -->
+    <section id="panel-dictionary" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-dictionary" hidden>
+      <div class="panel-header">
+        <div>
+          <h2>3. Tactile Audio ISL Dictionary (Learn ISL by Listening)</h2>
+          <p>Designed specifically for blind and visually impaired learners: every Indian Sign Language gesture and two-handed alphabet includes a <strong>detailed spoken physical hand-shape and movement guide</strong>.</p>
+        </div>
+        <div class="panel-header-actions">
+          <button type="button" id="btn-dict-add-sign" class="btn-secondary" aria-label="Add or train a new custom ISL sign">
+            ➕ Add Custom Sign
+          </button>
+          <button type="button" id="btn-start-quiz" class="btn-primary" aria-label="Start Audio Tactile ISL Practice Quiz">
+            🎧 Start Audio ISL Quiz
+          </button>
+        </div>
+      </div>
+
+      <!-- Interactive Audio Quiz Banner (Toggled or Always Accessible) -->
+      <div id="quiz-container" class="card quiz-card" hidden>
+        <div class="quiz-header">
+          <div>
+            <span class="badge-pill">🎧 Eyes-Free Audio Quiz</span>
+            <h3 id="quiz-question-title">Listen to the physical hand description and identify the ISL sign!</h3>
+          </div>
+          <div class="quiz-score-box">
+            Score: <strong id="quiz-score">0 / 0</strong>
+            <button type="button" id="btn-close-quiz" class="btn-outline btn-sm">Close Quiz</button>
+          </div>
+        </div>
+        <p id="quiz-prompt-text" class="quiz-prompt">Press "Replay Audio Clue" to hear how the hands are positioned.</p>
+        <div class="quiz-actions">
+          <button type="button" id="btn-quiz-replay" class="btn-secondary">🔊 Replay Audio Clue</button>
+          <div id="quiz-options" class="quiz-options-grid" role="group" aria-label="Quiz answer choices"></div>
+        </div>
+      </div>
+
+      <!-- Filter & Search Bar -->
+      <div class="dict-controls card">
+        <div class="search-box">
+          <label for="dict-search" class="sr-only">Search ISL Signs by word or letter</label>
+          <input type="search" id="dict-search" class="text-input" placeholder="Search 67+ signs (e.g., 'Hello', 'Water', 'Doctor', 'Bathroom', 'Money', 'A', '5')..." aria-label="Search ISL Dictionary" />
+        </div>
+        <div class="category-filters" role="group" aria-label="Filter dictionary by category">
+          <button type="button" class="filter-btn active" data-category="all">All Signs</button>
+          <button type="button" class="filter-btn" data-category="greetings">Greetings &amp; Social</button>
+          <button type="button" class="filter-btn" data-category="needs">Daily Needs &amp; Travel</button>
+          <button type="button" class="filter-btn" data-category="emergency">Health &amp; Emergency</button>
+          <button type="button" class="filter-btn" data-category="custom">✨ Custom Trained</button>
+          <button type="button" class="filter-btn" data-category="alphabet">ISL Alphabet (A–Z)</button>
+          <button type="button" class="filter-btn" data-category="numbers">Numbers (1–9)</button>
+        </div>
+      </div>
+
+      <!-- Dictionary Grid -->
+      <div id="dictionary-grid" class="dictionary-grid" role="list" aria-label="Indian Sign Language Dictionary Cards">
+        <!-- Populated dynamically -->
+      </div>
+    </section>
+
+    <!-- =================================================================
+         PANEL 4: BLIND QUICK-BOARD & VOICE ACCESSIBILITY GUIDE
+         ================================================================= -->
+    <section id="panel-assist" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-assist" hidden>
+      <div class="panel-header">
+        <div>
+          <h2>4. Blind Assistive Quick-Board &amp; Eyes-Free Navigation Guide</h2>
+          <p>Tap any large card below (or press keys <kbd>Q</kbd> through <kbd>P</kbd>) to simultaneously <strong>speak the message aloud</strong> AND <strong>display the large Indian Sign Language visual</strong> on screen for deaf bystanders.</p>
+        </div>
+      </div>
+
+      <!-- One-Tap Dual Audio + ISL Quick Board -->
+      <div class="quickboard-grid" id="quickboard-grid" role="group" aria-label="One-tap emergency and daily communication cards">
+        <!-- Populated dynamically -->
+      </div>
+
+      <!-- Voice Command & Keyboard Shortcut Reference -->
+      <div class="assist-info-grid">
+        <div class="card">
+          <h3>🎙️ Available Voice Commands (Press <kbd>Space</kbd> or <kbd>Alt + V</kbd>)</h3>
+          <p>Speak any of these phrases after activating the Voice Command microphone:</p>
+          <ul class="cmd-list">
+            <li><strong>"Camera"</strong> or <strong>"Sign to speech"</strong> — Opens Tab 1 (Webcam ISL Reader)</li>
+            <li><strong>"Translate"</strong> or <strong>"Speech to sign"</strong> — Opens Tab 2 (Voice to ISL Visuals)</li>
+            <li><strong>"Dictionary"</strong> or <strong>"Learn"</strong> — Opens Tab 3 (Tactile Audio ISL Dictionary)</li>
+            <li><strong>"Quick board"</strong> or <strong>"Assist"</strong> — Opens Tab 4 (Quick Communication Board)</li>
+            <li><strong>"Add sign"</strong> or <strong>"Train sign"</strong> — Opens the Custom ISL Sign Calibration Studio</li>
+            <li><strong>"How to sign [word]"</strong> (e.g., <em>"How to sign thank you"</em>) — Speaks the tactile hand instructions for that sign</li>
+            <li><strong>"Translate [sentence]"</strong> (e.g., <em>"Translate please help me"</em>) — Translates and displays the sentence in ISL</li>
+            <li><strong>"High contrast"</strong> — Toggles Ultra High-Contrast Yellow-on-Black theme</li>
+            <li><strong>"Emergency"</strong> or <strong>"Help"</strong> — Triggers the audio-visual SOS alert</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>⌨️ Eyes-Free Keyboard Shortcuts</h3>
+          <p>Navigate the entire platform without a mouse or screen visibility:</p>
+          <ul class="cmd-list">
+            <li><kbd>1</kbd>, <kbd>2</kbd>, <kbd>3</kbd>, <kbd>4</kbd> — Switch directly between the 4 main modes</li>
+            <li><kbd>Space</kbd> — Activate Voice Command Microphone (when not typing in a text box)</li>
+            <li><kbd>H</kbd> — Hear spoken Orientation &amp; Help Guide at any time</li>
+            <li><kbd>C</kbd> — Toggle Ultra High-Contrast Yellow-on-Black visual theme</li>
+            <li><kbd>S</kbd> — Speak current detected sign or active stage summary aloud</li>
+            <li><kbd>Escape</kbd> — Stop any ongoing speech or close modal dialogs</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Custom Sign Calibration & Training Studio Modal -->
+  <div id="custom-sign-modal" class="sos-modal custom-modal" role="dialog" aria-modal="true" aria-labelledby="custom-modal-title" hidden>
+    <div class="custom-modal-content card">
+      <div class="custom-modal-header">
+        <div>
+          <span class="badge-pill">✨ Custom ISL Sign Studio</span>
+          <h2 id="custom-modal-title">Add &amp; Calibrate a New ISL Sign</h2>
+          <p class="text-secondary">Define a new sign with 3D finger extension rules or capture your live hand pose from the webcam. Saved signs work immediately in Camera Detection, Simulator, Translator, and Dictionary.</p>
+        </div>
+        <button type="button" id="btn-close-custom-modal" class="btn-outline btn-sm" aria-label="Close Custom Sign Studio">✖ Close</button>
+      </div>
+
+      <form id="custom-sign-form" class="custom-sign-form">
+        <div class="form-grid-2">
+          <div class="form-field">
+            <label for="custom-sign-word" class="field-label">Sign Word / Label *</label>
+            <input type="text" id="custom-sign-word" class="text-input" placeholder="e.g., Chai / Tea, Namaskar, Station" required />
+          </div>
+          <div class="form-field">
+            <label for="custom-sign-phrase" class="field-label">Spoken Audio Phrase (Read to Blind User) *</label>
+            <input type="text" id="custom-sign-phrase" class="text-input" placeholder="e.g., I would like a cup of hot tea." required />
+          </div>
+        </div>
+
+        <div class="form-grid-3">
+          <div class="form-field">
+            <label for="custom-sign-category" class="field-label">Category</label>
+            <select id="custom-sign-category" class="text-input">
+              <option value="greetings">Greetings &amp; Social</option>
+              <option value="needs" selected>Daily Needs &amp; Travel</option>
+              <option value="emergency">Health &amp; Emergency</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="custom-sign-hands" class="field-label">Hands Used</label>
+            <select id="custom-sign-hands" class="text-input">
+              <option value="1-Handed ISL Sign" selected>1-Handed ISL Sign</option>
+              <option value="2-Handed ISL Sign">2-Handed ISL Sign</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="custom-sign-emoji" class="field-label">Emoji / Visual Icon</label>
+            <input type="text" id="custom-sign-emoji" class="text-input" value="🤟" maxlength="4" />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="custom-sign-guide" class="field-label">Tactile / Physical Hand Guide (For Blind Audio Dictionary)</label>
+          <input type="text" id="custom-sign-guide" class="text-input" placeholder="Describe how the fingers and palm are positioned..." />
+        </div>
+
+        <!-- 3D Finger Pose & Live Webcam Capture Box -->
+        <div class="pose-calibration-box">
+          <div class="pose-calibration-header">
+            <div>
+              <h4>🎯 Camera 3D Finger Pose Calibration</h4>
+              <p>Set each finger's state for camera recognition, or click <strong>"Capture Live Hand Pose"</strong> while your webcam is active.</p>
+            </div>
+            <button type="button" id="btn-capture-live-pose" class="btn-secondary btn-sm">
+              📸 Capture Live Hand Pose from Webcam
+            </button>
+          </div>
+          <p id="capture-pose-status" class="capture-status-text" aria-live="polite">
+            Configure finger states below or capture directly from an active webcam hand pose.
+          </p>
+
+          <div class="finger-config-grid">
+            <div class="form-field">
+              <label for="f-cfg-thumb" class="field-label">Thumb</label>
+              <select id="f-cfg-thumb" class="text-input">
+                <option value="1" selected>Extended (100%)</option>
+                <option value="0.5">Curved / Pinch (50%)</option>
+                <option value="0">Curled / Folded (0%)</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="f-cfg-index" class="field-label">Index Finger</label>
+              <select id="f-cfg-index" class="text-input">
+                <option value="1" selected>Extended (100%)</option>
+                <option value="0.5">Curved / Hooked (50%)</option>
+                <option value="0">Curled / Fist (0%)</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="f-cfg-middle" class="field-label">Middle Finger</label>
+              <select id="f-cfg-middle" class="text-input">
+                <option value="1">Extended (100%)</option>
+                <option value="0.5">Curved (50%)</option>
+                <option value="0" selected>Curled / Fist (0%)</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="f-cfg-ring" class="field-label">Ring Finger</label>
+              <select id="f-cfg-ring" class="text-input">
+                <option value="1">Extended (100%)</option>
+                <option value="0.5">Curved (50%)</option>
+                <option value="0" selected>Curled / Fist (0%)</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="f-cfg-pinky" class="field-label">Pinky Finger</label>
+              <select id="f-cfg-pinky" class="text-input">
+                <option value="1" selected>Extended (100%)</option>
+                <option value="0.5">Curved (50%)</option>
+                <option value="0">Curled / Fist (0%)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="custom-modal-footer">
+          <button type="submit" class="btn-primary">💾 Save &amp; Activate New ISL Sign</button>
+          <button type="button" id="btn-cancel-custom-modal" class="btn-outline">Cancel</button>
+        </div>
+      </form>
+
+      <!-- Saved User Custom Signs List -->
+      <div class="saved-custom-section">
+        <h4>Your Custom Trained Signs (<span id="custom-signs-count">0</span>)</h4>
+        <div id="custom-signs-list" class="custom-signs-list">
+          <p class="placeholder-muted">No custom signs added yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Emergency SOS Modal Overlay (High-Contrast Visual ISL + Audible Siren/Speech) -->
+  <div id="sos-modal" class="sos-modal" role="dialog" aria-modal="true" aria-labelledby="sos-title" hidden>
+    <div class="sos-modal-content">
+      <div class="sos-visual-banner" aria-hidden="true">🚨 🤟 🦯</div>
+      <h2 id="sos-title">EMERGENCY ASSISTANCE NEEDED</h2>
+      <p class="sos-subtitle">I am visually impaired / blind and need immediate assistance.</p>
+      <div class="sos-isl-card">
+        <div id="sos-svg-holder" class="sos-svg"></div>
+        <div>
+          <h3>ISL Sign Shown: HELP / EMERGENCY</h3>
+          <p>Deaf Bystander Notice: This user is blind/visually impaired. Please tap the button below to respond or assist them.</p>
+        </div>
+      </div>
+      <div class="sos-actions">
+        <button type="button" id="btn-sos-repeat" class="btn-primary">🔊 Repeat Spoken SOS Announcement</button>
+        <button type="button" id="btn-sos-deaf-reply" class="btn-secondary">🤝 Deaf Helper: Tap to Tell User "I Am Here to Help"</button>
+        <button type="button" id="btn-sos-close" class="btn-outline">✖ Dismiss SOS Alert (Esc)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="data.js"></script>
+  <script src="audio.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
