@@ -115,15 +115,15 @@ window.ISL_SIGNS = [
   },
   {
     id: "iloveyou",
-    word: "Care / Love",
+    word: "Love / Care",
     keywords: ["love", "care", "family", "heart", "iloveyou", "affection"],
     category: "greetings",
     emoji: "🤟",
     hands: "1-Handed Sign",
-    spokenPhrase: "I care about you.",
+    spokenPhrase: "Love. I love you and care about you.",
     tactileGuide: "Extend your thumb, index finger, and pinky finger straight out while keeping your middle and ring fingers curled tightly into your palm.",
     poseType: "ily_hand",
-    simLabel: "🤟 Care / Love"
+    simLabel: "🤟 Love / Care"
   },
   {
     id: "name",
@@ -793,6 +793,7 @@ window.naturalizeISLGloss = function (signWordsArray) {
     friend: "my friend",
     good: "everything is good",
     bad: "something is wrong",
+    love: "I love you",
     care: "I care about you",
     name: "what is your name",
     understand: "I understand",
@@ -886,9 +887,9 @@ const HINDI_ISL_DICTIONARY = {
     keywords: ["बुरा", "खराब", "bura", "kharab"]
   },
   iloveyou: {
-    hindiWord: "स्नेह / प्यार",
-    hindiPhrase: "मैं आपका बहुत आदर और स्नेह करता हूँ।",
-    hindiPhonetic: "Main aapka bahut aadar aur sneh karta hoon.",
+    hindiWord: "प्यार / स्नेह",
+    hindiPhrase: "मैं आपसे प्यार और स्नेह करता हूँ।",
+    hindiPhonetic: "Main aapse pyar aur sneh karta hoon.",
     keywords: ["प्यार", "स्नेह", "pyar", "prem", "sneh"]
   },
   name: {

@@ -241,7 +241,8 @@ class BlindAudioEngine {
 
   /**
    * Internal helper that pins SpeechSynthesisUtterance against V8 garbage collection
-   * (critical during 30fps MediaPipe camera tracking) and auto-recovers if Chrome TTS stalls.
+   * (critical during 30fps MediaPipe camera tracking) and dispatches speech synchronously
+   * so browser user-gesture activation is always preserved.
    */
   _dispatchUtterance(
     spokenText,
@@ -269,103 +270,78 @@ class BlindAudioEngine {
     const statusText = document.getElementById("audio-status-text");
     const statusDot = document.getElementById("audio-status-dot");
 
-    const buildAndSpeak = () => {
-      try {
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-        }
-      } catch (e) {}
+    if (!this.voices || !this.voices.length) {
+      this.initVoices();
+    }
 
-      if (!this.voices || !this.voices.length) {
-        this.initVoices();
-      }
-
-      const utterance = new SpeechSynthesisUtterance(spokenText);
-      const chosenVoice = voice || this.selectedVoice;
-      if (chosenVoice) {
-        utterance.voice = chosenVoice;
-        utterance.lang = lang || chosenVoice.lang || "en-US";
-      } else if (lang) {
-        utterance.lang = lang;
-      } else {
-        utterance.lang = "en-US";
-      }
-
-      utterance.rate = rate;
-      utterance.pitch = pitch;
-      utterance.volume = 1.0;
-
-      // Pin utterance in memory so V8 minor GC during 30fps MediaPipe frames never collects it
-      this._activeUtterances.push(utterance);
-
-      let hasStarted = false;
-      const cleanup = () => {
-        const idx = this._activeUtterances.indexOf(utterance);
-        if (idx !== -1) this._activeUtterances.splice(idx, 1);
-        if (this._watchdogTimer) {
-          clearTimeout(this._watchdogTimer);
-          this._watchdogTimer = null;
-        }
-        if (statusDot) statusDot.classList.remove("speaking");
-        if (statusText) {
-          statusText.innerHTML =
-            'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>W</strong> for Welcome EN/हिंदी, or <strong>S</strong> to Read Screen)';
-        }
-        if (typeof onComplete === "function") onComplete();
-      };
-
-      utterance.onstart = () => {
-        hasStarted = true;
-        this.hasSpokenStartupWelcome = true;
-        if (statusDot) statusDot.classList.add("speaking");
-        if (typeof onStart === "function") onStart();
-      };
-      utterance.onend = cleanup;
-      utterance.onerror = cleanup;
-
-      try {
-        window.speechSynthesis.speak(utterance);
-      } catch (e) {}
-
-      // Watchdog: if Chrome speechSynthesis gets stuck after cancel(), resume/re-trigger
-      this._watchdogTimer = setTimeout(() => {
-        if (!hasStarted && "speechSynthesis" in window) {
-          try {
-            window.speechSynthesis.resume();
-            if (!window.speechSynthesis.speaking) {
-              window.speechSynthesis.cancel();
-              const retryUtt = new SpeechSynthesisUtterance(spokenText);
-              if (chosenVoice) retryUtt.voice = chosenVoice;
-              retryUtt.lang = utterance.lang;
-              retryUtt.rate = rate;
-              retryUtt.pitch = pitch;
-              retryUtt.volume = 1.0;
-              this._activeUtterances.push(retryUtt);
-              retryUtt.onstart = utterance.onstart;
-              retryUtt.onend = () => {
-                const rIdx = this._activeUtterances.indexOf(retryUtt);
-                if (rIdx !== -1) this._activeUtterances.splice(rIdx, 1);
-                cleanup();
-              };
-              retryUtt.onerror = retryUtt.onend;
-              window.speechSynthesis.speak(retryUtt);
-            }
-          } catch (e) {}
-        }
-      }, 280);
-    };
-
-    const isBusy =
-      window.speechSynthesis.speaking || window.speechSynthesis.pending;
-    if (interrupt && isBusy) {
+    if (interrupt) {
       try {
         window.speechSynthesis.cancel();
       } catch (e) {}
       this._activeUtterances.length = 0;
-      this._speakTimer = setTimeout(buildAndSpeak, 30);
-    } else {
-      buildAndSpeak();
     }
+
+    try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+    } catch (e) {}
+
+    const utterance = new SpeechSynthesisUtterance(spokenText);
+    const chosenVoice = voice || (this.userSelectedVoice ? this.selectedVoice : null);
+    if (chosenVoice) {
+      utterance.voice = chosenVoice;
+      utterance.lang = lang || chosenVoice.lang || "en-US";
+    } else if (lang) {
+      utterance.lang = lang;
+    } else if (this.selectedVoice && this.selectedVoice.lang) {
+      utterance.lang = this.selectedVoice.lang;
+    } else {
+      utterance.lang = "en-US";
+    }
+
+    utterance.rate = rate;
+    utterance.pitch = pitch;
+    utterance.volume = 1.0;
+
+    // Pin utterance in memory so V8 minor GC during 30fps MediaPipe frames never collects it
+    this._activeUtterances.push(utterance);
+
+    const cleanup = () => {
+      const idx = this._activeUtterances.indexOf(utterance);
+      if (idx !== -1) this._activeUtterances.splice(idx, 1);
+      if (this._watchdogTimer) {
+        clearTimeout(this._watchdogTimer);
+        this._watchdogTimer = null;
+      }
+      if (statusDot) statusDot.classList.remove("speaking");
+      if (statusText) {
+        statusText.innerHTML =
+          'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>W</strong> for Welcome EN/हिंदी, or <strong>S</strong> to Read Screen)';
+      }
+      if (typeof onComplete === "function") onComplete();
+    };
+
+    utterance.onstart = () => {
+      this.hasSpokenStartupWelcome = true;
+      if (statusDot) statusDot.classList.add("speaking");
+      if (typeof onStart === "function") onStart();
+    };
+    utterance.onend = cleanup;
+    utterance.onerror = cleanup;
+
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {}
+
+    // Gentle resume check in case browser paused speechSynthesis queue
+    this._watchdogTimer = setTimeout(() => {
+      try {
+        if ("speechSynthesis" in window && window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      } catch (e) {}
+    }, 250);
   }
 
   /**
