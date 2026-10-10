@@ -14,6 +14,8 @@ class BlindAudioEngine {
     this.audioCtx = null;
     this.voices = [];
     this.selectedVoice = null;
+    this.hindiVoice = null;
+    this.hasSpokenStartupWelcome = false;
     this.initVoices();
   }
 
@@ -31,6 +33,14 @@ class BlindAudioEngine {
           voices.find((v) => v.lang.startsWith("en-") && v.name.includes("Natural")) ||
           voices.find((v) => v.lang.startsWith("en")) ||
           voices[0];
+      }
+
+      // Detect Hindi (hi-IN) voice for bilingual English + Hindi welcome and guidance
+      if (!this.hindiVoice) {
+        this.hindiVoice =
+          voices.find((v) => v.lang === "hi-IN") ||
+          voices.find((v) => v.lang.toLowerCase().startsWith("hi")) ||
+          null;
       }
 
       // Populate voice selector dropdown if present in DOM
@@ -146,6 +156,12 @@ class BlindAudioEngine {
           playTone(620, 0.24, 0.22, "square", 0.22);
           playTone(880, 0.48, 0.25, "square", 0.22);
           break;
+        case "welcome":
+          playTone(440, 0, 0.11, "sine", 0.14); // A4
+          playTone(554.37, 0.09, 0.11, "sine", 0.14); // C#5
+          playTone(659.25, 0.18, 0.14, "sine", 0.16); // E5
+          playTone(880, 0.28, 0.25, "triangle", 0.18); // A5
+          break;
       }
     } catch (e) {
       // Ignore audio context autoplay restrictions prior to first gesture
@@ -209,6 +225,99 @@ class BlindAudioEngine {
   }
 
   /**
+   * Speaks a bilingual statement in English first and then in Hindi (hi-IN),
+   * with automatic phonetic Hindi fallback if the system does not have a native Devanagari voice installed.
+   */
+  speakBilingual(
+    englishText,
+    hindiText,
+    { hindiPhonetic = "", interrupt = true, assertive = true, onStart = null, onComplete = null } = {}
+  ) {
+    const combinedAria = `${englishText} | ${hindiText}`;
+    const srEl = document.getElementById(assertive ? "sr-assertive" : "sr-polite");
+    if (srEl) {
+      srEl.textContent = "";
+      setTimeout(() => {
+        srEl.textContent = combinedAria;
+      }, 20);
+    }
+
+    const statusText = document.getElementById("audio-status-text");
+    const statusDot = document.getElementById("audio-status-dot");
+    if (statusText) {
+      statusText.textContent = `Speaking (EN + HI): "${englishText.slice(0, 55)}..."`;
+    }
+
+    if (!("speechSynthesis" in window)) return;
+
+    if (interrupt) {
+      window.speechSynthesis.cancel();
+    }
+
+    // Refresh voice list if needed
+    if (!this.voices || !this.voices.length) {
+      this.initVoices();
+    }
+
+    const enUtterance = new SpeechSynthesisUtterance(englishText);
+    if (this.selectedVoice) {
+      enUtterance.voice = this.selectedVoice;
+      enUtterance.lang = this.selectedVoice.lang || "en-IN";
+    } else {
+      enUtterance.lang = "en-IN";
+    }
+    enUtterance.rate = this.speechRate;
+    enUtterance.pitch = this.speechPitch;
+
+    // Prepare Hindi utterance (use native hi-IN voice for Devanagari, or phonetic Hindi fallback so every browser speaks Hindi aloud)
+    const hasNativeHindiVoice = Boolean(this.hindiVoice);
+    const spokenHindiStr = hasNativeHindiVoice ? hindiText : (hindiPhonetic || hindiText);
+    const hiUtterance = new SpeechSynthesisUtterance(spokenHindiStr);
+    if (hasNativeHindiVoice) {
+      hiUtterance.voice = this.hindiVoice;
+      hiUtterance.lang = this.hindiVoice.lang || "hi-IN";
+    } else if (this.selectedVoice) {
+      hiUtterance.voice = this.selectedVoice;
+      hiUtterance.lang = "en-IN";
+    } else {
+      hiUtterance.lang = "hi-IN";
+    }
+    hiUtterance.rate = Math.max(0.85, this.speechRate * 0.96);
+    hiUtterance.pitch = this.speechPitch;
+
+    const resetStatus = () => {
+      if (statusDot) statusDot.classList.remove("speaking");
+      if (statusText) {
+        statusText.innerHTML =
+          'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>W</strong> for Welcome EN/HI, or <strong>S</strong> to Read Screen)';
+      }
+      if (typeof onComplete === "function") onComplete();
+    };
+
+    enUtterance.onstart = () => {
+      this.hasSpokenStartupWelcome = true;
+      if (statusDot) statusDot.classList.add("speaking");
+      if (typeof onStart === "function") onStart();
+    };
+
+    enUtterance.onend = () => {
+      if (statusText) {
+        statusText.textContent = `Speaking (हिंदी): "${hindiText.slice(0, 65)}..."`;
+      }
+    };
+
+    hiUtterance.onstart = () => {
+      if (statusDot) statusDot.classList.add("speaking");
+    };
+    hiUtterance.onend = resetStatus;
+    hiUtterance.onerror = resetStatus;
+    enUtterance.onerror = resetStatus;
+
+    window.speechSynthesis.speak(enUtterance);
+    window.speechSynthesis.speak(hiUtterance);
+  }
+
+  /**
    * Speaks text aloud using Web Speech API and updates screen reader live region.
    */
   speak(text, { interrupt = true, assertive = false } = {}) {
@@ -235,7 +344,12 @@ class BlindAudioEngine {
     }
 
     const utterance = new SpeechSynthesisUtterance(text);
-    if (this.selectedVoice) {
+    // Auto-select Hindi voice if text contains Devanagari characters
+    const hasDevanagari = /[\u0900-\u097F]/.test(text);
+    if (hasDevanagari && this.hindiVoice) {
+      utterance.voice = this.hindiVoice;
+      utterance.lang = this.hindiVoice.lang || "hi-IN";
+    } else if (this.selectedVoice) {
       utterance.voice = this.selectedVoice;
     }
     utterance.rate = this.speechRate;

@@ -97,6 +97,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     loadCustomSignsFromStorage();
     initAccessibilityToolbar();
+    initBilingualWelcomeModule();
     initTabs();
     initCameraModule();
     initCustomSignStudio();
@@ -148,6 +149,175 @@
       localStorage.setItem(CUSTOM_SIGNS_STORAGE_KEY, JSON.stringify(state.customSigns));
     } catch (e) {
       // Ignore storage quota errors
+    }
+  }
+
+  // =========================================================================
+  // BILINGUAL WELCOME (ENGLISH + HINDI) & COMMUNICATION MODE MODULE
+  // =========================================================================
+  const BILINGUAL_WELCOME_MODES = {
+    default: {
+      badge: "Mode: Bilingual Auto-Welcome (EN + हिंदी)",
+      en: "Welcome to the website! Welcome to SanketSetu — the Indian Sign Language, 6-Dot Braille, and Blind Audio Bridge. If you give no text, you can communicate using Sign Language, Voice, or Blind Language.",
+      hi: "नमस्ते! वेबसाइट में आपका स्वागत है। संकेतसेतु में आपका स्वागत है — यदि आप कोई टेक्स्ट नहीं देते हैं, तो आप सांकेतिक भाषा, बोलकर, या नेत्रहीन ऑडियो और ब्रेल भाषा में संवाद कर सकते हैं।",
+      hiPhonetic:
+        "Namaste! Website mein aapka swagat hai. Sanket Setu mein aapka swagat hai. Yadi aap koi text nahi dete hain, toh aap Sign Language, bolkar, ya Blind Audio aur Braille bhasha mein samvaad kar sakte hain."
+    },
+    "no-text": {
+      badge: "Mode: No-Text Hands-Free (बिना टेक्स्ट मोड)",
+      en: "Welcome to the website! No Text Mode is active. You do not need to type any text — speak aloud, show Sign Language, or use Blind Audio and Braille.",
+      hi: "नमस्ते! वेबसाइट में आपका स्वागत है। बिना टेक्स्ट मोड चालू है। आपको कुछ भी टाइप करने की आवश्यकता नहीं है — आप सीधे बोलकर, सांकेतिक भाषा, या नेत्रहीन भाषा से संवाद कर सकते हैं।",
+      hiPhonetic:
+        "Namaste! Website mein aapka swagat hai. Bina text mode chalu hai. Aapko kuch bhi type karne ki aavashyakta nahi hai — aap seedhe bolkar, Sign Language, ya Blind Audio bhasha se samvaad kar sakte hain."
+    },
+    "sign-language": {
+      badge: "Mode: Indian Sign Language (सांकेतिक भाषा मोड)",
+      en: "Welcome to the website! Indian Sign Language Mode is active. Show your hand signs to the camera or view the on-screen ISL Avatar signing Namaste.",
+      hi: "नमस्ते! वेबसाइट में आपका स्वागत है। भारतीय सांकेतिक भाषा मोड चालू है। कैमरे के सामने अपने हाथ के संकेत दिखाएँ या स्क्रीन पर अवतार को नमस्ते करते देखें।",
+      hiPhonetic:
+        "Namaste! Website mein aapka swagat hai. Bharatiya Sign Language mode chalu hai. Camera ke samne apne haath ke sanket dikhayein ya screen par Avatar ko Namaste karte dekhein."
+    },
+    "blind-language": {
+      badge: "Mode: Blind Audio & 6-Dot Braille (नेत्रहीन व ब्रेल भाषा)",
+      en: "Welcome to the website! Blind Audio and 6-Dot Braille Language Mode is active. Every sign, avatar posture, and message is spoken aloud in English and Hindi with Braille dot audio.",
+      hi: "नमस्ते! वेबसाइट में आपका स्वागत है। नेत्रहीन ऑडियो और ६-डॉट ब्रेल भाषा मोड चालू है। हर संकेत और संदेश आपको अंग्रेजी और हिंदी में बोलकर तथा ब्रेल ध्वनि के साथ सुनाया जाएगा।",
+      hiPhonetic:
+        "Namaste! Website mein aapka swagat hai. Blind Audio aur 6-Dot Braille bhasha mode chalu hai. Har sanket aur sandesh aapko English aur Hindi mein bolkar tatha Braille dhwani ke saath sunaya jayega."
+    },
+    "idle-no-input": {
+      badge: "Mode: Hands-Free Prompt (EN + हिंदी)",
+      en: "Welcome to the website! No text or sign input was detected. You can communicate without text using Sign Language, Voice, or Blind Audio and Braille.",
+      hi: "नमस्ते! वेबसाइट में आपका स्वागत है। कोई टेक्स्ट या संकेत नहीं मिला। आप बिना टेक्स्ट के सांकेतिक भाषा, बोलकर, या नेत्रहीन ब्रेल भाषा का उपयोग कर सकते हैं।",
+      hiPhonetic:
+        "Namaste! Website mein aapka swagat hai. Koi text ya sanket nahi mila. Aap bina text ke Sign Language, bolkar, ya Blind Braille bhasha ka upyog kar sakte hain."
+    }
+  };
+
+  function initBilingualWelcomeModule() {
+    const btnTopWelcome = document.getElementById("btn-bilingual-welcome");
+    const btnBannerWelcome = document.getElementById("btn-speak-bilingual-welcome");
+    const btnModeNoText = document.getElementById("btn-mode-no-text");
+    const btnModeSignLang = document.getElementById("btn-mode-sign-lang");
+    const btnModeBlindLang = document.getElementById("btn-mode-blind-lang");
+
+    if (btnTopWelcome) {
+      btnTopWelcome.addEventListener("click", () => {
+        speakBilingualWelcome("default");
+      });
+    }
+    if (btnBannerWelcome) {
+      btnBannerWelcome.addEventListener("click", () => {
+        speakBilingualWelcome("default");
+      });
+    }
+    if (btnModeNoText) {
+      btnModeNoText.addEventListener("click", () => {
+        activateCommunicationMode("no-text");
+      });
+    }
+    if (btnModeSignLang) {
+      btnModeSignLang.addEventListener("click", () => {
+        activateCommunicationMode("sign-language");
+      });
+    }
+    if (btnModeBlindLang) {
+      btnModeBlindLang.addEventListener("click", () => {
+        activateCommunicationMode("blind-language");
+      });
+    }
+
+    // 1. Immediately attempt to speak "Welcome to the website" + English & Hindi welcome on page open
+    setTimeout(() => {
+      speakBilingualWelcome("default");
+    }, 350);
+
+    // 2. Browser Autoplay Fallback: If browser paused speechSynthesis prior to first gesture,
+    // speak the bilingual welcome on the very first click/touch/keypress anywhere on the page.
+    const unlockStartupWelcome = (e) => {
+      document.removeEventListener("pointerdown", unlockStartupWelcome);
+      document.removeEventListener("keydown", unlockStartupWelcome);
+      if (!window.audioEngine.hasSpokenStartupWelcome) {
+        const targetId = e && e.target && e.target.id ? e.target.id : "";
+        if (
+          targetId !== "btn-mode-no-text" &&
+          targetId !== "btn-mode-sign-lang" &&
+          targetId !== "btn-mode-blind-lang"
+        ) {
+          speakBilingualWelcome("default");
+        }
+      }
+    };
+    document.addEventListener("pointerdown", unlockStartupWelcome, { once: true });
+    document.addEventListener("keydown", unlockStartupWelcome, { once: true });
+
+    // 3. If user gives no text or sign input after opening the page, announce bilingual English + Hindi guidance
+    setTimeout(() => {
+      const textInput = document.getElementById("isl-text-input");
+      const hasTypedCustomText =
+        textInput &&
+        textInput.value.trim() !== "" &&
+        textInput.value.trim().toLowerCase() !== "hello friend thank you";
+      const hasDetectedSigns = state.accumulatedSentence.length > 0;
+      if (!hasTypedCustomText && !hasDetectedSigns && !state.isCmdListening) {
+        updateWelcomeBannerText("idle-no-input");
+        if (!window.speechSynthesis || !window.speechSynthesis.speaking) {
+          speakBilingualWelcome("idle-no-input");
+        }
+      }
+    }, 15000);
+  }
+
+  function updateWelcomeBannerText(modeKey) {
+    const cfg = BILINGUAL_WELCOME_MODES[modeKey] || BILINGUAL_WELCOME_MODES.default;
+    const enEl = document.getElementById("welcome-statement-en");
+    const hiEl = document.getElementById("welcome-statement-hi");
+    const badgeEl = document.getElementById("welcome-active-mode-badge");
+    if (enEl) enEl.textContent = `"${cfg.en}"`;
+    if (hiEl) hiEl.textContent = `"${cfg.hi}"`;
+    if (badgeEl) badgeEl.textContent = cfg.badge;
+
+    const modeBtns = {
+      "no-text": document.getElementById("btn-mode-no-text"),
+      "sign-language": document.getElementById("btn-mode-sign-lang"),
+      "blind-language": document.getElementById("btn-mode-blind-lang")
+    };
+    Object.entries(modeBtns).forEach(([k, btn]) => {
+      if (btn) btn.classList.toggle("active-mode", k === modeKey);
+    });
+  }
+
+  function speakBilingualWelcome(modeKey = "default") {
+    const cfg = BILINGUAL_WELCOME_MODES[modeKey] || BILINGUAL_WELCOME_MODES.default;
+    updateWelcomeBannerText(modeKey);
+    window.audioEngine.playEarcon("welcome");
+    window.audioEngine.speakBilingual(cfg.en, cfg.hi, {
+      hindiPhonetic: cfg.hiPhonetic,
+      interrupt: true,
+      assertive: true
+    });
+  }
+
+  function activateCommunicationMode(modeKey) {
+    updateWelcomeBannerText(modeKey);
+    const namasteSign = window.ISL_SIGNS[0];
+
+    if (modeKey === "no-text") {
+      switchTab("camera", { announce: false });
+      speakBilingualWelcome("no-text");
+    } else if (modeKey === "sign-language") {
+      switchTab("camera", { announce: false });
+      if (namasteSign) {
+        state.currentDetectedSign = namasteSign;
+        document.getElementById("detected-visual").innerHTML = window.renderISLAvatarSVG(namasteSign);
+        updateCameraBrailleDisplay(namasteSign.word);
+      }
+      speakBilingualWelcome("sign-language");
+    } else if (modeKey === "blind-language") {
+      switchTab("translator", { announce: false });
+      window.audioEngine.playBraillePulses("Welcome", { speakAfter: false });
+      speakBilingualWelcome("blind-language");
+    } else {
+      speakBilingualWelcome("default");
     }
   }
 
@@ -248,14 +418,20 @@
   }
 
   function speakOrientationGuide() {
-    window.audioEngine.playEarcon("sign_detected");
-    const guideText =
-      "Welcome to SanketSetu, the two-way Indian Sign Language, 6-Dot Braille, and Blind Audio Communication Bridge. " +
-      "Press number keys 1 through 4 to switch modes, or press S at any time to read aloud the active text, on-screen ISL Avatar posture, and Braille dots. " +
-      "Mode 1 converts live camera signs into natural spoken sentences, text, and 6-dot tactile Braille. " +
-      "Mode 2 is the Two-Way Communication Hub with an animated on-screen ISL Avatar, 6-dot Braille composer, and live Deaf-to-Blind conversation log. " +
-      "Mode 3 is the Tactile Audio Dictionary and Custom Sign Trainer. Mode 4 is the Quick Communication Board.";
-    window.audioEngine.speak(guideText, { interrupt: true, assertive: true });
+    window.audioEngine.playEarcon("welcome");
+    const enGuide =
+      "Welcome to the website! Welcome to SanketSetu, the two-way Indian Sign Language, 6-Dot Braille, and Blind Audio Communication Bridge. " +
+      "Press W for English and Hindi Welcome, S to read the screen and ISL Avatar aloud, B for Braille audio, or Spacebar for voice commands.";
+    const hiGuide =
+      "नमस्ते! वेबसाइट में आपका स्वागत है। संकेतसेतु भारतीय सांकेतिक भाषा, ६-डॉट ब्रेल और नेत्रहीन ऑडियो ब्रिज है। " +
+      "बिना टेक्स्ट के संवाद करने के लिए सांकेतिक भाषा, वॉयस कमांड या ब्रेल मोड का उपयोग करें।";
+    const hiPhonetic =
+      "Namaste! Website mein aapka swagat hai. Sanket Setu Bharatiya Sign Language, 6-Dot Braille aur Blind Audio Bridge hai. Bina text ke samvaad karne ke liye Sign Language, Voice Command ya Braille mode ka upyog karein.";
+    window.audioEngine.speakBilingual(enGuide, hiGuide, {
+      hindiPhonetic: hiPhonetic,
+      interrupt: true,
+      assertive: true
+    });
   }
 
   // =========================================================================
@@ -2355,6 +2531,43 @@
       triggerEmergencySOS();
       return;
     }
+    if (
+      cmd.includes("no text") ||
+      cmd.includes("without text") ||
+      cmd.includes("bina text") ||
+      cmd.includes("बिना टेक्स्ट")
+    ) {
+      activateCommunicationMode("no-text");
+      return;
+    }
+    if (
+      cmd.includes("sign language") ||
+      cmd.includes("sign langue") ||
+      cmd.includes("sanketik") ||
+      cmd.includes("सांकेतिक")
+    ) {
+      activateCommunicationMode("sign-language");
+      return;
+    }
+    if (
+      cmd.includes("blind language") ||
+      cmd.includes("blind mode") ||
+      cmd.includes("netraheen") ||
+      cmd.includes("नेत्रहीन")
+    ) {
+      activateCommunicationMode("blind-language");
+      return;
+    }
+    if (
+      cmd.includes("welcome") ||
+      cmd.includes("swagat") ||
+      cmd.includes("namaste") ||
+      cmd.includes("hindi") ||
+      cmd.includes("स्वागत")
+    ) {
+      speakBilingualWelcome("default");
+      return;
+    }
     if (cmd.includes("read avatar") || cmd.includes("read screen") || cmd.includes("describe avatar")) {
       speakCurrentContextSummary();
       return;
@@ -2469,6 +2682,11 @@
             e.preventDefault();
             toggleVoiceCommandMic();
           }
+          break;
+        case "w":
+        case "W":
+          e.preventDefault();
+          speakBilingualWelcome("default");
           break;
         case "h":
         case "H":

@@ -28,6 +28,9 @@
         <span id="audio-status-text">Audio Guide Ready (Press <strong>Space</strong> to Speak Command)</span>
       </div>
       <div class="a11y-controls" role="toolbar" aria-label="Visual and Audio Preferences">
+        <button type="button" id="btn-bilingual-welcome" class="a11y-btn active" aria-label="Play Welcome to Website statement in English and Hindi (Shortcut: W)">
+          <span aria-hidden="true">🙏</span> Welcome (EN / हिंदी) <kbd>W</kbd>
+        </button>
         <button type="button" id="btn-welcome-audio" class="a11y-btn" aria-label="Play spoken orientation guide for blind users (Shortcut: H)">
           <span aria-hidden="true">🔊</span> Orientation Guide <kbd>H</kbd>
         </button>
@@ -87,7 +90,7 @@
           <span class="mic-icon" aria-hidden="true">🎙️</span>
           <span class="btn-voice-text">
             <strong id="voice-cmd-label">Voice Command</strong>
-            <small id="voice-cmd-sub">Say "Read Avatar", "Read Braille", "Translate...", or "Camera"</small>
+            <small id="voice-cmd-sub">Say "No Text", "Sign Language", "Blind Language", or "Welcome"</small>
           </span>
         </button>
 
@@ -145,6 +148,56 @@
 
   <!-- Main Workspace Content -->
   <main id="main-content" class="main-container" tabindex="-1">
+
+    <!-- =================================================================
+         BILINGUAL WELCOME & COMMUNICATION MODE BANNER (ENGLISH + HINDI)
+         ================================================================= -->
+    <section id="welcome-bilingual-banner" class="welcome-bilingual-banner" aria-label="Welcome to Website in English and Hindi">
+      <div class="welcome-banner-top">
+        <div class="welcome-title-wrap">
+          <span class="welcome-icon" aria-hidden="true">🙏</span>
+          <div>
+            <h2 class="welcome-heading">
+              Welcome to the Website! <span class="welcome-divider">|</span> <span lang="hi">वेबसाइट में आपका स्वागत है!</span>
+            </h2>
+            <p class="welcome-sub">
+              Automatic Bilingual Greeting (English &amp; हिंदी) • Choose or Speak your communication mode: <strong>"No Text"</strong>, <strong>"Sign Language"</strong>, or <strong>"Blind Language"</strong>
+            </p>
+          </div>
+        </div>
+        <span id="welcome-active-mode-badge" class="badge-tag">Mode: Bilingual Auto-Welcome</span>
+      </div>
+
+      <div class="welcome-statements-grid" id="welcome-statement-box" aria-live="polite">
+        <div class="welcome-statement-card">
+          <span class="welcome-lang-tag">🇬🇧 English Welcome Statement</span>
+          <p id="welcome-statement-en">
+            "Welcome to the website! Welcome to SanketSetu — the Indian Sign Language, 6-Dot Braille, and Blind Audio Bridge. If you give no text, you can communicate using Sign Language, Voice, or Blind Language."
+          </p>
+        </div>
+        <div class="welcome-statement-card" lang="hi">
+          <span class="welcome-lang-tag">🇮🇳 हिंदी स्वागत संदेश (Hindi Welcome)</span>
+          <p id="welcome-statement-hi">
+            "नमस्ते! वेबसाइट में आपका स्वागत है। संकेतसेतु में आपका स्वागत है — यदि आप कोई टेक्स्ट नहीं देते हैं, तो आप सांकेतिक भाषा (Sign Language), बोलकर, या नेत्रहीन ऑडियो व ब्रेल भाषा में संवाद कर सकते हैं।"
+          </p>
+        </div>
+      </div>
+
+      <div class="welcome-mode-actions" role="group" aria-label="Select or Speak Communication Mode in English and Hindi">
+        <button type="button" id="btn-speak-bilingual-welcome" class="btn-primary btn-sm" aria-label="Replay Welcome to the website statement in English and Hindi (Shortcut: W)">
+          🔊 Speak Welcome (EN + हिंदी) <kbd>W</kbd>
+        </button>
+        <button type="button" id="btn-mode-no-text" class="btn-outline btn-sm" aria-label="Activate No Text Mode: Speaks English and Hindi welcome and enables hands-free voice and audio without typing">
+          🎙️ No Text Mode (बिना टेक्स्ट)
+        </button>
+        <button type="button" id="btn-mode-sign-lang" class="btn-outline btn-sm" aria-label="Activate Sign Language Mode: Speaks English and Hindi welcome and shows Indian Sign Language Avatar and Camera">
+          🤟 Sign Language (सांकेतिक भाषा)
+        </button>
+        <button type="button" id="btn-mode-blind-lang" class="btn-outline btn-sm" aria-label="Activate Blind Language and Braille Mode: Speaks English and Hindi welcome with Sonic 6-Dot Braille pulses">
+          🧑‍🦯 Blind Language / Braille (नेत्रहीन भाषा)
+        </button>
+      </div>
+    </section>
 
     <!-- =================================================================
          PANEL 1: LIVE SIGN-TO-SPEECH, SIGN-TO-TEXT & BRAILLE TRANSLATION
