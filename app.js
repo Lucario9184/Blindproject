@@ -232,22 +232,26 @@
     }, 350);
 
     // 2. Browser Autoplay Fallback: If browser paused speechSynthesis prior to first gesture,
-    // speak the bilingual welcome on the very first click/touch/keypress anywhere on the page.
+    // speak the bilingual welcome on the first click/touch/keypress on the page.
     const unlockStartupWelcome = (e) => {
-      document.removeEventListener("pointerdown", unlockStartupWelcome);
+      document.removeEventListener("click", unlockStartupWelcome);
       document.removeEventListener("keydown", unlockStartupWelcome);
       if (!window.audioEngine.hasSpokenStartupWelcome) {
-        const targetId = e && e.target && e.target.id ? e.target.id : "";
+        const btn = e && e.target && e.target.closest ? e.target.closest("button") : null;
+        const btnId = btn && btn.id ? btn.id : "";
+        // If user clicked a specific mode/sign button, let that button's own click handler speak
         if (
-          targetId !== "btn-mode-no-text" &&
-          targetId !== "btn-mode-sign-lang" &&
-          targetId !== "btn-mode-blind-lang"
+          btnId &&
+          btnId !== "btn-bilingual-welcome" &&
+          btnId !== "btn-speak-bilingual-welcome"
         ) {
-          speakBilingualWelcome("default");
+          window.audioEngine.hasSpokenStartupWelcome = true;
+          return;
         }
+        speakBilingualWelcome("default");
       }
     };
-    document.addEventListener("pointerdown", unlockStartupWelcome, { once: true });
+    document.addEventListener("click", unlockStartupWelcome, { once: true });
     document.addEventListener("keydown", unlockStartupWelcome, { once: true });
 
     // 3. If user gives no text or sign input after opening the page, announce bilingual English + Hindi guidance
@@ -1668,10 +1672,15 @@
       const current = state.translatedSequence[state.currentStageIndex];
       if (current) {
         window.audioEngine.playEarcon("avatar_read");
-        window.audioEngine.speak(window.getAvatarDescription(current), {
-          interrupt: true,
-          assertive: true
-        });
+        window.audioEngine.speakBilingual(
+          `${window.getAvatarDescription(current)} English meaning: "${current.spokenPhrase}".`,
+          current.hindiPhrase || current.hindiWord || current.spokenPhrase,
+          {
+            hindiPhonetic: current.hindiPhonetic || current.spokenPhrase,
+            interrupt: true,
+            assertive: true
+          }
+        );
       }
     });
 
@@ -1797,15 +1806,23 @@
   function translateTextToISL(rawText, { speakConfirmation = true, addToChat = false } = {}) {
     const cleaned = (rawText || "").trim();
     if (!cleaned) {
-      window.audioEngine.speak("Please speak or type a message to translate into Indian Sign Language.");
+      window.audioEngine.speakBilingual(
+        "Please speak or type a message in English or Hindi to convert into Indian Sign Language.",
+        "कृपया भारतीय सांकेतिक भाषा में बदलने के लिए अंग्रेजी या हिंदी में संदेश बोलें या टाइप करें।",
+        {
+          hindiPhonetic:
+            "Kripya Bharatiya Sign Language mein badalne ke liye English ya Hindi mein sandesh bolein ya type karein."
+        }
+      );
       return;
     }
 
     state.lastTranslatedText = cleaned;
 
+    // Preserve both English alphanumeric and Hindi Devanagari (\u0900-\u097F) tokens
     let normalizedSentence = cleaned
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/[^a-z0-9\u0900-\u097F\s]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
 
@@ -1824,7 +1841,8 @@
 
     const stopWords = new Set([
       "a", "an", "the", "is", "am", "are", "was", "were", "to", "for", "of",
-      "in", "on", "at", "very", "much", "my", "me", "i", "you", "your", "can", "could", "would"
+      "in", "on", "at", "very", "much", "my", "me", "i", "you", "your", "can", "could", "would",
+      "में", "का", "की", "के", "को", "से", "पर", "है", "हूँ", "हैं", "मुझे", "मेरा", "मेरी"
     ]);
 
     tokens.forEach((token) => {
@@ -1842,7 +1860,10 @@
 
       const stem = normalizeWordStem(token);
       const matchedSign = conversationalSigns.find(
-        (s) => s.keywords.includes(token) || s.keywords.includes(stem)
+        (s) =>
+          s.keywords.includes(token) ||
+          s.keywords.includes(stem) ||
+          (s.hindiWord && s.hindiWord.includes(token))
       );
       if (matchedSign) {
         sequence.push(matchedSign);
@@ -1866,10 +1887,7 @@
     });
 
     if (!sequence.length) {
-      for (const ch of tokens[0] || "hi") {
-        const letterSign = window.ISL_SIGNS.find((s) => s.keywords.includes(ch));
-        if (letterSign) sequence.push(letterSign);
-      }
+      sequence.push(window.ISL_SIGNS[0]);
     }
 
     state.translatedSequence = sequence;
@@ -1882,9 +1900,9 @@
     if (addToChat) {
       addTwoWayChatMessage({
         role: "blind",
-        speakerLabel: "🦯 Blind Speaker (Voice/Text/Braille → ISL Avatar)",
+        speakerLabel: "🦯 Blind Speaker (Voice/Text/Braille → ISL Avatar EN + हिंदी)",
         text: cleaned,
-        glossText: sequence.map((s) => s.word).join(" → "),
+        glossText: sequence.map((s) => `${s.word}${s.hindiWord ? " (" + s.hindiWord + ")" : ""}`).join(" → "),
         signObj: sequence[0] || window.ISL_SIGNS[0],
         speakNow: false
       });
@@ -1892,9 +1910,20 @@
 
     if (speakConfirmation) {
       window.audioEngine.playEarcon("sign_detected");
-      const signNames = sequence.map((s) => s.word).join(", then ");
-      window.audioEngine.speak(
-        `Translated "${cleaned}" into ${sequence.length} Indian Sign Language signs on Avatar: ${signNames}.`
+      const signWords = sequence.map((s) => s.word);
+      const signNames = signWords.join(", then ");
+      const hiData = window.naturalizeISLGlossHindi
+        ? window.naturalizeISLGlossHindi(signWords)
+        : { hi: signNames, hiPhonetic: signNames };
+
+      window.audioEngine.speakBilingual(
+        `Converted "${cleaned}" into ${sequence.length} Indian Sign Language signs: ${signNames}.`,
+        `हिंदी सांकेतिक अर्थ: ${hiData.hi}`,
+        {
+          hindiPhonetic: `Hindi sanketik arth: ${hiData.hiPhonetic}`,
+          interrupt: true,
+          assertive: true
+        }
       );
       playStageSequence();
     }
@@ -1920,10 +1949,11 @@
       card.type = "button";
       card.className = `seq-card ${idx === state.currentStageIndex ? "active" : ""}`;
       card.setAttribute("role", "listitem");
-      card.setAttribute("aria-label", `Sign ${idx + 1}: ${signObj.word}. Click to animate Avatar and hear tactile guide.`);
+      const hiLabel = signObj.hindiWord ? ` (${signObj.hindiWord})` : "";
+      card.setAttribute("aria-label", `Sign ${idx + 1}: ${signObj.word}${hiLabel}. Click to animate Avatar and hear English and Hindi guide.`);
       card.innerHTML = `
         <span class="seq-card-emoji" aria-hidden="true">${signObj.emoji}</span>
-        <span class="seq-card-label">${signObj.word}</span>
+        <span class="seq-card-label">${signObj.word}${hiLabel}</span>
         <span class="seq-card-sub">${signObj.hands}</span>
       `;
       card.addEventListener("click", () => {
@@ -1939,8 +1969,11 @@
     const signObj = state.translatedSequence[state.currentStageIndex];
     if (!signObj) return;
 
+    const hiWordLabel = signObj.hindiWord ? ` (${signObj.hindiWord})` : "";
+    const hiPhraseLabel = signObj.hindiPhrase ? ` | हिंदी अर्थ: "${signObj.hindiPhrase}"` : "";
+
     document.getElementById("stage-current-token").textContent =
-      `Sign ${state.currentStageIndex + 1} of ${state.translatedSequence.length}: ${signObj.word}`;
+      `Sign ${state.currentStageIndex + 1} of ${state.translatedSequence.length}: ${signObj.word}${hiWordLabel}`;
 
     // Render BOTH Expressive On-Screen ISL Avatar AND Articulated 5-Finger Hand Pose
     const avatarContainer = document.getElementById("stage-avatar-container");
@@ -1952,8 +1985,8 @@
     document.getElementById("stage-type-badge").textContent =
       signObj.category === "alphabet" ? "ISL Finger-Spell" : signObj.isCustom ? "Custom ISL Sign" : "ISL Sign";
     document.getElementById("stage-hands-badge").textContent = signObj.hands;
-    document.getElementById("stage-sign-title").textContent = signObj.word;
-    document.getElementById("stage-sign-meaning").textContent = `Spoken meaning: "${signObj.spokenPhrase}"`;
+    document.getElementById("stage-sign-title").textContent = `${signObj.word}${hiWordLabel}`;
+    document.getElementById("stage-sign-meaning").textContent = `English: "${signObj.spokenPhrase}"${hiPhraseLabel}`;
 
     const avatarNarrEl = document.getElementById("stage-avatar-narration");
     if (avatarNarrEl) {
@@ -1968,7 +2001,15 @@
 
     if (speakTactile) {
       window.audioEngine.playEarcon("avatar_read");
-      window.audioEngine.speak(window.getAvatarDescription(signObj));
+      window.audioEngine.speakBilingual(
+        `${signObj.word}. ${signObj.spokenPhrase}. ${window.getAvatarDescription(signObj)}`,
+        signObj.hindiPhrase || signObj.hindiWord || signObj.spokenPhrase,
+        {
+          hindiPhonetic: signObj.hindiPhonetic || signObj.spokenPhrase,
+          interrupt: true,
+          assertive: true
+        }
+      );
     }
   }
 
@@ -2763,7 +2804,7 @@
   }
 
   /**
-   * Reads aloud the active text on screen, the on-screen ISL Avatar's posture & expression, and its 6-dot Braille summary.
+   * Reads aloud the active text on screen, the on-screen ISL Avatar's posture & expression, and its 6-dot Braille summary in English and Hindi.
    */
   function speakCurrentContextSummary() {
     window.audioEngine.playEarcon("avatar_read");
@@ -2772,17 +2813,30 @@
       const naturalSentence = state.accumulatedSentence.length
         ? window.naturalizeISLGloss(state.accumulatedSentence)
         : sign.spokenPhrase;
+      const hiData = state.accumulatedSentence.length && window.naturalizeISLGlossHindi
+        ? window.naturalizeISLGlossHindi(state.accumulatedSentence)
+        : { hi: sign.hindiPhrase || sign.hindiWord, hiPhonetic: sign.hindiPhonetic || sign.spokenPhrase };
       const braille = window.BrailleEngine.translate(getActiveCameraBrailleText());
-      window.audioEngine.speak(
+      window.audioEngine.speakBilingual(
         `Screen & Avatar Summary: ${window.getAvatarDescription(sign)} Text on screen: "${naturalSentence}". ${braille.spokenGuide}`,
-        { interrupt: true, assertive: true }
+        hiData.hi,
+        {
+          hindiPhonetic: hiData.hiPhonetic,
+          interrupt: true,
+          assertive: true
+        }
       );
     } else if (state.activeTab === "translator") {
       const current = state.translatedSequence[state.currentStageIndex] || window.ISL_SIGNS[0];
       const braille = window.BrailleEngine.translate(state.lastTranslatedText || current.word);
-      window.audioEngine.speak(
+      window.audioEngine.speakBilingual(
         `Screen & Avatar Summary: Active translated text is "${state.lastTranslatedText}". ${window.getAvatarDescription(current)} ${braille.spokenGuide}`,
-        { interrupt: true, assertive: true }
+        current.hindiPhrase || current.hindiWord || current.spokenPhrase,
+        {
+          hindiPhonetic: current.hindiPhonetic || current.spokenPhrase,
+          interrupt: true,
+          assertive: true
+        }
       );
     } else {
       speakOrientationGuide();
@@ -2790,11 +2844,25 @@
   }
 
   function initFocusNarration() {
+    let recentPointerDown = false;
+    document.addEventListener(
+      "pointerdown",
+      () => {
+        recentPointerDown = true;
+        setTimeout(() => {
+          recentPointerDown = false;
+        }, 350);
+      },
+      true
+    );
+
     document.addEventListener("focusin", (e) => {
       const el = e.target;
       if (!el || el === document.body) return;
-      window.audioEngine.playEarcon("focus");
+      // Only narrate focus when navigating via keyboard (Tab), so mouse clicks don't get interrupted
+      if (recentPointerDown) return;
 
+      window.audioEngine.playEarcon("focus");
       if (!window.audioEngine.autoNarrate) return;
       const label =
         el.getAttribute("aria-label") ||

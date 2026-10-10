@@ -16,6 +16,7 @@ class BlindAudioEngine {
     this.selectedVoice = null;
     this.hindiVoice = null;
     this.hasSpokenStartupWelcome = false;
+    this._speakTimer = null;
     this.initVoices();
   }
 
@@ -26,27 +27,34 @@ class BlindAudioEngine {
       if (!voices.length) return;
       this.voices = voices;
 
-      // Prefer Indian English voice for ISL context, fallback to any clear English voice
+      // Use the system/browser verified default voice (e.g. Samantha / Google US English)
+      // Avoid forcing un-downloaded macOS stub voices (like Rishi/Lekha) that can mute speechSynthesis
       if (!this.selectedVoice) {
         this.selectedVoice =
-          voices.find((v) => v.lang === "en-IN") ||
-          voices.find((v) => v.lang.startsWith("en-") && v.name.includes("Natural")) ||
+          voices.find((v) => v.default && v.lang.startsWith("en")) ||
+          voices.find((v) => v.name.includes("Google US English")) ||
+          voices.find((v) => v.name.includes("Samantha")) ||
+          voices.find((v) => v.default) ||
           voices.find((v) => v.lang.startsWith("en")) ||
           voices[0];
       }
 
-      // Detect Hindi (hi-IN) voice for bilingual English + Hindi welcome and guidance
+      // Prefer verified Google/Microsoft Hindi voice if available
       if (!this.hindiVoice) {
         this.hindiVoice =
+          voices.find(
+            (v) =>
+              (v.lang === "hi-IN" || v.lang.toLowerCase().startsWith("hi")) &&
+              (v.name.includes("Google") || v.name.includes("Microsoft") || v.default)
+          ) ||
           voices.find((v) => v.lang === "hi-IN") ||
-          voices.find((v) => v.lang.toLowerCase().startsWith("hi")) ||
           null;
       }
 
       // Populate voice selector dropdown if present in DOM
       const voiceSelect = document.getElementById("speech-voice-select");
       if (voiceSelect && voiceSelect.options.length <= 1) {
-        voiceSelect.innerHTML = "";
+        voiceSelect.innerHTML = '<option value="">Voice: Browser Default (Recommended)</option>';
         const prioritized = voices.filter(
           (v) => v.lang.startsWith("en") || v.lang.startsWith("hi")
         );
@@ -55,9 +63,6 @@ class BlindAudioEngine {
           const opt = document.createElement("option");
           opt.value = v.name;
           opt.textContent = `Voice: ${v.name.slice(0, 22)} (${v.lang})`;
-          if (this.selectedVoice && v.name === this.selectedVoice.name) {
-            opt.selected = true;
-          }
           voiceSelect.appendChild(opt);
         });
       }
@@ -67,10 +72,16 @@ class BlindAudioEngine {
   }
 
   setVoiceByName(name) {
+    if (!name) {
+      this.selectedVoice = null;
+      this.userSelectedVoice = false;
+      return;
+    }
     if (!this.voices || !this.voices.length) return;
     const found = this.voices.find((v) => v.name === name);
     if (found) {
       this.selectedVoice = found;
+      this.userSelectedVoice = true;
     }
   }
 
@@ -225,15 +236,16 @@ class BlindAudioEngine {
   }
 
   /**
-   * Speaks a bilingual statement in English first and then in Hindi (hi-IN),
-   * with automatic phonetic Hindi fallback if the system does not have a native Devanagari voice installed.
+   * Speaks a bilingual statement in English AND Hindi aloud reliably across all browsers.
+   * Combines English + phonetic Hindi in a primary guaranteed utterance so Hindi is always audible
+   * even on systems without a downloaded Devanagari TTS pack, and also uses native hi-IN when available.
    */
   speakBilingual(
     englishText,
     hindiText,
     { hindiPhonetic = "", interrupt = true, assertive = true, onStart = null, onComplete = null } = {}
   ) {
-    const combinedAria = `${englishText} | ${hindiText}`;
+    const combinedAria = `${englishText} | हिंदी: ${hindiText}`;
     const srEl = document.getElementById(assertive ? "sr-assertive" : "sr-polite");
     if (srEl) {
       srEl.textContent = "";
@@ -245,106 +257,127 @@ class BlindAudioEngine {
     const statusText = document.getElementById("audio-status-text");
     const statusDot = document.getElementById("audio-status-dot");
     if (statusText) {
-      statusText.textContent = `Speaking (EN + हिंदी): "${englishText.slice(0, 55)}..."`;
+      statusText.textContent = `Speaking (EN + हिंदी): "${englishText.slice(0, 48)}..." | "${(hindiText || "").slice(0, 42)}..."`;
     }
 
     if (!("speechSynthesis" in window)) return;
 
-    this._bilingualSeqId = (this._bilingualSeqId || 0) + 1;
-    const seqId = this._bilingualSeqId;
+    if (this._speakTimer) {
+      clearTimeout(this._speakTimer);
+      this._speakTimer = null;
+    }
 
     if (interrupt) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
     }
 
-    // Dynamically refresh voices from browser so hi-IN is always detected
-    const liveVoices = window.speechSynthesis.getVoices();
-    if (liveVoices && liveVoices.length) {
-      this.voices = liveVoices;
-      if (!this.hindiVoice) {
-        this.hindiVoice =
-          liveVoices.find((v) => v.lang === "hi-IN") ||
-          liveVoices.find((v) => v.lang.toLowerCase().startsWith("hi")) ||
-          null;
+    const spokenHindi = hindiPhonetic || hindiText || "";
+    const fullBilingualSpeech = spokenHindi
+      ? `${englishText} ... ${spokenHindi}`
+      : `${englishText}`;
+
+    this._speakTimer = setTimeout(() => {
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      } catch (e) {}
+
+      const utterance = new SpeechSynthesisUtterance(fullBilingualSpeech);
+      if (this.userSelectedVoice && this.selectedVoice) {
+        utterance.voice = this.selectedVoice;
       }
-      if (!this.selectedVoice) {
-        this.selectedVoice =
-          liveVoices.find((v) => v.lang === "en-IN") ||
-          liveVoices.find((v) => v.lang.startsWith("en")) ||
-          liveVoices[0];
-      }
+      utterance.rate = this.speechRate;
+      utterance.pitch = this.speechPitch;
+
+      const resetStatus = () => {
+        if (statusDot) statusDot.classList.remove("speaking");
+        if (statusText) {
+          statusText.innerHTML =
+            'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>W</strong> for Welcome EN/हिंदी, or <strong>S</strong> to Read Screen)';
+        }
+        if (typeof onComplete === "function") onComplete();
+      };
+
+      utterance.onstart = () => {
+        this.hasSpokenStartupWelcome = true;
+        if (statusDot) statusDot.classList.add("speaking");
+        if (typeof onStart === "function") onStart();
+      };
+      utterance.onend = resetStatus;
+      utterance.onerror = resetStatus;
+
+      window.speechSynthesis.speak(utterance);
+    }, 45);
+  }
+
+  /**
+   * Speaks Hindi statement aloud (uses verified hi-IN voice if available + phonetic Hindi so it is always audible).
+   */
+  speakHindi(hindiText, hindiPhonetic = "", { interrupt = true, assertive = true } = {}) {
+    const statusText = document.getElementById("audio-status-text");
+    const statusDot = document.getElementById("audio-status-dot");
+    if (statusText) {
+      statusText.textContent = `Speaking (हिंदी): "${hindiText.slice(0, 75)}"`;
     }
 
-    const enUtterance = new SpeechSynthesisUtterance(englishText);
-    if (this.selectedVoice) {
-      enUtterance.voice = this.selectedVoice;
-      enUtterance.lang = this.selectedVoice.lang || "en-IN";
-    } else {
-      enUtterance.lang = "en-IN";
+    if (!("speechSynthesis" in window)) return;
+
+    if (this._speakTimer) {
+      clearTimeout(this._speakTimer);
+      this._speakTimer = null;
     }
-    enUtterance.rate = this.speechRate;
-    enUtterance.pitch = this.speechPitch;
 
-    const resetStatus = () => {
-      if (statusDot) statusDot.classList.remove("speaking");
-      if (statusText) {
-        statusText.innerHTML =
-          'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>W</strong> for Welcome EN/हिंदी, or <strong>S</strong> to Read Screen)';
+    if (interrupt) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
+    }
+
+    this._speakTimer = setTimeout(() => {
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      } catch (e) {}
+
+      const liveVoices = window.speechSynthesis.getVoices() || [];
+      const verifiedHindiVoice = liveVoices.find(
+        (v) =>
+          (v.lang === "hi-IN" || v.lang.toLowerCase().startsWith("hi")) &&
+          (v.name.includes("Google") || v.name.includes("Microsoft"))
+      );
+
+      const textToSpeak = verifiedHindiVoice
+        ? hindiText
+        : hindiPhonetic || hindiText;
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      if (verifiedHindiVoice) {
+        utterance.voice = verifiedHindiVoice;
+        utterance.lang = "hi-IN";
       }
-      if (typeof onComplete === "function") onComplete();
-    };
+      utterance.rate = Math.max(0.85, this.speechRate * 0.95);
+      utterance.pitch = this.speechPitch;
 
-    enUtterance.onstart = () => {
-      this.hasSpokenStartupWelcome = true;
-      if (statusDot) statusDot.classList.add("speaking");
-      if (typeof onStart === "function") onStart();
-    };
+      const resetStatus = () => {
+        if (statusDot) statusDot.classList.remove("speaking");
+        if (statusText) {
+          statusText.innerHTML =
+            'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>W</strong> for Welcome EN/हिंदी, or <strong>S</strong> to Read Screen)';
+        }
+      };
 
-    enUtterance.onend = () => {
-      if (this._bilingualSeqId !== seqId) return;
-      if (statusText) {
-        statusText.textContent = `Speaking (हिंदी): "${hindiText.slice(0, 68)}..."`;
-      }
-
-      // Re-check for hi-IN voice right before speaking Hindi
-      const currentVoices = window.speechSynthesis.getVoices();
-      const hiVoice =
-        this.hindiVoice ||
-        (currentVoices &&
-          (currentVoices.find((v) => v.lang === "hi-IN") ||
-            currentVoices.find((v) => v.lang.toLowerCase().startsWith("hi")))) ||
-        null;
-
-      const hasNativeHindiVoice = Boolean(hiVoice);
-      const spokenHindiStr = hasNativeHindiVoice ? hindiText : (hindiPhonetic || hindiText);
-      const hiUtterance = new SpeechSynthesisUtterance(spokenHindiStr);
-      if (hasNativeHindiVoice) {
-        hiUtterance.voice = hiVoice;
-        hiUtterance.lang = hiVoice.lang || "hi-IN";
-      } else if (this.selectedVoice) {
-        hiUtterance.voice = this.selectedVoice;
-        hiUtterance.lang = "en-IN";
-      } else {
-        hiUtterance.lang = "hi-IN";
-      }
-      hiUtterance.rate = Math.max(0.85, this.speechRate * 0.95);
-      hiUtterance.pitch = this.speechPitch;
-
-      hiUtterance.onstart = () => {
+      utterance.onstart = () => {
+        this.hasSpokenStartupWelcome = true;
         if (statusDot) statusDot.classList.add("speaking");
       };
-      hiUtterance.onend = resetStatus;
-      hiUtterance.onerror = resetStatus;
+      utterance.onend = resetStatus;
+      utterance.onerror = resetStatus;
 
-      setTimeout(() => {
-        if (this._bilingualSeqId === seqId) {
-          window.speechSynthesis.speak(hiUtterance);
-        }
-      }, 90);
-    };
-
-    enUtterance.onerror = resetStatus;
-    window.speechSynthesis.speak(enUtterance);
+      window.speechSynthesis.speak(utterance);
+    }, 45);
   }
 
   /**
@@ -369,42 +402,58 @@ class BlindAudioEngine {
 
     if (!("speechSynthesis" in window)) return;
 
+    if (this._speakTimer) {
+      clearTimeout(this._speakTimer);
+      this._speakTimer = null;
+    }
+
     if (interrupt) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
     }
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    // Auto-select Hindi voice if text contains Devanagari characters
-    const hasDevanagari = /[\u0900-\u097F]/.test(text);
-    if (hasDevanagari && this.hindiVoice) {
-      utterance.voice = this.hindiVoice;
-      utterance.lang = this.hindiVoice.lang || "hi-IN";
-    } else if (this.selectedVoice) {
-      utterance.voice = this.selectedVoice;
-    }
-    utterance.rate = this.speechRate;
-    utterance.pitch = this.speechPitch;
+    this._speakTimer = setTimeout(() => {
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      } catch (e) {}
 
-    utterance.onstart = () => {
-      if (statusDot) statusDot.classList.add("speaking");
-    };
-
-    const resetStatus = () => {
-      if (statusDot) statusDot.classList.remove("speaking");
-      if (statusText) {
-        statusText.innerHTML = 'Audio Guide Ready (Press <strong>Space</strong> for Voice or <strong>S</strong> to Read Screen/Avatar)';
+      const utterance = new SpeechSynthesisUtterance(text);
+      if (this.userSelectedVoice && this.selectedVoice) {
+        utterance.voice = this.selectedVoice;
       }
-    };
+      utterance.rate = this.speechRate;
+      utterance.pitch = this.speechPitch;
 
-    utterance.onend = resetStatus;
-    utterance.onerror = resetStatus;
+      utterance.onstart = () => {
+        if (statusDot) statusDot.classList.add("speaking");
+      };
 
-    window.speechSynthesis.speak(utterance);
+      const resetStatus = () => {
+        if (statusDot) statusDot.classList.remove("speaking");
+        if (statusText) {
+          statusText.innerHTML = 'Audio Guide Ready (Press <strong>Space</strong> for Voice or <strong>S</strong> to Read Screen/Avatar)';
+        }
+      };
+
+      utterance.onend = resetStatus;
+      utterance.onerror = resetStatus;
+
+      window.speechSynthesis.speak(utterance);
+    }, 45);
   }
 
   stopSpeaking() {
+    if (this._speakTimer) {
+      clearTimeout(this._speakTimer);
+      this._speakTimer = null;
+    }
     if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
     }
     const statusDot = document.getElementById("audio-status-dot");
     if (statusDot) statusDot.classList.remove("speaking");
