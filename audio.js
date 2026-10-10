@@ -245,18 +245,34 @@ class BlindAudioEngine {
     const statusText = document.getElementById("audio-status-text");
     const statusDot = document.getElementById("audio-status-dot");
     if (statusText) {
-      statusText.textContent = `Speaking (EN + HI): "${englishText.slice(0, 55)}..."`;
+      statusText.textContent = `Speaking (EN + हिंदी): "${englishText.slice(0, 55)}..."`;
     }
 
     if (!("speechSynthesis" in window)) return;
+
+    this._bilingualSeqId = (this._bilingualSeqId || 0) + 1;
+    const seqId = this._bilingualSeqId;
 
     if (interrupt) {
       window.speechSynthesis.cancel();
     }
 
-    // Refresh voice list if needed
-    if (!this.voices || !this.voices.length) {
-      this.initVoices();
+    // Dynamically refresh voices from browser so hi-IN is always detected
+    const liveVoices = window.speechSynthesis.getVoices();
+    if (liveVoices && liveVoices.length) {
+      this.voices = liveVoices;
+      if (!this.hindiVoice) {
+        this.hindiVoice =
+          liveVoices.find((v) => v.lang === "hi-IN") ||
+          liveVoices.find((v) => v.lang.toLowerCase().startsWith("hi")) ||
+          null;
+      }
+      if (!this.selectedVoice) {
+        this.selectedVoice =
+          liveVoices.find((v) => v.lang === "en-IN") ||
+          liveVoices.find((v) => v.lang.startsWith("en")) ||
+          liveVoices[0];
+      }
     }
 
     const enUtterance = new SpeechSynthesisUtterance(englishText);
@@ -269,27 +285,11 @@ class BlindAudioEngine {
     enUtterance.rate = this.speechRate;
     enUtterance.pitch = this.speechPitch;
 
-    // Prepare Hindi utterance (use native hi-IN voice for Devanagari, or phonetic Hindi fallback so every browser speaks Hindi aloud)
-    const hasNativeHindiVoice = Boolean(this.hindiVoice);
-    const spokenHindiStr = hasNativeHindiVoice ? hindiText : (hindiPhonetic || hindiText);
-    const hiUtterance = new SpeechSynthesisUtterance(spokenHindiStr);
-    if (hasNativeHindiVoice) {
-      hiUtterance.voice = this.hindiVoice;
-      hiUtterance.lang = this.hindiVoice.lang || "hi-IN";
-    } else if (this.selectedVoice) {
-      hiUtterance.voice = this.selectedVoice;
-      hiUtterance.lang = "en-IN";
-    } else {
-      hiUtterance.lang = "hi-IN";
-    }
-    hiUtterance.rate = Math.max(0.85, this.speechRate * 0.96);
-    hiUtterance.pitch = this.speechPitch;
-
     const resetStatus = () => {
       if (statusDot) statusDot.classList.remove("speaking");
       if (statusText) {
         statusText.innerHTML =
-          'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>W</strong> for Welcome EN/HI, or <strong>S</strong> to Read Screen)';
+          'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>W</strong> for Welcome EN/हिंदी, or <strong>S</strong> to Read Screen)';
       }
       if (typeof onComplete === "function") onComplete();
     };
@@ -301,20 +301,50 @@ class BlindAudioEngine {
     };
 
     enUtterance.onend = () => {
+      if (this._bilingualSeqId !== seqId) return;
       if (statusText) {
-        statusText.textContent = `Speaking (हिंदी): "${hindiText.slice(0, 65)}..."`;
+        statusText.textContent = `Speaking (हिंदी): "${hindiText.slice(0, 68)}..."`;
       }
+
+      // Re-check for hi-IN voice right before speaking Hindi
+      const currentVoices = window.speechSynthesis.getVoices();
+      const hiVoice =
+        this.hindiVoice ||
+        (currentVoices &&
+          (currentVoices.find((v) => v.lang === "hi-IN") ||
+            currentVoices.find((v) => v.lang.toLowerCase().startsWith("hi")))) ||
+        null;
+
+      const hasNativeHindiVoice = Boolean(hiVoice);
+      const spokenHindiStr = hasNativeHindiVoice ? hindiText : (hindiPhonetic || hindiText);
+      const hiUtterance = new SpeechSynthesisUtterance(spokenHindiStr);
+      if (hasNativeHindiVoice) {
+        hiUtterance.voice = hiVoice;
+        hiUtterance.lang = hiVoice.lang || "hi-IN";
+      } else if (this.selectedVoice) {
+        hiUtterance.voice = this.selectedVoice;
+        hiUtterance.lang = "en-IN";
+      } else {
+        hiUtterance.lang = "hi-IN";
+      }
+      hiUtterance.rate = Math.max(0.85, this.speechRate * 0.95);
+      hiUtterance.pitch = this.speechPitch;
+
+      hiUtterance.onstart = () => {
+        if (statusDot) statusDot.classList.add("speaking");
+      };
+      hiUtterance.onend = resetStatus;
+      hiUtterance.onerror = resetStatus;
+
+      setTimeout(() => {
+        if (this._bilingualSeqId === seqId) {
+          window.speechSynthesis.speak(hiUtterance);
+        }
+      }, 90);
     };
 
-    hiUtterance.onstart = () => {
-      if (statusDot) statusDot.classList.add("speaking");
-    };
-    hiUtterance.onend = resetStatus;
-    hiUtterance.onerror = resetStatus;
     enUtterance.onerror = resetStatus;
-
     window.speechSynthesis.speak(enUtterance);
-    window.speechSynthesis.speak(hiUtterance);
   }
 
   /**

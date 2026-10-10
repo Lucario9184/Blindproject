@@ -531,22 +531,42 @@
       btnReadDetAvatar.addEventListener("click", () => {
         const sign = state.currentDetectedSign || window.ISL_SIGNS[0];
         window.audioEngine.playEarcon("avatar_read");
-        window.audioEngine.speak(
+        window.audioEngine.speakBilingual(
           `${window.getAvatarDescription(sign)} Spoken meaning: "${sign.spokenPhrase}".`,
-          { interrupt: true, assertive: true }
+          sign.hindiPhrase || sign.hindiWord || sign.spokenPhrase,
+          {
+            hindiPhonetic: sign.hindiPhonetic || sign.spokenPhrase,
+            interrupt: true,
+            assertive: true
+          }
         );
       });
     }
 
-    // Speak Natural Sentence
+    // Speak Natural Sentence (English + Meaningful Hindi)
     document.getElementById("btn-speak-sentence").addEventListener("click", () => {
       if (!state.accumulatedSentence.length) {
-        window.audioEngine.speak("Your signed sentence is currently empty. Detect or simulate a sign first.");
+        window.audioEngine.speakBilingual(
+          "Your signed sentence is currently empty. Detect or simulate a sign first.",
+          "आपका वाक्य अभी खाली है। कृपया पहले कोई सांकेतिक चिन्ह चुनें या कैमरे पर दिखाएँ।",
+          {
+            hindiPhonetic: "Aapka vakya abhi khali hai. Kripya pehle koi sanketik chinh chunein.",
+            interrupt: true,
+            assertive: true
+          }
+        );
         return;
       }
       const naturalText = window.naturalizeISLGloss(state.accumulatedSentence);
+      const hiData = window.naturalizeISLGlossHindi
+        ? window.naturalizeISLGlossHindi(state.accumulatedSentence)
+        : { hi: naturalText, hiPhonetic: naturalText };
       window.audioEngine.playEarcon("sign_detected");
-      window.audioEngine.speak(naturalText, { interrupt: true, assertive: true });
+      window.audioEngine.speakBilingual(naturalText, hiData.hi, {
+        hindiPhonetic: hiData.hiPhonetic,
+        interrupt: true,
+        assertive: true
+      });
     });
 
     // Send Signed Sentence to Two-Way Chat Hub
@@ -1344,20 +1364,28 @@
   function triggerDetectedSign(signObj, confidence = 0.95, source = "Camera") {
     state.currentDetectedSign = signObj;
 
+    const hiWordLabel = signObj.hindiWord ? ` (${signObj.hindiWord})` : "";
+    const hiPhraseLabel = signObj.hindiPhrase ? ` | हिंदी: "${signObj.hindiPhrase}"` : "";
+
     // Render On-Screen ISL Avatar in the detected visual box
     document.getElementById("detected-visual").innerHTML = window.renderISLAvatarSVG(signObj);
-    document.getElementById("detected-sign-name").textContent = `${signObj.emoji} ${signObj.word}`;
-    document.getElementById("detected-sign-spoken").textContent = `"${signObj.spokenPhrase}"`;
+    document.getElementById("detected-sign-name").textContent = `${signObj.emoji} ${signObj.word}${hiWordLabel}`;
+    document.getElementById("detected-sign-spoken").textContent = `"${signObj.spokenPhrase}"${hiPhraseLabel}`;
     document.getElementById("detected-sign-tactile").textContent = window.getAvatarDescription(signObj);
     document.getElementById("hud-confidence").textContent = `Confidence: ${Math.round(confidence * 100)}% (${source})`;
 
     window.audioEngine.playEarcon("sign_detected");
     const autoSpeak = document.getElementById("chk-auto-speak-sign").checked;
     if (autoSpeak) {
-      window.audioEngine.speak(`${signObj.word}. ${signObj.spokenPhrase}`, {
-        interrupt: true,
-        assertive: true
-      });
+      window.audioEngine.speakBilingual(
+        `${signObj.word}. ${signObj.spokenPhrase}`,
+        signObj.hindiPhrase || signObj.hindiWord || signObj.spokenPhrase,
+        {
+          hindiPhonetic: signObj.hindiPhonetic || signObj.spokenPhrase,
+          interrupt: true,
+          assertive: true
+        }
+      );
     }
 
     // Append to Sign-to-Text Sentence Builder & Update Natural Speech + 6-Dot Braille
@@ -1367,9 +1395,9 @@
 
     const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     state.signHistory.unshift({
-      word: signObj.word,
+      word: `${signObj.word}${hiWordLabel}`,
       emoji: signObj.emoji,
-      phrase: signObj.spokenPhrase,
+      phrase: `${signObj.spokenPhrase}${hiPhraseLabel}`,
       time: timeStr,
       source: `${source} (${Math.round(confidence * 100)}%)`
     });
@@ -1382,14 +1410,22 @@
     const naturalEl = document.getElementById("natural-speech-preview");
     if (!state.accumulatedSentence.length) {
       box.innerHTML = `<span class="placeholder-muted">Signed words will accumulate here into a full sentence...</span>`;
-      if (naturalEl) naturalEl.textContent = `"Waiting for signed input..."`;
+      if (naturalEl) {
+        naturalEl.textContent = `"Waiting for signed input... | सांकेतिक इनपुट की प्रतीक्षा है..."`;
+      }
       return;
     }
     box.innerHTML = state.accumulatedSentence
       .map((w) => `<span class="sentence-token">${w}</span>`)
       .join(" ");
     if (naturalEl) {
-      naturalEl.textContent = `"${window.naturalizeISLGloss(state.accumulatedSentence)}"`;
+      const enText = window.naturalizeISLGloss(state.accumulatedSentence);
+      const hiData = window.naturalizeISLGlossHindi
+        ? window.naturalizeISLGlossHindi(state.accumulatedSentence)
+        : { hi: "" };
+      naturalEl.textContent = hiData.hi
+        ? `"${enText}"  |  हिंदी: "${hiData.hi}"`
+        : `"${enText}"`;
     }
   }
 

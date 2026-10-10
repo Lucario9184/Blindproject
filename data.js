@@ -827,6 +827,274 @@ window.naturalizeISLGloss = function (signWordsArray) {
   return rawJoined.charAt(0).toUpperCase() + rawJoined.slice(1) + ".";
 };
 
+// ============================================================================
+// MEANINGFUL HINDI ISL DICTIONARY & BILINGUAL SENTENCE GENERATOR
+// ============================================================================
+const HINDI_ISL_DICTIONARY = {
+  hello: {
+    hindiWord: "नमस्ते",
+    hindiPhrase: "नमस्ते! आपसे मिलकर बहुत खुशी हुई।",
+    hindiPhonetic: "Namaste! Aapse milkar bahut khushi hui.",
+    keywords: ["नमस्ते", "प्रणाम", "स्वागत", "namaste", "pranam", "swagat"]
+  },
+  thankyou: {
+    hindiWord: "धन्यवाद / शुक्रिया",
+    hindiPhrase: "आपकी सहायता के लिए बहुत-बहुत धन्यवाद।",
+    hindiPhonetic: "Aapki sahayata ke liye bahut-bahut dhanyawad.",
+    keywords: ["धन्यवाद", "शुक्रिया", "dhanyawad", "shukriya"]
+  },
+  yes: {
+    hindiWord: "हाँ",
+    hindiPhrase: "जी हाँ, मैं पूरी तरह सहमत हूँ।",
+    hindiPhonetic: "Jee haan, main poori tarah sahmat hoon.",
+    keywords: ["हाँ", "जी", "haan", "han"]
+  },
+  no: {
+    hindiWord: "नहीं",
+    hindiPhrase: "जी नहीं, मुझे इसकी आवश्यकता नहीं है।",
+    hindiPhonetic: "Jee nahi, mujhe iski aavashyakta nahi hai.",
+    keywords: ["नहीं", "मत", "nahi", "na"]
+  },
+  please: {
+    hindiWord: "कृपया",
+    hindiPhrase: "कृपया मेरी बात ध्यान से सुनिए।",
+    hindiPhonetic: "Kripya meri baat dhyan se suniye.",
+    keywords: ["कृपया", "प्लीज", "kripya"]
+  },
+  sorry: {
+    hindiWord: "क्षमा करें / माफ़ी",
+    hindiPhrase: "मुझे क्षमा कीजिए, असुविधा के लिए खेद है।",
+    hindiPhonetic: "Mujhe kshama keejiye, asuvidha ke liye khed hai.",
+    keywords: ["माफ़", "क्षमा", "सॉरी", "maaf", "kshama"]
+  },
+  friend: {
+    hindiWord: "मित्र / दोस्त",
+    hindiPhrase: "आप मेरे बहुत अच्छे मित्र हैं।",
+    hindiPhonetic: "Aap mere bahut acche mitra hain.",
+    keywords: ["दोस्त", "मित्र", "साथी", "dost", "mitra"]
+  },
+  good: {
+    hindiWord: "अच्छा / ठीक है",
+    hindiPhrase: "सब कुछ बहुत अच्छा और ठीक है।",
+    hindiPhonetic: "Sab kuch bahut accha aur theek hai.",
+    keywords: ["अच्छा", "ठीक", "बढ़िया", "accha", "theek", "badhiya"]
+  },
+  bad: {
+    hindiWord: "बुरा / ठीक नहीं",
+    hindiPhrase: "मुझे अच्छा महसूस नहीं हो रहा है, कुछ गड़बड़ है।",
+    hindiPhonetic: "Mujhe accha mehsoos nahi ho raha hai, kuch gadbad hai.",
+    keywords: ["बुरा", "खराब", "bura", "kharab"]
+  },
+  iloveyou: {
+    hindiWord: "स्नेह / प्यार",
+    hindiPhrase: "मैं आपका बहुत आदर और स्नेह करता हूँ।",
+    hindiPhonetic: "Main aapka bahut aadar aur sneh karta hoon.",
+    keywords: ["प्यार", "स्नेह", "pyar", "prem", "sneh"]
+  },
+  name: {
+    hindiWord: "नाम",
+    hindiPhrase: "आपका शुभ नाम क्या है?",
+    hindiPhonetic: "Aapka shubh naam kya hai?",
+    keywords: ["नाम", "naam"]
+  },
+  understand: {
+    hindiWord: "समझ गया",
+    hindiPhrase: "जी हाँ, मैं आपकी बात अच्छी तरह समझ गया हूँ।",
+    hindiPhonetic: "Jee haan, main aapki baat acchi tarah samajh gaya hoon.",
+    keywords: ["समझ", "samajh"]
+  },
+  mother: {
+    hindiWord: "माँ / माताजी",
+    hindiPhrase: "कृपया मेरी माताजी से बात कराएँ।",
+    hindiPhonetic: "Kripya meri mataji se baat karayein.",
+    keywords: ["माँ", "माता", "मम्मी", "maa", "mata", "mummy"]
+  },
+  father: {
+    hindiWord: "पिताजी / पापा",
+    hindiPhrase: "कृपया मेरे पिताजी को सूचित करें।",
+    hindiPhonetic: "Kripya mere pitaji ko soochit karein.",
+    keywords: ["पिता", "पापा", "बाबूजी", "pita", "papa"]
+  },
+  help: {
+    hindiWord: "मदद / सहायता",
+    hindiPhrase: "कृपया मेरी मदद कीजिए, मुझे आपकी सहायता चाहिए।",
+    hindiPhonetic: "Kripya meri madad keejiye, mujhe aapki sahayata chahiye.",
+    keywords: ["मदद", "सहायता", "बचाओ", "madad", "sahayata", "bachao"]
+  },
+  blind: {
+    hindiWord: "नेत्रहीन / दृष्टिबाधित",
+    hindiPhrase: "मैं दृष्टिबाधित हूँ, कृपया मुझसे बोलकर या ब्रेल के माध्यम से बात करें।",
+    hindiPhonetic: "Main drishtibadhit hoon, kripya mujhse bolkar ya Braille ke madhyam se baat karein.",
+    keywords: ["नेत्रहीन", "दृष्टिबाधित", "अंधा", "netraheen", "drishtibadhit"]
+  },
+  deaf: {
+    hindiWord: "बधिर / सांकेतिक भाषा उपयोगकर्ता",
+    hindiPhrase: "मैं सुन नहीं सकता, कृपया भारतीय सांकेतिक भाषा या स्क्रीन का प्रयोग करें।",
+    hindiPhonetic: "Main sun nahi sakta, kripya Bharatiya Sign Language ya screen ka prayog karein.",
+    keywords: ["बधिर", "सांकेतिक", "badhir", "sanketik"]
+  },
+  water: {
+    hindiWord: "पानी / जल",
+    hindiPhrase: "मुझे प्यास लगी है, कृपया मुझे पीने का पानी दीजिए।",
+    hindiPhonetic: "Mujhe pyas lagi hai, kripya mujhe peene ka paani deejiye.",
+    keywords: ["पानी", "जल", "प्यास", "paani", "pani", "jal", "pyas"]
+  },
+  food: {
+    hindiWord: "खाना / भोजन",
+    hindiPhrase: "मुझे भूख लगी है, मुझे भोजन कहाँ मिल सकता है?",
+    hindiPhonetic: "Mujhe bhookh lagi hai, mujhe bhojan kahan mil sakta hai?",
+    keywords: ["खाना", "भोजन", "भूख", "khana", "bhojan", "bhookh"]
+  },
+  where: {
+    hindiWord: "कहाँ है?",
+    hindiPhrase: "कृपया मुझे बताइए कि यह स्थान कहाँ पर है?",
+    hindiPhonetic: "Kripya mujhe bataiye ki yah sthan kahan par hai?",
+    keywords: ["कहाँ", "किधर", "kahan", "kidhar"]
+  },
+  wait: {
+    hindiWord: "रुकिए / प्रतीक्षा करें",
+    hindiPhrase: "कृपया थोड़ा रुकिए और प्रतीक्षा कीजिए।",
+    hindiPhonetic: "Kripya thoda rukiye aur pratiksha keejiye.",
+    keywords: ["रुकिए", "रुको", "इंतज़ार", "rukiye", "ruko", "intezar"]
+  },
+  repeat: {
+    hindiWord: "दोहराएँ / फिर से कहें",
+    hindiPhrase: "कृपया अपनी बात एक बार फिर से दोहराएँ।",
+    hindiPhonetic: "Kripya apni baat ek baar phir se dohrayein.",
+    keywords: ["दोहराएँ", "फिर", "dobara", "phir"]
+  },
+  slow: {
+    hindiWord: "धीरे बोलें / संकेत करें",
+    hindiPhrase: "कृपया धीरे-धीरे बात या संकेत करें ताकि मैं समझ सकूँ।",
+    hindiPhonetic: "Kripya dheere-dheere baat ya sanket karein taaki main samajh sakoon.",
+    keywords: ["धीरे", "dheere", "dheeme"]
+  },
+  bathroom: {
+    hindiWord: "शौचालय / वॉशरूम",
+    hindiPhrase: "कृपया मुझे नज़दीकी शौचालय का रास्ता बताइए।",
+    hindiPhonetic: "Kripya mujhe nazdeeki shauchalay ka rasta bataiye.",
+    keywords: ["शौचालय", "बाथरूम", "टॉयलेट", "shauchalay"]
+  },
+  home: {
+    hindiWord: "घर / निवास",
+    hindiPhrase: "मुझे सुरक्षित रूप से अपने घर पहुँचना है।",
+    hindiPhonetic: "Mujhe surakshit roop se apne ghar pahunchna hai.",
+    keywords: ["घर", "मकान", "ghar", "makan"]
+  },
+  money: {
+    hindiWord: "पैसे / भुगतान",
+    hindiPhrase: "इसका कुल कितना शुल्क या पैसा देना होगा?",
+    hindiPhonetic: "Iska kul kitna shulk ya paisa dena hoga?",
+    keywords: ["पैसा", "पैसे", "रुपये", "paisa", "paise", "rupaye"]
+  },
+  time: {
+    hindiWord: "समय / कितने बजे",
+    hindiPhrase: "अभी क्या समय हुआ है?",
+    hindiPhonetic: "Abhi kya samay hua hai?",
+    keywords: ["समय", "वक्त", "बजे", "samay", "waqt", "baje"]
+  },
+  transport: {
+    hindiWord: "बस / ट्रेन / यात्रा",
+    hindiPhrase: "बस स्टैंड या रेलवे स्टेशन किस तरफ़ है?",
+    hindiPhonetic: "Bus stand ya railway station kis taraf hai?",
+    keywords: ["बस", "ट्रेन", "गाड़ी", "स्टेशन", "gadi", "yatra"]
+  },
+  emergency: {
+    hindiWord: "आपातकाल / ख़तरा",
+    hindiPhrase: "यह एक आपातकालीन स्थिति है! कृपया तुरंत मेरी रक्षा और सहायता करें!",
+    hindiPhonetic: "Yah ek aapatkaleen sthiti hai! Kripya turant meri raksha aur sahayata karein!",
+    keywords: ["आपातकाल", "ख़तरा", "बचाओ", "aapatkal", "khatra"]
+  },
+  doctor: {
+    hindiWord: "डॉक्टर / अस्पताल",
+    hindiPhrase: "मेरी तबीयत ठीक नहीं है, कृपया तुरंत डॉक्टर को बुलाएँ या अस्पताल ले चलें।",
+    hindiPhonetic: "Meri tabiyat theek nahi hai, kripya turant doctor ko bulayein ya aspatal le chalein.",
+    keywords: ["डॉक्टर", "अस्पताल", "दवाई", "इलाज", "aspatal", "dawai", "ilaj"]
+  },
+  pain: {
+    hindiWord: "दर्द / तकलीफ़",
+    hindiPhrase: "मुझे शरीर में तेज़ दर्द और तकलीफ़ हो रही है।",
+    hindiPhonetic: "Mujhe shareer mein tez dard aur takleef ho rahi hai.",
+    keywords: ["दर्द", "पीड़ा", "तकलीफ़", "dard", "peeda", "takleef"]
+  },
+  call: {
+    hindiWord: "फ़ोन कॉल / संपर्क",
+    hindiPhrase: "कृपया मेरे परिवार को फ़ोन करने में मेरी सहायता करें।",
+    hindiPhonetic: "Kripya mere parivar ko phone karne mein meri sahayata karein.",
+    keywords: ["फ़ोन", "कॉल", "संपर्क", "sampark"]
+  }
+};
+
+// Enrich every ISL sign with meaningful Hindi word, phrase, phonetic text, and Hindi keywords
+window.ISL_SIGNS.forEach((sign) => {
+  const hiEntry = HINDI_ISL_DICTIONARY[sign.id];
+  if (hiEntry) {
+    sign.hindiWord = hiEntry.hindiWord;
+    sign.hindiPhrase = hiEntry.hindiPhrase;
+    sign.hindiPhonetic = hiEntry.hindiPhonetic;
+    hiEntry.keywords.forEach((kw) => {
+      if (!sign.keywords.includes(kw)) sign.keywords.push(kw);
+    });
+  } else if (sign.category === "alphabet") {
+    sign.hindiWord = `अक्षर ${sign.letterChar}`;
+    sign.hindiPhrase = `अंग्रेजी वर्णमाला का अक्षर ${sign.letterChar}।`;
+    sign.hindiPhonetic = `Angrezi varnamala ka akshar ${sign.letterChar}.`;
+  } else if (sign.category === "numbers") {
+    sign.hindiWord = `संख्या ${sign.letterChar}`;
+    sign.hindiPhrase = `संख्या ${sign.letterChar}।`;
+    sign.hindiPhonetic = `Sankhya ${sign.letterChar}.`;
+  } else {
+    sign.hindiWord = sign.word;
+    sign.hindiPhrase = `${sign.spokenPhrase}`;
+    sign.hindiPhonetic = `${sign.spokenPhrase}`;
+  }
+});
+
+/**
+ * Converts a sequence of ISL Sign Glosses into a meaningful, natural Hindi sentence
+ * (returns { hi, hiPhonetic }).
+ */
+window.naturalizeISLGlossHindi = function (signWordsArray) {
+  if (!signWordsArray || !signWordsArray.length) {
+    return { hi: "", hiPhonetic: "" };
+  }
+
+  const matchedSigns = signWordsArray
+    .map((w) => {
+      const clean = w.replace(/\/.*/g, "").trim().toLowerCase();
+      return window.ISL_SIGNS.find(
+        (s) =>
+          s.word.toLowerCase().startsWith(clean) ||
+          s.id.toLowerCase() === clean ||
+          (s.hindiWord && s.hindiWord.includes(clean))
+      );
+    })
+    .filter(Boolean);
+
+  if (matchedSigns.length === 1) {
+    return {
+      hi: matchedSigns[0].hindiPhrase || matchedSigns[0].hindiWord,
+      hiPhonetic: matchedSigns[0].hindiPhonetic || matchedSigns[0].spokenPhrase
+    };
+  }
+
+  if (matchedSigns.length > 1) {
+    const hiClauses = matchedSigns.map((s) => s.hindiWord || s.word);
+    const lastPhrase = matchedSigns[matchedSigns.length - 1].hindiPhrase || "";
+    const hiText = `${hiClauses.join(" + ")} — ${lastPhrase}`;
+    const phonParts = matchedSigns.map((s) => s.hindiPhonetic || s.spokenPhrase);
+    return {
+      hi: hiText,
+      hiPhonetic: phonParts.join(" ")
+    };
+  }
+
+  return {
+    hi: `${signWordsArray.join(" ")}`,
+    hiPhonetic: `${signWordsArray.join(" ")}`
+  };
+};
+
 /**
  * Helper to draw an articulated 5-finger SVG hand given finger extension states [thumb, index, middle, ring, pinky]
  */
