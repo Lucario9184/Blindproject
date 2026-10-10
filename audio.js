@@ -1,7 +1,8 @@
 /**
- * audio.js — Blind Accessibility Audio Engine
- * Includes Web Audio API Synthesized Earcons, Text-to-Speech (en-IN/en-US),
- * ARIA Live Region Announcements, and Voice Command Speech Recognition.
+ * audio.js — Blind Accessibility Audio, Speech Generation & Sonic Braille Engine
+ * Includes Web Audio API Synthesized Earcons, Sonic/Haptic 6-Dot Braille Pulse Player,
+ * Multi-Voice Text-to-Speech (en-IN / hi-IN / en-US), ARIA Live Region Announcements,
+ * and On-Screen Text / Avatar Narration.
  */
 
 class BlindAudioEngine {
@@ -9,7 +10,9 @@ class BlindAudioEngine {
     this.autoNarrate = true;
     this.earconsEnabled = true;
     this.speechRate = 1.0;
+    this.speechPitch = 1.0;
     this.audioCtx = null;
+    this.voices = [];
     this.selectedVoice = null;
     this.initVoices();
   }
@@ -19,15 +22,46 @@ class BlindAudioEngine {
     const pickVoice = () => {
       const voices = window.speechSynthesis.getVoices();
       if (!voices.length) return;
+      this.voices = voices;
+
       // Prefer Indian English voice for ISL context, fallback to any clear English voice
-      this.selectedVoice =
-        voices.find((v) => v.lang === "en-IN") ||
-        voices.find((v) => v.lang.startsWith("en-") && v.name.includes("Natural")) ||
-        voices.find((v) => v.lang.startsWith("en")) ||
-        voices[0];
+      if (!this.selectedVoice) {
+        this.selectedVoice =
+          voices.find((v) => v.lang === "en-IN") ||
+          voices.find((v) => v.lang.startsWith("en-") && v.name.includes("Natural")) ||
+          voices.find((v) => v.lang.startsWith("en")) ||
+          voices[0];
+      }
+
+      // Populate voice selector dropdown if present in DOM
+      const voiceSelect = document.getElementById("speech-voice-select");
+      if (voiceSelect && voiceSelect.options.length <= 1) {
+        voiceSelect.innerHTML = "";
+        const prioritized = voices.filter(
+          (v) => v.lang.startsWith("en") || v.lang.startsWith("hi")
+        );
+        const list = prioritized.length ? prioritized : voices;
+        list.slice(0, 18).forEach((v) => {
+          const opt = document.createElement("option");
+          opt.value = v.name;
+          opt.textContent = `Voice: ${v.name.slice(0, 22)} (${v.lang})`;
+          if (this.selectedVoice && v.name === this.selectedVoice.name) {
+            opt.selected = true;
+          }
+          voiceSelect.appendChild(opt);
+        });
+      }
     };
     pickVoice();
     window.speechSynthesis.onvoiceschanged = pickVoice;
+  }
+
+  setVoiceByName(name) {
+    if (!this.voices || !this.voices.length) return;
+    const found = this.voices.find((v) => v.name === name);
+    if (found) {
+      this.selectedVoice = found;
+    }
   }
 
   ensureAudioContext() {
@@ -78,6 +112,15 @@ class BlindAudioEngine {
           playTone(659.25, 0.08, 0.1, "sine", 0.15); // E5
           playTone(783.99, 0.16, 0.2, "sine", 0.18); // G5
           break;
+        case "braille_pulse":
+          playTone(587.33, 0, 0.07, "triangle", 0.14);
+          playTone(880, 0.08, 0.11, "sine", 0.14);
+          break;
+        case "avatar_read":
+          playTone(440, 0, 0.08, "sine", 0.13);
+          playTone(554.37, 0.07, 0.08, "sine", 0.13);
+          playTone(659.25, 0.14, 0.16, "sine", 0.15);
+          break;
         case "mic_on":
           playTone(392, 0, 0.1, "sine", 0.15);
           playTone(587.33, 0.09, 0.16, "sine", 0.16);
@@ -110,12 +153,67 @@ class BlindAudioEngine {
   }
 
   /**
+   * Plays sonic & haptic 6-dot Braille rhythm pulses for a word or phrase, then speaks the dot guide.
+   * Dots 1-6 are mapped to a pentatonic/hexatonic scale so blind users can hear the raised dot geometry.
+   */
+  playBraillePulses(rawText, { speakAfter = true } = {}) {
+    if (!window.BrailleEngine) return;
+    const braille = window.BrailleEngine.translate(rawText);
+    const cells = braille.cells.filter((c) => !c.isSpace).slice(0, 8);
+
+    try {
+      this.ensureAudioContext();
+      if (this.audioCtx && cells.length) {
+        const dotFreqs = [440, 493.88, 554.37, 659.25, 739.99, 880]; // A4, B4, C#5, E5, F#5, A5
+        const now = this.audioCtx.currentTime;
+        let offset = 0;
+        const vibratePattern = [];
+
+        cells.forEach((cell) => {
+          cell.activeNums.forEach((dotNum) => {
+            const osc = this.audioCtx.createOscillator();
+            const gain = this.audioCtx.createGain();
+            osc.type = dotNum <= 3 ? "triangle" : "sine";
+            osc.frequency.setValueAtTime(dotFreqs[dotNum - 1] || 520, now + offset);
+            gain.gain.setValueAtTime(0.14, now + offset);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.075);
+            osc.connect(gain);
+            gain.connect(this.audioCtx.destination);
+            osc.start(now + offset);
+            osc.stop(now + offset + 0.08);
+            offset += 0.085;
+            vibratePattern.push(45, 30);
+          });
+          offset += 0.14; // inter-character pause
+          vibratePattern.push(0, 90);
+        });
+
+        if ("vibrate" in navigator && vibratePattern.length) {
+          navigator.vibrate(vibratePattern.slice(0, 24));
+        }
+
+        if (speakAfter) {
+          setTimeout(() => {
+            this.speak(braille.spokenGuide, { interrupt: true, assertive: true });
+          }, Math.min(2200, Math.round(offset * 1000) + 120));
+        }
+        return;
+      }
+    } catch (e) {
+      // Fallback to direct speech
+    }
+
+    if (speakAfter) {
+      this.speak(braille.spokenGuide, { interrupt: true, assertive: true });
+    }
+  }
+
+  /**
    * Speaks text aloud using Web Speech API and updates screen reader live region.
    */
   speak(text, { interrupt = true, assertive = false } = {}) {
     if (!text) return;
 
-    // Update ARIA Live region for external Screen Readers
     const srEl = document.getElementById(assertive ? "sr-assertive" : "sr-polite");
     if (srEl) {
       srEl.textContent = "";
@@ -124,7 +222,6 @@ class BlindAudioEngine {
       }, 20);
     }
 
-    // Update visual audio status bar
     const statusText = document.getElementById("audio-status-text");
     const statusDot = document.getElementById("audio-status-dot");
     if (statusText) {
@@ -142,7 +239,7 @@ class BlindAudioEngine {
       utterance.voice = this.selectedVoice;
     }
     utterance.rate = this.speechRate;
-    utterance.pitch = 1.0;
+    utterance.pitch = this.speechPitch;
 
     utterance.onstart = () => {
       if (statusDot) statusDot.classList.add("speaking");
@@ -151,7 +248,7 @@ class BlindAudioEngine {
     const resetStatus = () => {
       if (statusDot) statusDot.classList.remove("speaking");
       if (statusText) {
-        statusText.innerHTML = 'Audio Guide Ready (Press <strong>Space</strong> to Speak Command)';
+        statusText.innerHTML = 'Audio Guide Ready (Press <strong>Space</strong> for Voice or <strong>S</strong> to Read Screen/Avatar)';
       }
     };
 

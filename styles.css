@@ -1494,11 +1494,349 @@ kbd {
   font-size: 0.95rem;
 }
 
+/* =====================================================
+   6-DOT BRAILLE CELLS, AVATAR STAGE & TWO-WAY BRIDGE
+   ===================================================== */
+.btn-xs {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.76rem;
+}
+
+.detected-eyebrow-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.avatar-thumb-box {
+  padding: 0.25rem;
+  overflow: hidden;
+}
+
+.natural-speech-bar {
+  margin-top: 0.55rem;
+  background: var(--bg-elevated);
+  border-left: 4px solid var(--accent-secondary);
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.45rem;
+  font-size: 0.92rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.natural-label {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.braille-translation-box {
+  background: var(--bg-elevated);
+  border: 2px solid var(--border-color);
+  border-radius: 0.85rem;
+  padding: 0.95rem 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.braille-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.braille-header h4 {
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.braille-unicode-pill {
+  display: inline-block;
+  background: var(--bg-base);
+  border: 1px solid var(--accent-primary);
+  color: var(--focus-ring);
+  padding: 0.15rem 0.65rem;
+  border-radius: 0.45rem;
+  font-size: 1.2rem;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+}
+
+.braille-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.braille-cells-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.55rem;
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  border-radius: 0.65rem;
+  min-height: 76px;
+  align-items: center;
+}
+
+.braille-cell {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.45rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 42px;
+}
+
+.braille-cell:focus-visible {
+  border-color: var(--focus-ring);
+}
+
+.braille-dots-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 10px);
+  grid-template-rows: repeat(3, 10px);
+  gap: 3px;
+}
+
+.b-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #1e293b;
+  border: 1px solid #475569;
+}
+
+.b-dot.raised {
+  background: var(--focus-ring);
+  border-color: #ffffff;
+  box-shadow: 0 0 6px var(--focus-ring);
+}
+
+.braille-char-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.braille-dot-nums {
+  font-size: 0.64rem;
+  color: var(--accent-primary);
+  font-family: monospace;
+}
+
+/* 6-Dot Perkins Braille Input Composer */
+.braille-composer-box {
+  background: var(--bg-elevated);
+  border: 2px solid var(--border-color);
+  border-radius: 0.85rem;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.braille-composer-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.88rem;
+}
+
+.braille-keyer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.braille-6dot-pad {
+  display: grid;
+  grid-template-columns: repeat(2, 92px);
+  gap: 0.4rem;
+}
+
+.b-key-toggle {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 0.45rem;
+  padding: 0.3rem 0.55rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.b-key-toggle input {
+  accent-color: var(--focus-ring);
+  width: 16px;
+  height: 16px;
+}
+
+.braille-keyer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+/* Dual Avatar + Hand Pose Stage */
+.dual-avatar-stage {
+  grid-template-columns: 340px 1fr;
+}
+
+.stage-dual-visuals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.visual-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.visual-panel .isl-stage-svg {
+  width: 162px;
+  height: 162px;
+}
+
+.visual-caption {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+}
+
+.avatar-narration-text {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.55rem;
+  font-style: italic;
+}
+
+/* Two-Way Live Communication Hub */
+.twoway-hub-card {
+  margin-top: 1.5rem;
+  border-color: var(--accent-primary);
+}
+
+.twoway-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.15rem;
+}
+
+.twoway-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.deaf-reply-bar {
+  background: var(--bg-elevated);
+  border: 2px solid var(--border-color);
+  border-radius: 0.85rem;
+  padding: 1rem;
+  margin-bottom: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.twoway-chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.chat-bubble {
+  background: var(--bg-elevated);
+  border: 2px solid var(--border-color);
+  border-radius: 0.85rem;
+  padding: 0.9rem 1.1rem;
+  display: grid;
+  grid-template-columns: 74px 1fr auto;
+  gap: 1rem;
+  align-items: center;
+}
+
+.chat-bubble.deaf {
+  border-left: 6px solid var(--accent-primary);
+}
+
+.chat-bubble.blind {
+  border-left: 6px solid var(--accent-secondary);
+}
+
+.chat-avatar-mini {
+  width: 72px;
+  height: 72px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  border-radius: 0.65rem;
+  overflow: hidden;
+}
+
+.chat-role-badge {
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-primary);
+}
+
+.chat-bubble.blind .chat-role-badge {
+  color: var(--accent-secondary);
+}
+
+.chat-msg-text {
+  font-size: 1.08rem;
+  font-weight: 800;
+  margin: 0.15rem 0;
+}
+
+.chat-braille-line {
+  font-size: 0.95rem;
+  color: var(--focus-ring);
+  font-family: monospace;
+}
+
+.chat-bubble-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .camera-grid,
   .translator-grid,
-  .assist-info-grid {
+  .assist-info-grid,
+  .dual-avatar-stage {
     grid-template-columns: 1fr;
   }
   .nav-tabs {
@@ -1509,7 +1847,9 @@ kbd {
 @media (max-width: 640px) {
   .nav-tabs,
   .form-grid-2,
-  .form-grid-3 {
+  .form-grid-3,
+  .stage-dual-visuals,
+  .chat-bubble {
     grid-template-columns: 1fr;
   }
   .finger-telemetry-grid,
@@ -1522,4 +1862,5 @@ kbd {
     text-align: center;
   }
 }
+
 

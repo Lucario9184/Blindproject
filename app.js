@@ -1,13 +1,47 @@
 /**
- * app.js — Main Application Controller for SanketSetu (ISL ⇄ Blind Audio Bridge)
- * Upgraded with 3D Biomechanical Hand Landmark Precision Engine, Temporal Motion Tracking,
- * Multi-Word ISL Phrase NLP, and Interactive Custom ISL Sign Calibration Studio.
+ * app.js — Main Application Controller for SanketSetu (ISL ⇄ Braille ⇄ Blind Audio Bridge)
+ * Features:
+ *  - 3D Biomechanical Hand Landmark Precision Classifier & Temporal Motion Tracker
+ *  - Real-Time Sign-to-Text, Natural Speech Generator & 6-Dot Tactile Braille Translator
+ *  - Expressive On-Screen ISL Signing Avatar with Screen/Avatar Audio Narration
+ *  - Interactive 6-Dot Perkins Braille Input Composer & Two-Way Deaf ⇄ Blind Conversation System
+ *  - Custom ISL Sign Calibration & Training Studio
  */
 
 (function () {
   "use strict";
 
   const CUSTOM_SIGNS_STORAGE_KEY = "sanketsetu_custom_signs_v1";
+
+  // Reverse lookup from 6-dot binary key (e.g., "100000") to character for the Braille Keyer
+  const DOTS_TO_CHAR_MAP = {
+    "100000": "a",
+    "110000": "b",
+    "100100": "c",
+    "100110": "d",
+    "100010": "e",
+    "110100": "f",
+    "110110": "g",
+    "110010": "h",
+    "010100": "i",
+    "010110": "j",
+    "101000": "k",
+    "111000": "l",
+    "101100": "m",
+    "101110": "n",
+    "101010": "o",
+    "111100": "p",
+    "111110": "q",
+    "111010": "r",
+    "011100": "s",
+    "011110": "t",
+    "101001": "u",
+    "111001": "v",
+    "010111": "w",
+    "101101": "x",
+    "101111": "y",
+    "101011": "z"
+  };
 
   // Application State
   const state = {
@@ -23,8 +57,9 @@
     requiredStableFrames: 8,
     recognitionScope: "all", // "all", "conversational", "numbers"
     smoothedHands: [],
-    motionHistory: [], // rolling 12-frame wrist & index-tip trajectory
-    latestHandFeatures: null, // latest extracted 3D biomechanical features for live capture
+    motionHistory: [],
+    latestHandFeatures: null,
+    currentDetectedSign: null,
     lastSignId: null,
     lastSignTime: 0,
     candidateSignId: null,
@@ -35,10 +70,13 @@
     // Custom Signs State
     customSigns: [],
     capturedNormalizedLandmarks: null,
-    // Translator Stage State
+    // Translator & Avatar Stage State
     translatedSequence: [],
+    lastTranslatedText: "Hello friend thank you",
     currentStageIndex: 0,
     stageTimer: null,
+    // Two-Way Conversation Hub State
+    chatMessages: [],
     // Dictionary & Quiz State
     dictCategory: "all",
     dictSearch: "",
@@ -63,6 +101,7 @@
     initCameraModule();
     initCustomSignStudio();
     initTranslatorModule();
+    initTwoWayBridgeModule();
     initDictionaryModule();
     initQuickBoardModule();
     initSOSModal();
@@ -70,8 +109,16 @@
     initKeyboardShortcuts();
     initFocusNarration();
 
+    // Initialize default detected sign preview & Braille in Panel 1
+    const helloSign = window.ISL_SIGNS[0];
+    if (helloSign) {
+      state.currentDetectedSign = helloSign;
+      document.getElementById("detected-visual").innerHTML = window.renderISLAvatarSVG(helloSign);
+      updateCameraBrailleDisplay("Hello");
+    }
+
     // Populate initial translator sequence ("Hello friend thank you")
-    translateTextToISL("Hello friend thank you", { speakConfirmation: false });
+    translateTextToISL("Hello friend thank you", { speakConfirmation: false, addToChat: false });
   });
 
   // =========================================================================
@@ -105,20 +152,29 @@
   }
 
   // =========================================================================
-  // ACCESSIBILITY TOOLBAR & PREFERENCES
+  // ACCESSIBILITY TOOLBAR, SPEECH GENERATION & SCREEN/AVATAR READER
   // =========================================================================
   function initAccessibilityToolbar() {
     const btnWelcome = document.getElementById("btn-welcome-audio");
+    const btnReadScreenAvatar = document.getElementById("btn-read-screen-avatar");
     const btnAutoNarrate = document.getElementById("btn-auto-narrate");
     const btnEarcons = document.getElementById("btn-earcons");
     const btnContrast = document.getElementById("btn-contrast");
     const btnFontDec = document.getElementById("btn-font-dec");
     const btnFontInc = document.getElementById("btn-font-inc");
+    const selectVoice = document.getElementById("speech-voice-select");
     const selectRate = document.getElementById("speech-rate");
+    const selectPitch = document.getElementById("speech-pitch");
 
     btnWelcome.addEventListener("click", () => {
       speakOrientationGuide();
     });
+
+    if (btnReadScreenAvatar) {
+      btnReadScreenAvatar.addEventListener("click", () => {
+        speakCurrentContextSummary();
+      });
+    }
 
     btnAutoNarrate.addEventListener("click", () => {
       window.audioEngine.autoNarrate = !window.audioEngine.autoNarrate;
@@ -156,10 +212,24 @@
       window.audioEngine.speak(`Text size ${Math.round(state.fontScale * 100)} percent.`);
     });
 
+    if (selectVoice) {
+      selectVoice.addEventListener("change", (e) => {
+        window.audioEngine.setVoiceByName(e.target.value);
+        window.audioEngine.speak(`Voice changed to ${e.target.value || "default"}.`);
+      });
+    }
+
     selectRate.addEventListener("change", (e) => {
       window.audioEngine.speechRate = parseFloat(e.target.value) || 1.0;
       window.audioEngine.speak(`Speech speed set to ${window.audioEngine.speechRate} times.`);
     });
+
+    if (selectPitch) {
+      selectPitch.addEventListener("change", (e) => {
+        window.audioEngine.speechPitch = parseFloat(e.target.value) || 1.0;
+        window.audioEngine.speak(`Speech pitch set to ${window.audioEngine.speechPitch}.`);
+      });
+    }
   }
 
   function toggleUltraContrast() {
@@ -180,12 +250,11 @@
   function speakOrientationGuide() {
     window.audioEngine.playEarcon("sign_detected");
     const guideText =
-      "Welcome to SanketSetu, the high-precision Indian Sign Language and Blind Accessibility Bridge. " +
-      "You can navigate eyes-free using number keys 1 through 4, or press the Spacebar at any time to speak a voice command. " +
-      "Press 1 for 3D Biomechanical Camera Sign-to-Speech, which recognizes over 40 Indian Sign Language gestures and numbers and speaks them aloud. " +
-      "Press 2 for Speech-to-ISL Translator, where you speak and your words appear as articulated Indian Sign Language visuals for a deaf person. " +
-      "Press 3 for the Tactile Audio ISL Dictionary and Quiz, or to add and train your own custom signs. " +
-      "Press 4 for the Quick Communication Board. Press Escape at any time to stop speech.";
+      "Welcome to SanketSetu, the two-way Indian Sign Language, 6-Dot Braille, and Blind Audio Communication Bridge. " +
+      "Press number keys 1 through 4 to switch modes, or press S at any time to read aloud the active text, on-screen ISL Avatar posture, and Braille dots. " +
+      "Mode 1 converts live camera signs into natural spoken sentences, text, and 6-dot tactile Braille. " +
+      "Mode 2 is the Two-Way Communication Hub with an animated on-screen ISL Avatar, 6-dot Braille composer, and live Deaf-to-Blind conversation log. " +
+      "Mode 3 is the Tactile Audio Dictionary and Custom Sign Trainer. Mode 4 is the Quick Communication Board.";
     window.audioEngine.speak(guideText, { interrupt: true, assertive: true });
   }
 
@@ -223,9 +292,9 @@
     if (announce) {
       const descriptions = {
         camera:
-          "Mode 1: High-Precision Live ISL Sign-to-Speech. Point the camera at a signer, adjust precision sensitivity, or click any simulator sign below.",
+          "Mode 1: Live ISL Sign-to-Text, 6-Dot Braille, and Speech Generator. Point the camera at a signer or click any simulator sign.",
         translator:
-          "Mode 2: Speech-to-ISL Translator. Speak into your microphone or type a sentence to display articulated Indian Sign Language visuals.",
+          "Mode 2: Two-Way Communication Bridge, On-Screen ISL Avatar, and 6-Dot Braille Composer.",
         dictionary:
           "Mode 3: Tactile Audio ISL Dictionary. Browse 67 plus signs, train new custom signs, or take the audio quiz.",
         assist:
@@ -236,14 +305,13 @@
   }
 
   // =========================================================================
-  // MODULE 1: HIGH-PRECISION 3D CAMERA SIGN-TO-SPEECH & SIMULATOR
+  // MODULE 1: HIGH-PRECISION 3D CAMERA SIGN-TO-TEXT, BRAILLE & SPEECH
   // =========================================================================
   function initCameraModule() {
     renderSimulatorButtons();
 
     document.getElementById("btn-toggle-camera").addEventListener("click", toggleWebcam);
 
-    // Precision Mode Selector
     const precisionSelect = document.getElementById("camera-precision-mode");
     if (precisionSelect) {
       precisionSelect.addEventListener("change", (e) => {
@@ -265,7 +333,6 @@
       });
     }
 
-    // Recognition Scope Selector
     const scopeSelect = document.getElementById("camera-scope-mode");
     if (scopeSelect) {
       scopeSelect.addEventListener("change", (e) => {
@@ -278,25 +345,104 @@
 
     document.getElementById("btn-speak-panel-1").addEventListener("click", () => {
       window.audioEngine.speak(
-        "In High-Precision Sign-to-Speech mode, SanketSetu normalizes 21 3D hand landmarks by palm scale, computes true 3D joint angles for all five digits, tracks wrist motion, and waits for a stable lock-in before speaking aloud. You can also click Add or Train New Sign to teach the camera your own custom gestures."
+        "In Sign-to-Text, Braille, and Speech mode, SanketSetu tracks 21 3D hand landmarks, mirrors the sign on the on-screen ISL Avatar, translates it into 6-dot tactile Braille cells, and synthesizes natural spoken English."
       );
     });
 
+    // Read Avatar & Text button in Panel 1
+    const btnReadDetAvatar = document.getElementById("btn-read-detected-avatar");
+    if (btnReadDetAvatar) {
+      btnReadDetAvatar.addEventListener("click", () => {
+        const sign = state.currentDetectedSign || window.ISL_SIGNS[0];
+        window.audioEngine.playEarcon("avatar_read");
+        window.audioEngine.speak(
+          `${window.getAvatarDescription(sign)} Spoken meaning: "${sign.spokenPhrase}".`,
+          { interrupt: true, assertive: true }
+        );
+      });
+    }
+
+    // Speak Natural Sentence
     document.getElementById("btn-speak-sentence").addEventListener("click", () => {
       if (!state.accumulatedSentence.length) {
-        window.audioEngine.speak("Your conversation transcript is currently empty. Detect or simulate a sign first.");
+        window.audioEngine.speak("Your signed sentence is currently empty. Detect or simulate a sign first.");
         return;
       }
-      const fullText = state.accumulatedSentence.join(", ");
+      const naturalText = window.naturalizeISLGloss(state.accumulatedSentence);
       window.audioEngine.playEarcon("sign_detected");
-      window.audioEngine.speak(`Full signed sentence: ${fullText}`);
+      window.audioEngine.speak(naturalText, { interrupt: true, assertive: true });
     });
+
+    // Send Signed Sentence to Two-Way Chat Hub
+    const btnSendBridge = document.getElementById("btn-send-cam-to-bridge");
+    if (btnSendBridge) {
+      btnSendBridge.addEventListener("click", () => {
+        const words = state.accumulatedSentence.length
+          ? state.accumulatedSentence
+          : state.currentDetectedSign
+          ? [state.currentDetectedSign.word]
+          : ["Hello / Namaste"];
+        const naturalText = window.naturalizeISLGloss(words);
+        const primarySign = state.currentDetectedSign || window.ISL_SIGNS[0];
+        addTwoWayChatMessage({
+          role: "deaf",
+          speakerLabel: "🤟 Deaf Signer (Camera Sign → Text & Braille)",
+          text: naturalText,
+          glossText: words.join(" → "),
+          signObj: primarySign,
+          speakNow: true
+        });
+      });
+    }
 
     document.getElementById("btn-clear-sentence").addEventListener("click", () => {
       state.accumulatedSentence = [];
       renderSentenceDisplay();
+      updateCameraBrailleDisplay("Hello");
       window.audioEngine.speak("Conversation transcript cleared.");
     });
+
+    // Camera Braille Audio & Sonic Pulse Buttons
+    const btnSpeakBrailleCam = document.getElementById("btn-speak-braille-cam");
+    if (btnSpeakBrailleCam) {
+      btnSpeakBrailleCam.addEventListener("click", () => {
+        const targetText = getActiveCameraBrailleText();
+        const braille = window.BrailleEngine.translate(targetText);
+        window.audioEngine.playEarcon("braille_pulse");
+        window.audioEngine.speak(braille.spokenGuide, { interrupt: true, assertive: true });
+      });
+    }
+
+    const btnPulseBrailleCam = document.getElementById("btn-pulse-braille-cam");
+    if (btnPulseBrailleCam) {
+      btnPulseBrailleCam.addEventListener("click", () => {
+        const targetText = getActiveCameraBrailleText();
+        window.audioEngine.playBraillePulses(targetText, { speakAfter: true });
+      });
+    }
+  }
+
+  function getActiveCameraBrailleText() {
+    if (state.accumulatedSentence.length) {
+      return state.accumulatedSentence
+        .map((w) => w.replace(/\/.*/g, "").trim())
+        .join(" ");
+    }
+    if (state.currentDetectedSign) {
+      return state.currentDetectedSign.word.replace(/\/.*/g, "").trim();
+    }
+    return "Hello";
+  }
+
+  function updateCameraBrailleDisplay(rawText) {
+    if (!window.BrailleEngine) return;
+    const bData = window.BrailleEngine.translate(rawText);
+    const unicodeEl = document.getElementById("camera-braille-unicode");
+    const cellsEl = document.getElementById("camera-braille-cells");
+    if (unicodeEl) unicodeEl.textContent = bData.unicode || "⠀";
+    if (cellsEl) {
+      cellsEl.innerHTML = window.BrailleEngine.renderBrailleCellsHTML(rawText, { maxCells: 18 });
+    }
   }
 
   function renderSimulatorButtons() {
@@ -425,7 +571,6 @@
           badge.textContent = `${handCount} Hand${handCount > 1 ? "s" : ""} Tracked (3D Lock)`;
           badge.classList.add("active");
 
-          // Optional spatial audio beep so a blind user knows the signer's hands are in frame
           const now = Date.now();
           const spatialChk = document.getElementById("chk-spatial-beep");
           if (spatialChk && spatialChk.checked && now - state.lastHandBeepTime > 3500) {
@@ -433,7 +578,6 @@
             state.lastHandBeepTime = now;
           }
 
-          // Extract 3D biomechanical features for each detected hand
           const featuresList = smoothed.map((lm, idx) => {
             const handedness =
               results.multiHandedness &&
@@ -447,18 +591,16 @@
           state.latestHandFeatures = featuresList[0];
           const motion = updateMotionHistory(featuresList[0]);
 
-          // Draw high-contrast color-coded biomechanical skeleton & lock-in ring
           smoothed.forEach((landmarks, idx) => {
             drawBiomechanicalHand(ctx, canvasEl, landmarks, featuresList[idx]);
           });
 
-          // Classify ISL Gesture using 3D angles, palm-normalized geometry & motion
           const detection = classifyHandLandmarks(smoothed, featuresList, motion);
           updateTelemetryUI(featuresList[0], motion, detection);
 
           if (detection && detection.confidence >= state.minConfidence) {
             confEl.textContent = `${detection.word}: ${Math.round(detection.confidence * 100)}%`;
-            handleLiveGestureCandidate(detection.signId, detection.confidence, detection.word);
+            handleLiveGestureCandidate(detection.signId, detection.confidence);
             drawWristLockProgress(ctx, canvasEl, smoothed[0][0]);
           } else {
             state.candidateFrames = Math.max(0, state.candidateFrames - 1);
@@ -494,12 +636,8 @@
   // =========================================================================
   // 3D BIOMECHANICAL LANDMARK SMOOTHING & FEATURE EXTRACTION
   // =========================================================================
-
-  /**
-   * Exponential Moving Average (EMA) smoothing across frames to remove webcam landmark jitter.
-   */
   function smoothLandmarks(rawHands) {
-    const alpha = 0.68; // responsive yet jitter-free
+    const alpha = 0.68;
     const nextSmoothed = rawHands.map((hand, hIdx) => {
       const prevHand = state.smoothedHands[hIdx];
       if (!prevHand || prevHand.length !== hand.length) {
@@ -526,9 +664,6 @@
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
-  /**
-   * Computes angle in degrees at vertex B formed by segments BA and BC in 3D space (180 = straight line).
-   */
   function jointAngleDeg(a, b, c) {
     const ux = a.x - b.x, uy = a.y - b.y, uz = (a.z || 0) - (b.z || 0);
     const vx = c.x - b.x, vy = c.y - b.y, vz = (c.z || 0) - (b.z || 0);
@@ -538,20 +673,14 @@
     return (Math.acos(cosTheta) * 180) / Math.PI;
   }
 
-  /**
-   * Extracts scale-invariant 3D joint extension scores [0..1], orientation, and pinch/spread ratios.
-   */
   function extractHandFeatures(lm, handedness = "Right") {
-    // Scale reference: distance from wrist (0) to middle MCP (9)
     const palmScale = Math.max(0.04, dist3D(lm[0], lm[9]));
 
-    // Helper for 4 main fingers (Index: 5-6-7-8, Middle: 9-10-11-12, Ring: 13-14-15-16, Pinky: 17-18-19-20)
     const calcFingerExtension = (mcp, pip, dip, tip) => {
-      const pipAngle = jointAngleDeg(lm[mcp], lm[pip], lm[dip]); // 180 straight, ~60 curled
+      const pipAngle = jointAngleDeg(lm[mcp], lm[pip], lm[dip]);
       const dipAngle = jointAngleDeg(lm[pip], lm[dip], lm[tip]);
       const angleScore = Math.max(0, Math.min(1, (pipAngle * 0.65 + dipAngle * 0.35 - 75) / 95));
 
-      // Tip-to-wrist vs MCP-to-wrist ratio ensures folded fingers pointing down aren't misread
       const tipWrist = dist3D(lm[tip], lm[0]) / palmScale;
       const mcpWrist = dist3D(lm[mcp], lm[0]) / palmScale;
       const distScore = Math.max(0, Math.min(1, (tipWrist - mcpWrist * 0.95) / 0.95));
@@ -559,11 +688,9 @@
       return +(angleScore * 0.65 + distScore * 0.35).toFixed(3);
     };
 
-    // Thumb extension uses CMC(1)-MCP(2)-IP(3)-TIP(4) angle + distance from pinky MCP (17) and index MCP (5)
     const thumbIpAngle = jointAngleDeg(lm[2], lm[3], lm[4]);
     const thumbMcpAngle = jointAngleDeg(lm[1], lm[2], lm[3]);
     const thumbPinkyDist = dist2D(lm[4], lm[17]) / palmScale;
-    const thumbIndexMcpDist = dist2D(lm[4], lm[5]) / palmScale;
     const thumbAngleScore = Math.max(0, Math.min(1, (thumbIpAngle * 0.5 + thumbMcpAngle * 0.5 - 115) / 55));
     const thumbAbductScore = Math.max(0, Math.min(1, (thumbPinkyDist - 0.85) / 0.85));
     const thumbExt = +Math.max(0, Math.min(1, thumbAngleScore * 0.45 + thumbAbductScore * 0.55)).toFixed(3);
@@ -576,12 +703,10 @@
       pinky: calcFingerExtension(17, 18, 19, 20)
     };
 
-    // Key normalized inter-digit distances
     const thumbIndexPinch = dist3D(lm[4], lm[8]) / palmScale;
     const thumbMiddlePinch = dist3D(lm[4], lm[12]) / palmScale;
     const indexMiddleSpread = dist2D(lm[8], lm[12]) / palmScale;
 
-    // Average distance of all 4 fingertips to thumb tip (for "Food" morsel bunch)
     const bunchSpread =
       (dist3D(lm[8], lm[4]) +
         dist3D(lm[12], lm[4]) +
@@ -589,14 +714,12 @@
         dist3D(lm[20], lm[4])) /
       (4 * palmScale);
 
-    // Direction of thumb & index (upward vs downward vs horizontal)
     const thumbPointingUp = lm[4].y < lm[3].y - 0.02 && lm[4].y < lm[5].y - 0.01;
     const thumbPointingDown = lm[4].y > lm[3].y + 0.02 && lm[4].y > lm[5].y + 0.02;
     const indexPointingUp = lm[8].y < lm[6].y - 0.02;
     const fingersPointingUp = lm[8].y < lm[5].y && lm[12].y < lm[9].y;
     const indexHorizontal = Math.abs(lm[8].x - lm[5].x) > Math.abs(lm[8].y - lm[5].y) * 1.15;
 
-    // Normalized 21-point template vector (centered on wrist, scaled by palmScale) for custom sign training
     const normalizedCoords = lm.map((pt) => ({
       x: +((pt.x - lm[0].x) / palmScale).toFixed(3),
       y: +((pt.y - lm[0].y) / palmScale).toFixed(3),
@@ -625,9 +748,6 @@
     };
   }
 
-  /**
-   * Tracks 12-frame wrist & fingertip trajectory to detect waves, nods, and circular motion.
-   */
   function updateMotionHistory(primaryFeatures) {
     const now = Date.now();
     state.motionHistory.push({
@@ -674,9 +794,6 @@
     return { horizWave, vertNod, speed, label };
   }
 
-  /**
-   * Computes fuzzy similarity [0..1] between live 5-finger extension vector and a target [t, i, m, r, p] pattern.
-   */
   function matchFingerPattern(liveArr, targetArr, weights = [0.9, 1.2, 1.2, 1.1, 1.1]) {
     let weightedDiff = 0;
     let totalWeight = 0;
@@ -690,9 +807,6 @@
     return Math.max(0, 1 - meanDiff * 1.35);
   }
 
-  /**
-   * High-Precision Multi-Feature Classifier for 32+ Conversational Signs, Numbers 1–9, and User Custom Signs.
-   */
   function classifyHandLandmarks(smoothedHands, featuresList, motion) {
     const f1 = featuresList[0];
     if (!f1) return null;
@@ -703,7 +817,6 @@
       const signObj = window.ISL_SIGNS.find((s) => s.id === signId);
       if (!signObj) return;
 
-      // Filter by user's selected recognition scope
       if (state.recognitionScope === "numbers" && signObj.category !== "numbers") return;
       if (state.recognitionScope === "conversational" && signObj.category === "numbers") return;
 
@@ -714,17 +827,13 @@
       });
     };
 
-    // -----------------------------------------------------------------------
-    // 1. EVALUATE USER-TRAINED CUSTOM SIGNS FIRST
-    // -----------------------------------------------------------------------
+    // 1. User-Trained Custom Signs
     state.customSigns.forEach((customSign) => {
       const needsTwo = (customSign.hands || "").includes("2");
       if (needsTwo && featuresList.length < 2) return;
       if (!needsTwo && featuresList.length === 2) return;
 
       let score = matchFingerPattern(f1.fingerArray, customSign.fingerState || [1, 1, 0, 0, 0]);
-
-      // If custom sign also has a captured 3D normalized landmark template, blend geometric similarity
       if (customSign.capturedCoords && customSign.capturedCoords.length === 21) {
         let coordErr = 0;
         for (let i = 1; i < 21; i++) {
@@ -740,9 +849,7 @@
       }
     });
 
-    // -----------------------------------------------------------------------
-    // 2. TWO-HANDED ISL GESTURE CLASSIFICATION
-    // -----------------------------------------------------------------------
+    // 2. Two-Handed ISL Gestures
     if (featuresList.length === 2) {
       const f2 = featuresList[1];
       const lm1 = smoothedHands[0];
@@ -760,22 +867,16 @@
         matchFingerPattern(f1.fingerArray, [0, 0, 0, 0, 0]) > 0.65 &&
         matchFingerPattern(f2.fingerArray, [0, 0, 0, 0, 0]) > 0.65;
 
-      // A. Emergency: Both hands open and raised high or waving rapidly
       if (bothOpen && f1.palmCenter.y < 0.46 && f2.palmCenter.y < 0.46 && palmDist > 1.35) {
         addCandidate("emergency", 0.91 + (motion.speed > 0.2 ? 0.06 : 0));
       }
-
-      // B. Namaste / Hello: Both open hands close together vertically in front of chest
       if (bothOpen && palmDist < 1.45 && f1.fingersPointingUp && f2.fingersPointingUp) {
         addCandidate("hello", 0.95);
       }
-
-      // C. Home / House: Both flat hands angled so index/middle fingertips touch like a roof peak
       if (bothOpen && indexTipsDist < 0.65 && wristDist > indexTipsDist * 1.45) {
         addCandidate("home", 0.92);
       }
 
-      // D. Help: One hand flat open palm, other hand closed fist / thumb-up resting near/on it
       const hand1OpenHand2Fist =
         matchFingerPattern(f1.fingerArray, [1, 1, 1, 1, 1]) > 0.65 &&
         matchFingerPattern(f2.fingerArray, [0.8, 0, 0, 0, 0]) > 0.62;
@@ -786,7 +887,6 @@
         addCandidate("help", 0.93);
       }
 
-      // E. Doctor / Pulse: Dominant index+middle touching opposite wrist
       const tip1ToWrist2 = dist2D(lm1[8], lm2[0]) / avgScale;
       const tip2ToWrist1 = dist2D(lm2[8], lm1[0]) / avgScale;
       if (tip1ToWrist2 < 0.95 || tip2ToWrist1 < 0.95) {
@@ -798,7 +898,6 @@
         }
       }
 
-      // F. Name: Both hands with index+middle extended (H shape) close together
       const bothTwoFingers =
         matchFingerPattern(f1.fingerArray, [0, 1, 1, 0, 0]) > 0.68 &&
         matchFingerPattern(f2.fingerArray, [0, 1, 1, 0, 0]) > 0.68;
@@ -806,7 +905,6 @@
         addCandidate("name", 0.93);
       }
 
-      // G. Pain / Hurt: Both hands with only index finger extended pointing toward each other
       const bothIndexOnly =
         matchFingerPattern(f1.fingerArray, [0, 1, 0, 0, 0]) > 0.68 &&
         matchFingerPattern(f2.fingerArray, [0, 1, 0, 0, 0]) > 0.68;
@@ -814,74 +912,46 @@
         addCandidate("pain", 0.91);
       }
 
-      // H. Friend: Two hands clasped closely or index fingers hooked
       if (palmDist < 1.15 && !bothOpen) {
         addCandidate("friend", 0.90);
       }
-
-      // I. Transport / Bus / Train: Two closed fists near chest
       if (bothFists && palmDist >= 1.0 && palmDist < 2.2) {
         addCandidate("transport", 0.88);
       }
-
-      // J. Repeat / Slow / Where with two open hands
       if (bothOpen && palmDist >= 1.45 && f1.palmCenter.y >= 0.42) {
         addCandidate("where", 0.89);
       }
     }
 
-    // -----------------------------------------------------------------------
-    // 3. SINGLE-HANDED ISL GESTURE & NUMBER (1–9) CLASSIFICATION
-    // -----------------------------------------------------------------------
+    // 3. Single-Handed ISL Gestures & Numbers
     const ext = f1.ext;
     const arr = f1.fingerArray;
 
-    // 1. Care / I Love You: Thumb + Index + Pinky extended, Middle + Ring curled [1, 1, 0, 0, 1]
     const ilyScore = matchFingerPattern(arr, [1, 1, 0, 0, 1], [1.1, 1.3, 1.4, 1.4, 1.3]);
-    if (ilyScore > 0.76) {
-      addCandidate("iloveyou", ilyScore + 0.08);
-    }
+    if (ilyScore > 0.76) addCandidate("iloveyou", ilyScore + 0.08);
 
-    // 2. Call / Phone: Thumb + Pinky extended, Index + Middle + Ring curled [1, 0, 0, 0, 1]
     const callScore = matchFingerPattern(arr, [1, 0, 0, 0, 1], [1.2, 1.3, 1.3, 1.3, 1.3]);
-    if (callScore > 0.76) {
-      addCandidate("call", callScore + 0.08);
-    }
+    if (callScore > 0.76) addCandidate("call", callScore + 0.08);
 
-    // 3. Restroom / Number 6: Only Pinky extended [0, 0, 0, 0, 1]
     const pinkyOnlyScore = matchFingerPattern(arr, [0, 0, 0, 0, 1], [1.1, 1.2, 1.2, 1.2, 1.4]);
     if (pinkyOnlyScore > 0.76) {
       addCandidate("bathroom", pinkyOnlyScore + 0.07);
       addCandidate("num_6", pinkyOnlyScore + 0.05);
     }
 
-    // 4. Good / OK Sign: Thumb & Index tips pinched in circle, Middle + Ring + Pinky extended
-    if (
-      f1.thumbIndexPinch < 0.48 &&
-      ext.middle > 0.68 &&
-      ext.ring > 0.65 &&
-      ext.pinky > 0.62
-    ) {
+    if (f1.thumbIndexPinch < 0.48 && ext.middle > 0.68 && ext.ring > 0.65 && ext.pinky > 0.62) {
       addCandidate("good", 0.94);
     }
 
-    // 5. Food / Eat: All 5 fingertips bunched tightly together near thumb tip
     if (f1.bunchSpread < 0.56 && ext.index < 0.75 && ext.pinky < 0.72) {
       const heightBoost = f1.indexTip.y < 0.55 ? 0.06 : 0;
       addCandidate("food", 0.87 + heightBoost);
     }
 
-    // 6. Money / Pay: Thumb rubbing index & middle tips while ring & pinky are curled
-    if (
-      f1.thumbIndexPinch < 0.52 &&
-      f1.thumbMiddlePinch < 0.58 &&
-      ext.ring < 0.42 &&
-      ext.pinky < 0.42
-    ) {
+    if (f1.thumbIndexPinch < 0.52 && f1.thumbMiddlePinch < 0.58 && ext.ring < 0.42 && ext.pinky < 0.42) {
       addCandidate("money", 0.89);
     }
 
-    // 7. Yes (Thumb Up) vs Bad (Thumb Down) vs Sorry (Closed Fist on Chest)
     const fourCurled = ext.index < 0.35 && ext.middle < 0.35 && ext.ring < 0.35 && ext.pinky < 0.35;
     if (fourCurled) {
       if (ext.thumb > 0.58 && f1.thumbPointingUp) {
@@ -893,7 +963,6 @@
       }
     }
 
-    // 8. Water / C-Cup: Fingers moderately curved (0.32..0.72) forming a tumbler C-shape
     const isCCup =
       ext.index >= 0.32 &&
       ext.index <= 0.74 &&
@@ -903,11 +972,8 @@
       ext.ring <= 0.74 &&
       f1.thumbIndexPinch >= 0.55 &&
       f1.thumbIndexPinch <= 1.25;
-    if (isCCup) {
-      addCandidate("water", 0.86);
-    }
+    if (isCCup) addCandidate("water", 0.86);
 
-    // 9. All 5 Digits Extended [1, 1, 1, 1, 1]: Hello vs Father vs Mother vs Thank You vs Please vs Stop/Wait vs Number 5
     const fiveOpenScore = matchFingerPattern(arr, [1, 1, 1, 1, 1]);
     if (fiveOpenScore > 0.75) {
       if (motion.horizWave > 0.6) {
@@ -926,7 +992,6 @@
       }
     }
 
-    // 10. Only Index Extended [0, 1, 0, 0, 0]: No (waving) vs Understand (high at temple) vs Deaf vs Number 1
     const indexOnlyScore = matchFingerPattern(arr, [0, 1, 0, 0, 0], [1.0, 1.4, 1.3, 1.2, 1.2]);
     if (indexOnlyScore > 0.75) {
       if (motion.horizWave > 0.52) {
@@ -941,7 +1006,6 @@
       }
     }
 
-    // 11. Index + Middle Extended [0, 1, 1, 0, 0]: Blind (near eyes) vs Thank You vs Number 2
     const twoFingerScore = matchFingerPattern(arr, [0, 1, 1, 0, 0], [1.1, 1.3, 1.3, 1.2, 1.2]);
     if (twoFingerScore > 0.75) {
       if (f1.indexTip.y < 0.42) {
@@ -952,7 +1016,6 @@
       }
     }
 
-    // 12. Dedicated ISL Numbers (3, 4, 7, 8, 9)
     const num3Score = matchFingerPattern(arr, [0, 1, 1, 1, 0]);
     if (num3Score > 0.76) addCandidate("num_3", num3Score + 0.07);
 
@@ -972,7 +1035,6 @@
 
     if (!candidates.length) return null;
 
-    // Sort descending by confidence
     candidates.sort((a, b) => b.confidence - a.confidence);
     return {
       signId: candidates[0].signId,
@@ -982,9 +1044,6 @@
     };
   }
 
-  /**
-   * Draws color-coded 3D biomechanical skeleton & joint markers on the camera canvas.
-   */
   function drawBiomechanicalHand(ctx, canvasEl, landmarks, features) {
     if (window.drawConnectors && window.HAND_CONNECTIONS) {
       window.drawConnectors(ctx, landmarks, window.HAND_CONNECTIONS, {
@@ -993,7 +1052,6 @@
       });
     }
 
-    // Color-code fingertips by extension state (green = extended, amber = curved, slate = curled)
     const tipIndices = [
       { idx: 4, val: features.ext.thumb },
       { idx: 8, val: features.ext.index },
@@ -1022,9 +1080,6 @@
     });
   }
 
-  /**
-   * Draws a circular stability progress ring around the wrist as a sign locks in.
-   */
   function drawWristLockProgress(ctx, canvasEl, wristPt) {
     const ratio = Math.min(1, state.candidateFrames / state.requiredStableFrames);
     if (ratio <= 0.1) return;
@@ -1111,10 +1166,13 @@
   }
 
   function triggerDetectedSign(signObj, confidence = 0.95, source = "Camera") {
-    document.getElementById("detected-visual").textContent = signObj.emoji || "🤟";
-    document.getElementById("detected-sign-name").textContent = signObj.word;
+    state.currentDetectedSign = signObj;
+
+    // Render On-Screen ISL Avatar in the detected visual box
+    document.getElementById("detected-visual").innerHTML = window.renderISLAvatarSVG(signObj);
+    document.getElementById("detected-sign-name").textContent = `${signObj.emoji} ${signObj.word}`;
     document.getElementById("detected-sign-spoken").textContent = `"${signObj.spokenPhrase}"`;
-    document.getElementById("detected-sign-tactile").textContent = `Tactile Pose: ${signObj.tactileGuide}`;
+    document.getElementById("detected-sign-tactile").textContent = window.getAvatarDescription(signObj);
     document.getElementById("hud-confidence").textContent = `Confidence: ${Math.round(confidence * 100)}% (${source})`;
 
     window.audioEngine.playEarcon("sign_detected");
@@ -1126,8 +1184,10 @@
       });
     }
 
+    // Append to Sign-to-Text Sentence Builder & Update Natural Speech + 6-Dot Braille
     state.accumulatedSentence.push(signObj.word);
     renderSentenceDisplay();
+    updateCameraBrailleDisplay(getActiveCameraBrailleText());
 
     const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     state.signHistory.unshift({
@@ -1143,13 +1203,18 @@
 
   function renderSentenceDisplay() {
     const box = document.getElementById("sentence-display");
+    const naturalEl = document.getElementById("natural-speech-preview");
     if (!state.accumulatedSentence.length) {
       box.innerHTML = `<span class="placeholder-muted">Signed words will accumulate here into a full sentence...</span>`;
+      if (naturalEl) naturalEl.textContent = `"Waiting for signed input..."`;
       return;
     }
     box.innerHTML = state.accumulatedSentence
       .map((w) => `<span class="sentence-token">${w}</span>`)
       .join(" ");
+    if (naturalEl) {
+      naturalEl.textContent = `"${window.naturalizeISLGloss(state.accumulatedSentence)}"`;
+    }
   }
 
   function renderSignHistory() {
@@ -1271,7 +1336,7 @@
           word,
           keywords: keywords.length ? keywords : [word.toLowerCase()],
           category,
-           isCustom: true,
+          isCustom: true,
           emoji,
           hands,
           spokenPhrase,
@@ -1297,7 +1362,7 @@
 
         window.audioEngine.playEarcon("quiz_correct");
         window.audioEngine.speak(
-          `Saved new Indian Sign Language sign: ${word}. It is now active in the live camera detector, simulator, translator, and dictionary.`
+          `Saved new Indian Sign Language sign: ${word}. It is now active in the live camera detector, simulator, avatar translator, and dictionary.`
         );
       });
     }
@@ -1339,20 +1404,20 @@
   }
 
   // =========================================================================
-  // MODULE 2: HIGH-PRECISION SPEECH-TO-ISL TRANSLATOR
+  // MODULE 2: SPEECH-TO-ISL TRANSLATOR, ON-SCREEN AVATAR & 6-DOT BRAILLE
   // =========================================================================
   function initTranslatorModule() {
     const inputEl = document.getElementById("isl-text-input");
     const btnTranslate = document.getElementById("btn-translate-text");
 
     btnTranslate.addEventListener("click", () => {
-      translateTextToISL(inputEl.value, { speakConfirmation: true });
+      translateTextToISL(inputEl.value, { speakConfirmation: true, addToChat: true });
     });
 
     inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
-        translateTextToISL(inputEl.value, { speakConfirmation: true });
+        translateTextToISL(inputEl.value, { speakConfirmation: true, addToChat: true });
       }
     });
 
@@ -1360,7 +1425,7 @@
       chip.addEventListener("click", () => {
         const sentence = chip.dataset.sentence;
         inputEl.value = sentence;
-        translateTextToISL(sentence, { speakConfirmation: true });
+        translateTextToISL(sentence, { speakConfirmation: true, addToChat: true });
       });
     });
 
@@ -1390,16 +1455,124 @@
     document.getElementById("btn-stage-describe").addEventListener("click", () => {
       const current = state.translatedSequence[state.currentStageIndex];
       if (current) {
-        window.audioEngine.speak(
-          `${current.word} (${current.hands}). ${current.tactileGuide}`
-        );
+        window.audioEngine.playEarcon("avatar_read");
+        window.audioEngine.speak(window.getAvatarDescription(current), {
+          interrupt: true,
+          assertive: true
+        });
       }
     });
+
+    const btnReadAllStage = document.getElementById("btn-stage-read-everything");
+    if (btnReadAllStage) {
+      btnReadAllStage.addEventListener("click", () => {
+        speakCurrentContextSummary();
+      });
+    }
+
+    // Stage Braille Audio & Sonic Pulse Buttons
+    const btnStageBraille = document.getElementById("btn-stage-read-braille");
+    if (btnStageBraille) {
+      btnStageBraille.addEventListener("click", () => {
+        const braille = window.BrailleEngine.translate(state.lastTranslatedText || "Hello");
+        window.audioEngine.playEarcon("braille_pulse");
+        window.audioEngine.speak(braille.spokenGuide, { interrupt: true, assertive: true });
+      });
+    }
+
+    const btnStagePulse = document.getElementById("btn-stage-pulse-braille");
+    if (btnStagePulse) {
+      btnStagePulse.addEventListener("click", () => {
+        window.audioEngine.playBraillePulses(state.lastTranslatedText || "Hello", {
+          speakAfter: true
+        });
+      });
+    }
+
+    // Initialize 6-Dot Perkins Braille Keyer Composer
+    initBrailleChordKeyer();
   }
 
-  /**
-   * Normalizes inflected English words (plurals, -ing, -ed) to base stems for accurate ISL sign lookup.
-   */
+  function initBrailleChordKeyer() {
+    const dotChks = document.querySelectorAll(".b-dot-chk");
+    const previewEl = document.getElementById("braille-chord-preview");
+    const btnAppend = document.getElementById("btn-braille-append");
+    const btnSpace = document.getElementById("btn-braille-space");
+    const btnClear = document.getElementById("btn-braille-clear-dots");
+    const inputEl = document.getElementById("isl-text-input");
+
+    const getChordInfo = () => {
+      const dots = [0, 0, 0, 0, 0, 0];
+      dotChks.forEach((chk) => {
+        const idx = parseInt(chk.value, 10) - 1;
+        if (chk.checked && idx >= 0 && idx < 6) dots[idx] = 1;
+      });
+      const key = dots.join("");
+      const ch = DOTS_TO_CHAR_MAP[key] || "";
+      let mask = 0;
+      for (let i = 0; i < 6; i++) {
+        if (dots[i]) mask |= 1 << i;
+      }
+      const uChar = String.fromCharCode(0x2800 + mask);
+      const activeNums = dots
+        .map((v, idx) => (v ? idx + 1 : null))
+        .filter(Boolean);
+      return { dots, ch, uChar, activeNums };
+    };
+
+    const updateChordPreview = () => {
+      const info = getChordInfo();
+      if (previewEl) {
+        const label = info.ch ? info.ch.toUpperCase() : info.activeNums.length ? "Pattern" : "Blank";
+        previewEl.textContent = `Preview: ${label} (${info.uChar})`;
+      }
+    };
+
+    dotChks.forEach((chk) => {
+      chk.addEventListener("change", () => {
+        updateChordPreview();
+        const info = getChordInfo();
+        window.audioEngine.playEarcon("focus");
+        if (info.ch) {
+          window.audioEngine.speak(`Braille dots ${info.activeNums.join(" ")}: Letter ${info.ch.toUpperCase()}`);
+        }
+      });
+    });
+
+    if (btnAppend) {
+      btnAppend.addEventListener("click", () => {
+        const info = getChordInfo();
+        if (!info.ch) {
+          window.audioEngine.playEarcon("quiz_wrong");
+          window.audioEngine.speak("Selected dot combination does not match a standard letter A to Z.");
+          return;
+        }
+        inputEl.value = (inputEl.value || "") + info.ch;
+        window.audioEngine.playEarcon("braille_pulse");
+        window.audioEngine.speak(`Added Braille letter ${info.ch.toUpperCase()}. Message is now: ${inputEl.value}`);
+        translateTextToISL(inputEl.value, { speakConfirmation: false, addToChat: false });
+      });
+    }
+
+    if (btnSpace) {
+      btnSpace.addEventListener("click", () => {
+        inputEl.value = (inputEl.value || "") + " ";
+        window.audioEngine.playEarcon("focus");
+        window.audioEngine.speak("Added space.");
+      });
+    }
+
+    if (btnClear) {
+      btnClear.addEventListener("click", () => {
+        dotChks.forEach((c) => {
+          c.checked = false;
+        });
+        updateChordPreview();
+        window.audioEngine.speak("Reset 6 Braille dots.");
+      });
+    }
+  }
+
   function normalizeWordStem(word) {
     if (word.length <= 3) return word;
     if (word.endsWith("ing") && word.length > 5) return word.slice(0, -3);
@@ -1409,12 +1582,14 @@
     return word;
   }
 
-  function translateTextToISL(rawText, { speakConfirmation = true } = {}) {
+  function translateTextToISL(rawText, { speakConfirmation = true, addToChat = false } = {}) {
     const cleaned = (rawText || "").trim();
     if (!cleaned) {
       window.audioEngine.speak("Please speak or type a message to translate into Indian Sign Language.");
       return;
     }
+
+    state.lastTranslatedText = cleaned;
 
     let normalizedSentence = cleaned
       .toLowerCase()
@@ -1426,7 +1601,6 @@
       (s) => s.category !== "alphabet" && s.category !== "numbers"
     );
 
-    // Step 1: Replace multi-word ISL idioms with token placeholders
     const idioms = window.ISL_PHRASE_IDIOMS || [];
     idioms.forEach((idiom, idx) => {
       const regex = new RegExp(`\\b${idiom.phrase}\\b`, "g");
@@ -1455,8 +1629,6 @@
       }
 
       const stem = normalizeWordStem(token);
-
-      // Check exact or stemmed match in conversational & custom signs
       const matchedSign = conversationalSigns.find(
         (s) => s.keywords.includes(token) || s.keywords.includes(stem)
       );
@@ -1465,12 +1637,10 @@
         return;
       }
 
-      // Skip filler grammar words in multi-word sentences
       if (tokens.length > 1 && stopWords.has(token)) {
         return;
       }
 
-      // Otherwise finger-spell word using ISL 2-Handed Alphabet / Numbers
       for (const ch of token) {
         const letterSign = window.ISL_SIGNS.find(
           (s) =>
@@ -1495,14 +1665,37 @@
 
     renderSequenceStrip();
     renderActiveStageSign({ speakTactile: false });
+    updateStageBrailleDisplay(cleaned);
+
+    if (addToChat) {
+      addTwoWayChatMessage({
+        role: "blind",
+        speakerLabel: "🦯 Blind Speaker (Voice/Text/Braille → ISL Avatar)",
+        text: cleaned,
+        glossText: sequence.map((s) => s.word).join(" → "),
+        signObj: sequence[0] || window.ISL_SIGNS[0],
+        speakNow: false
+      });
+    }
 
     if (speakConfirmation) {
       window.audioEngine.playEarcon("sign_detected");
       const signNames = sequence.map((s) => s.word).join(", then ");
       window.audioEngine.speak(
-        `Translated "${cleaned}" into ${sequence.length} Indian Sign Language signs: ${signNames}.`
+        `Translated "${cleaned}" into ${sequence.length} Indian Sign Language signs on Avatar: ${signNames}.`
       );
       playStageSequence();
+    }
+  }
+
+  function updateStageBrailleDisplay(rawText) {
+    if (!window.BrailleEngine) return;
+    const bData = window.BrailleEngine.translate(rawText);
+    const unicodeEl = document.getElementById("stage-braille-unicode");
+    const cellsEl = document.getElementById("stage-braille-cells");
+    if (unicodeEl) unicodeEl.textContent = bData.unicode || "⠀";
+    if (cellsEl) {
+      cellsEl.innerHTML = window.BrailleEngine.renderBrailleCellsHTML(rawText, { maxCells: 20 });
     }
   }
 
@@ -1515,7 +1708,7 @@
       card.type = "button";
       card.className = `seq-card ${idx === state.currentStageIndex ? "active" : ""}`;
       card.setAttribute("role", "listitem");
-      card.setAttribute("aria-label", `Sign ${idx + 1}: ${signObj.word}. Click to inspect and hear tactile guide.`);
+      card.setAttribute("aria-label", `Sign ${idx + 1}: ${signObj.word}. Click to animate Avatar and hear tactile guide.`);
       card.innerHTML = `
         <span class="seq-card-emoji" aria-hidden="true">${signObj.emoji}</span>
         <span class="seq-card-label">${signObj.word}</span>
@@ -1536,12 +1729,24 @@
 
     document.getElementById("stage-current-token").textContent =
       `Sign ${state.currentStageIndex + 1} of ${state.translatedSequence.length}: ${signObj.word}`;
+
+    // Render BOTH Expressive On-Screen ISL Avatar AND Articulated 5-Finger Hand Pose
+    const avatarContainer = document.getElementById("stage-avatar-container");
+    if (avatarContainer) {
+      avatarContainer.innerHTML = window.renderISLAvatarSVG(signObj);
+    }
     document.getElementById("stage-svg-container").innerHTML = window.renderISLSignSVG(signObj);
+
     document.getElementById("stage-type-badge").textContent =
       signObj.category === "alphabet" ? "ISL Finger-Spell" : signObj.isCustom ? "Custom ISL Sign" : "ISL Sign";
     document.getElementById("stage-hands-badge").textContent = signObj.hands;
     document.getElementById("stage-sign-title").textContent = signObj.word;
     document.getElementById("stage-sign-meaning").textContent = `Spoken meaning: "${signObj.spokenPhrase}"`;
+
+    const avatarNarrEl = document.getElementById("stage-avatar-narration");
+    if (avatarNarrEl) {
+      avatarNarrEl.textContent = window.getAvatarDescription(signObj);
+    }
     document.getElementById("stage-tactile-desc").textContent = signObj.tactileGuide;
 
     const cards = document.querySelectorAll(".seq-card");
@@ -1550,8 +1755,8 @@
     });
 
     if (speakTactile) {
-      window.audioEngine.playEarcon("focus");
-      window.audioEngine.speak(`${signObj.word}. ${signObj.tactileGuide}`);
+      window.audioEngine.playEarcon("avatar_read");
+      window.audioEngine.speak(window.getAvatarDescription(signObj));
     }
   }
 
@@ -1576,6 +1781,186 @@
       clearInterval(state.stageTimer);
       state.stageTimer = null;
     }
+  }
+
+  // =========================================================================
+  // TWO-WAY LIVE COMMUNICATION SYSTEM (DEAF SIGNER ⇄ BLIND LISTENER)
+  // =========================================================================
+  function initTwoWayBridgeModule() {
+    const deafInput = document.getElementById("deaf-partner-input");
+    const btnDeafSend = document.getElementById("btn-deaf-send-reply");
+    const quickChipsContainer = document.getElementById("deaf-quick-sign-chips");
+    const btnReadLast = document.getElementById("btn-read-last-chat");
+    const btnClearChat = document.getElementById("btn-clear-chat");
+
+    // Populate quick ISL sign chips for Deaf partner to tap
+    if (quickChipsContainer) {
+      const quickReplyIds = ["hello", "yes", "no", "help", "water", "food", "thankyou", "slow", "doctor"];
+      quickReplyIds.forEach((id) => {
+        const sign = window.ISL_SIGNS.find((s) => s.id === id);
+        if (!sign) return;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chip-btn";
+        btn.innerHTML = `${sign.emoji} ${sign.word}`;
+        btn.addEventListener("click", () => {
+          addTwoWayChatMessage({
+            role: "deaf",
+            speakerLabel: "🤟 Deaf Partner (Signed Reply → Spoken Audio & Braille)",
+            text: sign.spokenPhrase,
+            glossText: sign.word,
+            signObj: sign,
+            speakNow: true
+          });
+        });
+        quickChipsContainer.appendChild(btn);
+      });
+    }
+
+    const handleDeafTextSend = () => {
+      const val = (deafInput.value || "").trim();
+      if (!val) return;
+      translateTextToISL(val, { speakConfirmation: false, addToChat: false });
+      const primarySign = state.translatedSequence[0] || window.ISL_SIGNS[0];
+      addTwoWayChatMessage({
+        role: "deaf",
+        speakerLabel: "🤟 Deaf Partner (Typed/Signed → Spoken Audio & Braille)",
+        text: val,
+        glossText: state.translatedSequence.map((s) => s.word).join(" → "),
+        signObj: primarySign,
+        speakNow: true
+      });
+      deafInput.value = "";
+    };
+
+    if (btnDeafSend) btnDeafSend.addEventListener("click", handleDeafTextSend);
+    if (deafInput) {
+      deafInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          handleDeafTextSend();
+        }
+      });
+    }
+
+    if (btnReadLast) {
+      btnReadLast.addEventListener("click", () => {
+        if (!state.chatMessages.length) {
+          window.audioEngine.speak("No messages in the two-way conversation log yet.");
+          return;
+        }
+        const latest = state.chatMessages[0];
+        readChatMessageAloud(latest);
+      });
+    }
+
+    if (btnClearChat) {
+      btnClearChat.addEventListener("click", () => {
+        state.chatMessages = [];
+        renderTwoWayChatLog();
+        window.audioEngine.speak("Cleared two-way conversation log.");
+      });
+    }
+
+    // Seed initial 2-way conversation example
+    const helloSign = window.ISL_SIGNS.find((s) => s.id === "hello") || window.ISL_SIGNS[0];
+    const blindSign = window.ISL_SIGNS.find((s) => s.id === "blind") || window.ISL_SIGNS[0];
+    addTwoWayChatMessage({
+      role: "blind",
+      speakerLabel: "🦯 Blind Speaker (Speech → ISL Avatar & Braille)",
+      text: "Hello friend, I am visually impaired. Can you guide me?",
+      glossText: "Hello / Namaste → Friend → Blind → Help",
+      signObj: blindSign,
+      speakNow: false
+    });
+    addTwoWayChatMessage({
+      role: "deaf",
+      speakerLabel: "🤟 Deaf Partner (ISL Sign → Spoken Audio & Braille)",
+      text: "Hello! Namaste, Yes, I am happy to help guide you.",
+      glossText: "Hello / Namaste → Yes → Help",
+      signObj: helloSign,
+      speakNow: false
+    });
+  }
+
+  function addTwoWayChatMessage({ role, speakerLabel, text, glossText, signObj, speakNow = true }) {
+    const braille = window.BrailleEngine.translate(text);
+    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+    const msgObj = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      role,
+      speakerLabel,
+      text,
+      glossText: glossText || (signObj ? signObj.word : ""),
+      brailleUnicode: braille.unicode,
+      brailleSpoken: braille.spokenGuide,
+      signObj: signObj || window.ISL_SIGNS[0],
+      time: timeStr
+    };
+
+    state.chatMessages.unshift(msgObj);
+    if (state.chatMessages.length > 20) state.chatMessages.pop();
+    renderTwoWayChatLog();
+
+    if (speakNow) {
+      window.audioEngine.playEarcon("sign_detected");
+      window.audioEngine.speak(
+        `${role === "deaf" ? "Deaf partner signed:" : "Blind user said:"} ${text}. ${window.getAvatarDescription(msgObj.signObj)}`,
+        { interrupt: true, assertive: true }
+      );
+    }
+  }
+
+  function readChatMessageAloud(msgObj) {
+    window.audioEngine.playEarcon("avatar_read");
+    window.audioEngine.speak(
+      `${msgObj.speakerLabel}. Message text: "${msgObj.text}". ISL Sequence: ${msgObj.glossText}. ${window.getAvatarDescription(msgObj.signObj)}`,
+      { interrupt: true, assertive: true }
+    );
+  }
+
+  function renderTwoWayChatLog() {
+    const logEl = document.getElementById("twoway-chat-log");
+    if (!logEl) return;
+
+    if (!state.chatMessages.length) {
+      logEl.innerHTML = `<p class="placeholder-muted">No messages yet. Speak, type, or tap an ISL sign above to start a two-way conversation.</p>`;
+      return;
+    }
+
+    logEl.innerHTML = "";
+    state.chatMessages.forEach((msg) => {
+      const item = document.createElement("article");
+      item.className = `chat-bubble ${msg.role}`;
+      item.innerHTML = `
+        <div class="chat-avatar-mini" aria-hidden="true">${window.renderISLAvatarSVG(msg.signObj)}</div>
+        <div class="chat-content">
+          <span class="chat-role-badge">${msg.speakerLabel} • ${msg.time}</span>
+          <p class="chat-msg-text">"${msg.text}"</p>
+          <p class="text-secondary"><strong>🤟 ISL Gloss:</strong> ${msg.glossText}</p>
+          <p class="chat-braille-line" aria-label="Braille output"><strong>⠿ 6-Dot Braille:</strong> ${msg.brailleUnicode}</p>
+        </div>
+        <div class="chat-bubble-actions">
+          <button type="button" class="btn-primary btn-xs btn-chat-read" aria-label="Read message text and avatar pose aloud">
+            🔊 Read Text &amp; Avatar
+          </button>
+          <button type="button" class="btn-outline btn-xs btn-chat-braille" aria-label="Read 6-dot Braille and play sonic pulses">
+            ⠿ Hear Braille
+          </button>
+        </div>
+      `;
+
+      item.querySelector(".btn-chat-read").addEventListener("click", () => {
+        readChatMessageAloud(msg);
+      });
+
+      item.querySelector(".btn-chat-braille").addEventListener("click", () => {
+        window.audioEngine.playBraillePulses(msg.text, { speakAfter: true });
+      });
+
+      logEl.appendChild(item);
+    });
   }
 
   // =========================================================================
@@ -1641,44 +2026,53 @@
 
     grid.innerHTML = "";
     filtered.forEach((sign) => {
+      const bWord = window.BrailleEngine.translate(sign.word);
       const card = document.createElement("article");
       card.className = "dict-card";
       card.setAttribute("role", "listitem");
       card.innerHTML = `
         <div>
           <div class="dict-card-top">
-            <div class="dict-svg-thumb" aria-hidden="true">${window.renderISLSignSVG(sign)}</div>
+            <div class="dict-svg-thumb" aria-hidden="true">${window.renderISLAvatarSVG(sign)}</div>
             <div>
               <span class="badge-hands">${sign.isCustom ? "✨ Custom • " : ""}${sign.hands}</span>
               <h3 class="dict-card-title">${sign.emoji} ${sign.word}</h3>
               <p class="stage-meaning">"${sign.spokenPhrase}"</p>
+              <p class="chat-braille-line">⠿ Braille: ${bWord.unicode}</p>
             </div>
           </div>
           <p class="dict-tactile-text"><strong>✋ Tactile Guide:</strong> ${sign.tactileGuide}</p>
         </div>
         <div class="dict-card-actions">
-          <button type="button" class="btn-primary btn-sm btn-hear-guide" aria-label="Listen to tactile hand guide for ${sign.word}">
-            🔊 Hear Tactile Guide
+          <button type="button" class="btn-primary btn-sm btn-hear-guide" aria-label="Listen to tactile hand guide and Avatar description for ${sign.word}">
+            🔊 Hear Avatar &amp; Guide
           </button>
-          <button type="button" class="btn-outline btn-sm btn-open-stage" aria-label="Show ${sign.word} on large translator stage">
-            🤟 View Large
+          <button type="button" class="btn-secondary btn-sm btn-hear-braille" aria-label="Listen to 6-dot Braille for ${sign.word}">
+            ⠿ Braille Dots
+          </button>
+          <button type="button" class="btn-outline btn-sm btn-open-stage" aria-label="Show ${sign.word} on large Avatar stage">
+            🧑‍🦯 Stage
           </button>
         </div>
       `;
 
       card.querySelector(".btn-hear-guide").addEventListener("click", () => {
-        window.audioEngine.playEarcon("sign_detected");
-        window.audioEngine.speak(
-          `${sign.word}. ${sign.hands}. Physical hand guide: ${sign.tactileGuide}`
-        );
+        window.audioEngine.playEarcon("avatar_read");
+        window.audioEngine.speak(window.getAvatarDescription(sign));
+      });
+
+      card.querySelector(".btn-hear-braille").addEventListener("click", () => {
+        window.audioEngine.playBraillePulses(sign.word, { speakAfter: true });
       });
 
       card.querySelector(".btn-open-stage").addEventListener("click", () => {
         state.translatedSequence = [sign];
+        state.lastTranslatedText = sign.word;
         state.currentStageIndex = 0;
         switchTab("translator", { announce: false });
         renderSequenceStrip();
         renderActiveStageSign({ speakTactile: true });
+        updateStageBrailleDisplay(sign.word);
       });
 
       grid.appendChild(card);
@@ -1749,12 +2143,13 @@
   function initQuickBoardModule() {
     const grid = document.getElementById("quickboard-grid");
     window.QUICK_BOARD_ITEMS.forEach((item) => {
+      const b = window.BrailleEngine.translate(item.title);
       const card = document.createElement("button");
       card.type = "button";
       card.className = "quick-card";
       card.setAttribute(
         "aria-label",
-        `${item.title}. Shortcut key ${item.key}. Speaks message aloud and displays ISL sign.`
+        `${item.title}. Shortcut key ${item.key}. Speaks message aloud, shows ISL Avatar, and translates to Braille.`
       );
       card.innerHTML = `
         <div class="quick-card-header">
@@ -1763,6 +2158,7 @@
         </div>
         <h3>${item.title}</h3>
         <p>"${item.spoken}"</p>
+        <span class="chat-braille-line" aria-hidden="true">⠿ ${b.unicode}</span>
       `;
       card.addEventListener("click", () => {
         activateQuickBoardItem(item);
@@ -1778,9 +2174,11 @@
     const signObj = window.ISL_SIGNS.find((s) => s.id === item.signId);
     if (signObj) {
       state.translatedSequence = [signObj];
+      state.lastTranslatedText = item.spoken;
       state.currentStageIndex = 0;
       renderSequenceStrip();
       renderActiveStageSign({ speakTactile: false });
+      updateStageBrailleDisplay(item.spoken);
     }
   }
 
@@ -1817,12 +2215,12 @@
   function triggerEmergencySOS() {
     const modal = document.getElementById("sos-modal");
     const helpSign = window.ISL_SIGNS.find((s) => s.id === "emergency") || window.ISL_SIGNS[0];
-    document.getElementById("sos-svg-holder").innerHTML = window.renderISLSignSVG(helpSign);
+    document.getElementById("sos-svg-holder").innerHTML = window.renderISLAvatarSVG(helpSign);
     modal.hidden = false;
 
     window.audioEngine.playEarcon("sos");
     window.audioEngine.speak(
-      "Emergency SOS Alert Activated! Showing high-contrast Indian Sign Language Help beacon on screen and announcing: I am visually impaired and need assistance.",
+      "Emergency SOS Alert Activated! Showing high-contrast Indian Sign Language Avatar Help beacon on screen and announcing: I am visually impaired and need assistance.",
       { interrupt: true, assertive: true }
     );
   }
@@ -1853,13 +2251,12 @@
       btnDictate.addEventListener("click", () => {
         document.getElementById("isl-text-input").focus();
         window.audioEngine.speak(
-          "Please type your message in the text box and press Enter to translate into Indian Sign Language."
+          "Please type your message in the text box and press Enter to translate into Indian Sign Language and Braille."
         );
       });
       return;
     }
 
-    // 1. Global Voice Command Listener
     state.cmdRecognition = new SpeechRec();
     state.cmdRecognition.lang = "en-IN";
     state.cmdRecognition.interimResults = false;
@@ -1887,7 +2284,6 @@
 
     btnCmd.addEventListener("click", toggleVoiceCommandMic);
 
-    // 2. Translator Dictation Listener (with Interim Live Preview)
     state.dictateRecognition = new SpeechRec();
     state.dictateRecognition.lang = "en-IN";
     state.dictateRecognition.interimResults = true;
@@ -1923,7 +2319,7 @@
       }
       if (finalText.trim()) {
         inputEl.value = finalText.trim();
-        translateTextToISL(finalText.trim(), { speakConfirmation: true });
+        translateTextToISL(finalText.trim(), { speakConfirmation: true, addToChat: true });
       }
     };
 
@@ -1957,6 +2353,18 @@
 
     if (cmd.includes("emergency") || cmd.includes("sos")) {
       triggerEmergencySOS();
+      return;
+    }
+    if (cmd.includes("read avatar") || cmd.includes("read screen") || cmd.includes("describe avatar")) {
+      speakCurrentContextSummary();
+      return;
+    }
+    if (cmd.includes("braille")) {
+      const text =
+        state.activeTab === "camera"
+          ? getActiveCameraBrailleText()
+          : state.lastTranslatedText || "Hello";
+      window.audioEngine.playBraillePulses(text, { speakAfter: true });
       return;
     }
     if (cmd.includes("add sign") || cmd.includes("train sign") || cmd.includes("custom sign")) {
@@ -1994,7 +2402,7 @@
         (s) => s.word.toLowerCase().includes(target) || s.keywords.includes(target)
       );
       if (found) {
-        window.audioEngine.speak(`${found.word} (${found.hands}): ${found.tactileGuide}`);
+        window.audioEngine.speak(window.getAvatarDescription(found));
         return;
       }
     }
@@ -2002,21 +2410,21 @@
       const phrase = cmd.replace("translate ", "").trim();
       switchTab("translator", { announce: false });
       document.getElementById("isl-text-input").value = phrase;
-      translateTextToISL(phrase, { speakConfirmation: true });
+      translateTextToISL(phrase, { speakConfirmation: true, addToChat: true });
       return;
     }
-    if (cmd.includes("translate") || cmd.includes("speech to sign")) {
+    if (cmd.includes("translate") || cmd.includes("speech to sign") || cmd.includes("two way")) {
       switchTab("translator");
       return;
     }
 
     switchTab("translator", { announce: false });
     document.getElementById("isl-text-input").value = cmd;
-    translateTextToISL(cmd, { speakConfirmation: true });
+    translateTextToISL(cmd, { speakConfirmation: true, addToChat: true });
   }
 
   // =========================================================================
-  // KEYBOARD SHORTCUTS & FOCUS AUTO-NARRATION FOR BLIND USERS
+  // KEYBOARD SHORTCUTS & SCREEN/AVATAR NARRATION FOR BLIND USERS
   // =========================================================================
   function initKeyboardShortcuts() {
     document.addEventListener("keydown", (e) => {
@@ -2077,6 +2485,16 @@
           e.preventDefault();
           speakCurrentContextSummary();
           break;
+        case "b":
+        case "B": {
+          e.preventDefault();
+          const bText =
+            state.activeTab === "camera"
+              ? getActiveCameraBrailleText()
+              : state.lastTranslatedText || "Hello";
+          window.audioEngine.playBraillePulses(bText, { speakAfter: true });
+          break;
+        }
         default: {
           const upper = e.key.toUpperCase();
           const quickItem = window.QUICK_BOARD_ITEMS.find((item) => item.key === upper);
@@ -2090,18 +2508,28 @@
     });
   }
 
+  /**
+   * Reads aloud the active text on screen, the on-screen ISL Avatar's posture & expression, and its 6-dot Braille summary.
+   */
   function speakCurrentContextSummary() {
+    window.audioEngine.playEarcon("avatar_read");
     if (state.activeTab === "camera") {
-      const name = document.getElementById("detected-sign-name").textContent;
-      const phrase = document.getElementById("detected-sign-spoken").textContent;
-      window.audioEngine.speak(`Current detected sign: ${name}. ${phrase}`);
+      const sign = state.currentDetectedSign || window.ISL_SIGNS[0];
+      const naturalSentence = state.accumulatedSentence.length
+        ? window.naturalizeISLGloss(state.accumulatedSentence)
+        : sign.spokenPhrase;
+      const braille = window.BrailleEngine.translate(getActiveCameraBrailleText());
+      window.audioEngine.speak(
+        `Screen & Avatar Summary: ${window.getAvatarDescription(sign)} Text on screen: "${naturalSentence}". ${braille.spokenGuide}`,
+        { interrupt: true, assertive: true }
+      );
     } else if (state.activeTab === "translator") {
-      const current = state.translatedSequence[state.currentStageIndex];
-      if (current) {
-        window.audioEngine.speak(
-          `Active ISL Sign on Stage: ${current.word}. ${current.tactileGuide}`
-        );
-      }
+      const current = state.translatedSequence[state.currentStageIndex] || window.ISL_SIGNS[0];
+      const braille = window.BrailleEngine.translate(state.lastTranslatedText || current.word);
+      window.audioEngine.speak(
+        `Screen & Avatar Summary: Active translated text is "${state.lastTranslatedText}". ${window.getAvatarDescription(current)} ${braille.spokenGuide}`,
+        { interrupt: true, assertive: true }
+      );
     } else {
       speakOrientationGuide();
     }

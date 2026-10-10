@@ -31,6 +31,9 @@
         <button type="button" id="btn-welcome-audio" class="a11y-btn" aria-label="Play spoken orientation guide for blind users (Shortcut: H)">
           <span aria-hidden="true">🔊</span> Orientation Guide <kbd>H</kbd>
         </button>
+        <button type="button" id="btn-read-screen-avatar" class="a11y-btn active" aria-label="Read current text and ISL Avatar action on screen aloud (Shortcut: S)">
+          <span aria-hidden="true">🧑‍🦯</span> Read Text &amp; Avatar <kbd>S</kbd>
+        </button>
         <button type="button" id="btn-auto-narrate" class="a11y-btn active" aria-pressed="true" aria-label="Toggle automatic voice narration on focus and hover">
           <span aria-hidden="true">🗣️</span> Auto-Narrate: <span id="narrate-state">ON</span>
         </button>
@@ -44,13 +47,23 @@
           <button type="button" id="btn-font-dec" class="a11y-btn-icon" aria-label="Decrease text size">A-</button>
           <button type="button" id="btn-font-inc" class="a11y-btn-icon" aria-label="Increase text size">A+</button>
         </div>
-        <div class="a11y-group" role="group" aria-label="Speech speed">
+        <div class="a11y-group" role="group" aria-label="Speech Generation Voice, Speed and Pitch">
+          <label for="speech-voice-select" class="sr-only">Speech Voice</label>
+          <select id="speech-voice-select" class="a11y-select" aria-label="Select speech synthesis voice">
+            <option value="">Voice: Default (en-IN)</option>
+          </select>
           <label for="speech-rate" class="sr-only">Voice Speed</label>
           <select id="speech-rate" class="a11y-select" aria-label="Select voice narration speed">
             <option value="0.85">Speed: 0.85x (Slow)</option>
             <option value="1" selected>Speed: 1.0x (Normal)</option>
             <option value="1.25">Speed: 1.25x (Fast)</option>
             <option value="1.5">Speed: 1.5x (Screen Reader Fast)</option>
+          </select>
+          <label for="speech-pitch" class="sr-only">Voice Pitch</label>
+          <select id="speech-pitch" class="a11y-select" aria-label="Select speech generation pitch">
+            <option value="0.85">Pitch: Warm Low</option>
+            <option value="1" selected>Pitch: Natural</option>
+            <option value="1.15">Pitch: Clear High</option>
           </select>
         </div>
       </div>
@@ -63,8 +76,8 @@
       <div class="brand">
         <div class="brand-logo" aria-hidden="true">🤟🔊</div>
         <div>
-          <h1 class="brand-title">SanketSetu <span class="badge-pill">ISL ⇄ Audio Bridge</span></h1>
-          <p class="brand-subtitle">Two-Way Indian Sign Language &amp; Blind Accessibility Platform</p>
+          <h1 class="brand-title">SanketSetu <span class="badge-pill">ISL ⇄ Braille ⇄ Audio Bridge</span></h1>
+          <p class="brand-subtitle">Two-Way ISL Sign-to-Text, 6-Dot Braille Translation, Animated Avatar &amp; Blind Audio Platform</p>
         </div>
       </div>
 
@@ -74,7 +87,7 @@
           <span class="mic-icon" aria-hidden="true">🎙️</span>
           <span class="btn-voice-text">
             <strong id="voice-cmd-label">Voice Command</strong>
-            <small id="voice-cmd-sub">Say "Camera", "Translate", "Dictionary", or "Sign Hello"</small>
+            <small id="voice-cmd-sub">Say "Read Avatar", "Read Braille", "Translate...", or "Camera"</small>
           </span>
         </button>
 
@@ -95,17 +108,17 @@
           <span class="tab-num" aria-hidden="true">1</span>
           <span class="tab-icon" aria-hidden="true">📷</span>
           <span class="tab-label">
-            <strong>Sign-to-Speech</strong>
-            <small>Camera reads ISL signs aloud for Blind user</small>
+            <strong>Sign-to-Text, Braille &amp; Speech</strong>
+            <small>Camera reads ISL signs → Text, 6-Dot Braille &amp; Audio</small>
           </span>
         </button>
 
         <button role="tab" id="tab-btn-translator" class="nav-tab" aria-selected="false" aria-controls="panel-translator" data-tab="translator">
           <span class="tab-num" aria-hidden="true">2</span>
-          <span class="tab-icon" aria-hidden="true">🗣️</span>
+          <span class="tab-icon" aria-hidden="true">🧑‍🦯</span>
           <span class="tab-label">
-            <strong>Speech-to-ISL</strong>
-            <small>Blind user speaks → Deaf user sees ISL signs</small>
+            <strong>2-Way Bridge, Avatar &amp; Braille</strong>
+            <small>Speech/Braille ⇄ Animated ISL Avatar &amp; 2-Way Chat</small>
           </span>
         </button>
 
@@ -114,7 +127,7 @@
           <span class="tab-icon" aria-hidden="true">✋</span>
           <span class="tab-label">
             <strong>Tactile Audio ISL Dictionary</strong>
-            <small>Learn ISL with spoken finger-by-finger guides</small>
+            <small>Learn ISL + Braille dots with spoken guides</small>
           </span>
         </button>
 
@@ -134,13 +147,13 @@
   <main id="main-content" class="main-container" tabindex="-1">
 
     <!-- =================================================================
-         PANEL 1: LIVE SIGN-TO-SPEECH (CAMERA -> SPOKEN AUDIO FOR BLIND)
+         PANEL 1: LIVE SIGN-TO-SPEECH, SIGN-TO-TEXT & BRAILLE TRANSLATION
          ================================================================= -->
     <section id="panel-camera" class="tab-panel active" role="tabpanel" aria-labelledby="tab-btn-camera">
       <div class="panel-header">
         <div>
-          <h2>1. Live ISL Sign-to-Speech (For Blind Listeners)</h2>
-          <p>Point the camera at a person signing in Indian Sign Language (or use the Interactive Sign Simulator below). Detected signs are <strong>immediately spoken aloud</strong> and added to your conversation sentence.</p>
+          <h2>1. Live ISL Sign-to-Text, 6-Dot Braille &amp; Speech Generator</h2>
+          <p>Point the camera at an ISL signer (or click any Simulator sign). Detected signs are converted in real time into <strong>Spoken Audio</strong>, <strong>Natural English Text</strong>, <strong>6-Dot Tactile Braille</strong>, and an <strong>On-Screen ISL Avatar</strong>.</p>
         </div>
         <div class="panel-header-actions">
           <button type="button" id="btn-open-custom-sign" class="btn-primary" aria-label="Add or calibrate a new custom Indian Sign Language gesture">
@@ -190,7 +203,7 @@
             <div id="camera-placeholder" class="camera-placeholder">
               <div class="placeholder-icon" aria-hidden="true">📷🤟</div>
               <h3>3D Biomechanical ISL Hand Tracking Ready</h3>
-              <p>Click <strong>"Start Live Webcam"</strong> above for palm-normalized 21-point 3D joint-angle recognition, or test any of the <strong>32+ Signs &amp; Numbers</strong> in the Simulator below.</p>
+              <p>Click <strong>"Start Live Webcam"</strong> above for palm-normalized 21-point 3D joint-angle recognition, or test any of the <strong>41+ Signs &amp; Numbers</strong> in the Simulator below.</p>
             </div>
 
             <!-- Live HUD Overlay -->
@@ -225,7 +238,7 @@
           <div class="simulator-box" aria-label="Interactive ISL Gesture Simulator">
             <div class="simulator-header">
               <h4>⚡ Instant ISL Gesture Simulator (Click any sign or number to trigger)</h4>
-              <span class="badge-subtle" id="sim-count-badge">32+ Signs Ready</span>
+              <span class="badge-subtle" id="sim-count-badge">41+ Signs Ready</span>
             </div>
             <div id="simulator-buttons" class="simulator-grid" role="group" aria-label="Simulated ISL gestures">
               <!-- Populated dynamically from ISL_SIGNS data -->
@@ -233,25 +246,33 @@
           </div>
         </div>
 
-        <!-- Right: Live Spoken Output & Sentence Builder -->
+        <!-- Right: Live Avatar, Sign-to-Text, Braille Translation & Speech Output -->
         <div class="card output-card">
-          <div class="detected-sign-banner" id="detected-sign-banner" tabindex="0" aria-label="Currently detected sign">
-            <div class="detected-visual" id="detected-visual" aria-hidden="true">👋</div>
+          <div class="detected-sign-banner" id="detected-sign-banner" tabindex="0" aria-label="Currently detected sign and avatar">
+            <div class="detected-visual avatar-thumb-box" id="detected-visual" aria-hidden="true">👋</div>
             <div class="detected-info">
-              <span class="eyebrow">CURRENTLY DETECTED ISL SIGN</span>
+              <div class="detected-eyebrow-row">
+                <span class="eyebrow">DETECTED SIGN &amp; ON-SCREEN AVATAR</span>
+                <button type="button" id="btn-read-detected-avatar" class="btn-outline btn-xs" aria-label="Read on-screen avatar posture and text aloud">
+                  🔊 Read Avatar &amp; Text
+                </button>
+              </div>
               <h3 id="detected-sign-name">Waiting for sign...</h3>
               <p id="detected-sign-spoken" class="spoken-phrase">"Show a hand gesture or click a simulator sign"</p>
-              <p id="detected-sign-tactile" class="tactile-hint">Blind Audio Cue: A soft chime plays each time a new sign is locked in.</p>
+              <p id="detected-sign-tactile" class="tactile-hint">On-Screen Avatar mirrors every detected sign and describes the hand posture aloud.</p>
             </div>
           </div>
 
-          <!-- Accumulated Sentence Builder -->
+          <!-- Sign-to-Text & Natural Speech Generator -->
           <div class="sentence-builder">
             <div class="sentence-header">
-              <h4>📝 Live Conversation Transcript</h4>
+              <h4>📝 Sign-to-Text &amp; Natural Speech Generator</h4>
               <div class="sentence-actions">
-                <button type="button" id="btn-speak-sentence" class="btn-primary btn-sm" aria-label="Speak full accumulated sentence aloud">
-                  🔊 Speak Full Sentence
+                <button type="button" id="btn-speak-sentence" class="btn-primary btn-sm" aria-label="Generate and speak natural sentence aloud">
+                  🔊 Speak Natural Sentence
+                </button>
+                <button type="button" id="btn-send-cam-to-bridge" class="btn-secondary btn-sm" aria-label="Send signed sentence to Two-Way Conversation Bridge">
+                  💬 Send to 2-Way Chat
                 </button>
                 <button type="button" id="btn-clear-sentence" class="btn-outline btn-sm" aria-label="Clear conversation sentence">
                   🗑️ Clear
@@ -260,6 +281,31 @@
             </div>
             <div id="sentence-display" class="sentence-box" tabindex="0" aria-live="polite" aria-label="Accumulated signed words">
               <span class="placeholder-muted">Signed words will accumulate here into a full sentence...</span>
+            </div>
+            <div class="natural-speech-bar" id="natural-speech-bar">
+              <span class="natural-label">🗣️ Synthesized Speech Text:</span>
+              <strong id="natural-speech-preview">"Waiting for signed input..."</strong>
+            </div>
+          </div>
+
+          <!-- Live 6-Dot Tactile Braille Translation Box -->
+          <div class="braille-translation-box" aria-label="Live 6-Dot Braille Translation">
+            <div class="braille-header">
+              <div>
+                <h4>⠿ Live 6-Dot Braille Translation (Sign → Braille)</h4>
+                <span class="braille-unicode-pill" id="camera-braille-unicode" aria-label="Unicode Braille Output">⠓⠑⠇⠇⠕</span>
+              </div>
+              <div class="braille-actions">
+                <button type="button" id="btn-speak-braille-cam" class="btn-secondary btn-sm" aria-label="Read raised Braille dot numbers aloud">
+                  🔊 Read Braille Dots
+                </button>
+                <button type="button" id="btn-pulse-braille-cam" class="btn-outline btn-sm" aria-label="Play sonic and haptic tactile Braille dot pulses">
+                  📳 Sonic Braille Pulses
+                </button>
+              </div>
+            </div>
+            <div id="camera-braille-cells" class="braille-cells-strip" role="region" aria-label="6-dot Braille character cells">
+              <!-- Populated dynamically by BrailleEngine -->
             </div>
           </div>
 
@@ -275,38 +321,72 @@
     </section>
 
     <!-- =================================================================
-         PANEL 2: SPEECH-TO-ISL TRANSLATOR (VOICE -> ISL VISUALS FOR DEAF)
+         PANEL 2: TWO-WAY COMMUNICATION SYSTEM, ON-SCREEN AVATAR & BRAILLE
          ================================================================= -->
     <section id="panel-translator" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-translator" hidden>
       <div class="panel-header">
         <div>
-          <h2>2. Speech-to-ISL Translator (Blind Speaker → Deaf Viewer)</h2>
-          <p>Speak naturally into your microphone or type a message. Your words are automatically converted into <strong>Indian Sign Language (ISL) phrase cards and two-handed finger-spelling visuals</strong> with spoken confirmation for you.</p>
+          <h2>2. Two-Way ISL ⇄ Braille ⇄ Speech Bridge &amp; On-Screen Signing Avatar</h2>
+          <p>Speak, type, or tap 6-dot Braille to animate the <strong>On-Screen ISL Signing Avatar</strong> for a deaf partner, or let the system <strong>read any on-screen text, Braille, or Avatar gesture aloud</strong> for a blind user.</p>
+        </div>
+        <div class="panel-header-actions">
+          <button type="button" id="btn-stage-read-everything" class="btn-primary" aria-label="Read active on-screen text, ISL Avatar posture, and Braille dots aloud">
+            🔊 Read Screen Text &amp; Avatar Aloud
+          </button>
         </div>
       </div>
 
       <div class="translator-grid">
-        <!-- Input Column -->
+        <!-- Left Column: Voice, Text & 6-Dot Braille Input -->
         <div class="card translator-input-card">
           <div class="voice-capture-box">
-            <button type="button" id="btn-dictate-isl" class="btn-mic-large" aria-pressed="false" aria-label="Click to start speaking your message for ISL translation">
+            <button type="button" id="btn-dictate-isl" class="btn-mic-large" aria-pressed="false" aria-label="Click to start speaking your message for ISL Avatar and Braille translation">
               <span class="mic-ring" aria-hidden="true">🎙️</span>
               <span id="dictate-btn-title">Click to Speak Your Message</span>
-              <small id="dictate-btn-status">Spoken audio confirmation enabled for blind users</small>
+              <small id="dictate-btn-status">Converts speech → ISL Avatar + 6-Dot Braille + Two-Way Chat</small>
             </button>
           </div>
 
           <div class="input-group">
-            <label for="isl-text-input" class="field-label">Or Type / Edit Message to Translate into ISL:</label>
+            <label for="isl-text-input" class="field-label">Type or Edit Message (Text → ISL Avatar + Braille + Speech):</label>
             <div class="text-input-row">
-              <input type="text" id="isl-text-input" class="text-input" placeholder="e.g., Hello my friend please help me find water" value="Hello friend thank you" aria-label="Message to translate into Indian Sign Language" />
-              <button type="button" id="btn-translate-text" class="btn-primary">Translate to ISL 🤟</button>
+              <input type="text" id="isl-text-input" class="text-input" placeholder="e.g., Hello my friend please help me find water" value="Hello friend thank you" aria-label="Message to translate into Indian Sign Language and Braille" />
+              <button type="button" id="btn-translate-text" class="btn-primary">Translate &amp; Sign 🤟</button>
+            </div>
+          </div>
+
+          <!-- Interactive 6-Dot Perkins-Style Braille Chord Composer -->
+          <div class="braille-composer-box" aria-label="Interactive 6-Dot Braille Input Composer">
+            <div class="braille-composer-header">
+              <strong>⠿ 6-Dot Tactile Braille Input Keyer (Toggle Dots 1–6 to Type in Braille):</strong>
+              <span id="braille-chord-preview" class="badge-pill">Preview: A (⠁)</span>
+            </div>
+            <div class="braille-keyer-row">
+              <div class="braille-6dot-pad" role="group" aria-label="Six Braille dot toggles">
+                <label class="b-key-toggle"><input type="checkbox" class="b-dot-chk" value="1" checked /> <span>Dot 1</span></label>
+                <label class="b-key-toggle"><input type="checkbox" class="b-dot-chk" value="4" /> <span>Dot 4</span></label>
+                <label class="b-key-toggle"><input type="checkbox" class="b-dot-chk" value="2" /> <span>Dot 2</span></label>
+                <label class="b-key-toggle"><input type="checkbox" class="b-dot-chk" value="5" /> <span>Dot 5</span></label>
+                <label class="b-key-toggle"><input type="checkbox" class="b-dot-chk" value="3" /> <span>Dot 3</span></label>
+                <label class="b-key-toggle"><input type="checkbox" class="b-dot-chk" value="6" /> <span>Dot 6</span></label>
+              </div>
+              <div class="braille-keyer-actions">
+                <button type="button" id="btn-braille-append" class="btn-secondary btn-sm" aria-label="Append current 6-dot Braille character to message">
+                  ➕ Add Braille Letter
+                </button>
+                <button type="button" id="btn-braille-space" class="btn-outline btn-sm" aria-label="Add space to message">
+                  ␣ Space
+                </button>
+                <button type="button" id="btn-braille-clear-dots" class="btn-outline btn-sm" aria-label="Reset 6 dots">
+                  ↺ Reset Dots
+                </button>
+              </div>
             </div>
           </div>
 
           <!-- Quick Preset Sentences for Blind Users -->
           <div class="preset-sentences">
-            <span class="field-label">Quick Conversation Starters (Click to Translate &amp; Speak):</span>
+            <span class="field-label">Quick Conversation Starters (Click to Sign, Speak &amp; Braille):</span>
             <div class="chip-row" role="group" aria-label="Preset conversation sentences">
               <button type="button" class="chip-btn" data-sentence="Hello friend how are you">👋 "Hello friend, how are you?"</button>
               <button type="button" class="chip-btn" data-sentence="Please help me I am blind">🦯 "Please help me, I am blind"</button>
@@ -317,24 +397,33 @@
           </div>
         </div>
 
-        <!-- Animated ISL Visual Playback Column -->
+        <!-- Right Column: On-Screen ISL Signing Avatar + Articulated Hand Stage + Braille -->
         <div class="card translator-stage-card">
           <div class="stage-header">
             <div>
-              <span class="eyebrow">ACTIVE ISL SIGN STAGE (FOR DEAF PARTNER)</span>
+              <span class="eyebrow">ON-SCREEN ISL SIGNING AVATAR &amp; HAND STAGE</span>
               <h3 id="stage-current-token">Ready to Translate</h3>
             </div>
             <div class="stage-controls" role="group" aria-label="ISL animation playback controls">
               <button type="button" id="btn-stage-prev" class="btn-outline btn-sm" aria-label="Previous sign in sentence">⏮ Prev</button>
-              <button type="button" id="btn-stage-play" class="btn-primary btn-sm" aria-label="Play or replay sign sequence">▶ Play Sequence</button>
+              <button type="button" id="btn-stage-play" class="btn-primary btn-sm" aria-label="Play or replay sign sequence on Avatar">▶ Play Avatar</button>
               <button type="button" id="btn-stage-next" class="btn-outline btn-sm" aria-label="Next sign in sentence">Next ⏭</button>
-              <button type="button" id="btn-stage-describe" class="btn-secondary btn-sm" aria-label="Speak physical hand description of current sign">🔊 Describe Hand Pose</button>
+              <button type="button" id="btn-stage-describe" class="btn-secondary btn-sm" aria-label="Read on-screen Avatar action and hand posture aloud">🔊 Read Avatar</button>
             </div>
           </div>
 
-          <!-- Large High-Visibility ISL Sign Stage -->
-          <div id="isl-active-stage" class="isl-stage-box" tabindex="0" aria-live="polite">
-            <div class="isl-stage-svg" id="stage-svg-container" aria-hidden="true"></div>
+          <!-- Dual Visual Stage: On-Screen ISL Avatar + Articulated Hand Pose + Details -->
+          <div id="isl-active-stage" class="isl-stage-box dual-avatar-stage" tabindex="0" aria-live="polite">
+            <div class="stage-dual-visuals">
+              <div class="visual-panel">
+                <span class="visual-caption">🧑‍🦯 On-Screen ISL Avatar</span>
+                <div class="isl-stage-svg" id="stage-avatar-container" aria-hidden="true"></div>
+              </div>
+              <div class="visual-panel">
+                <span class="visual-caption">✋ Articulated 5-Finger Pose</span>
+                <div class="isl-stage-svg" id="stage-svg-container" aria-hidden="true"></div>
+              </div>
+            </div>
             <div class="isl-stage-details">
               <div class="stage-badges">
                 <span class="badge-isl" id="stage-type-badge">ISL Phrase</span>
@@ -342,6 +431,7 @@
               </div>
               <h4 id="stage-sign-title">Hello / Namaste</h4>
               <p id="stage-sign-meaning" class="stage-meaning">Spoken meaning: "Hello, greetings!"</p>
+              <p id="stage-avatar-narration" class="avatar-narration-text">Avatar Action: Brings both open palms together at heart level in a respectful Namaste.</p>
               <div class="tactile-box">
                 <strong>✋ Tactile / Physical Hand Guide (For Blind Users):</strong>
                 <p id="stage-tactile-desc">Bring both palms together in front of your chest (Namaste) or raise your dominant open palm to your forehead in a friendly salute.</p>
@@ -349,13 +439,69 @@
             </div>
           </div>
 
+          <!-- Stage 6-Dot Braille Translation Bar -->
+          <div class="braille-translation-box stage-braille-box" aria-label="Translated 6-Dot Braille Output">
+            <div class="braille-header">
+              <div>
+                <h4>⠿ On-Screen Message in 6-Dot Braille: <span class="braille-unicode-pill" id="stage-braille-unicode">⠓⠑⠇⠇⠕</span></h4>
+              </div>
+              <div class="braille-actions">
+                <button type="button" id="btn-stage-read-braille" class="btn-secondary btn-sm" aria-label="Speak Braille dot numbers for active message">
+                  🔊 Speak Braille Dots
+                </button>
+                <button type="button" id="btn-stage-pulse-braille" class="btn-outline btn-sm" aria-label="Play sonic tactile Braille pulses for active message">
+                  📳 Sonic Braille Pulses
+                </button>
+              </div>
+            </div>
+            <div id="stage-braille-cells" class="braille-cells-strip" role="region" aria-label="Active stage 6-dot Braille cells"></div>
+          </div>
+
           <!-- Sequence Breakdown Cards -->
           <div class="sequence-strip-wrapper">
-            <h4>Sequence Breakdown (Click any sign card to inspect &amp; hear its tactile guide):</h4>
+            <h4>Sequence Breakdown (Click any sign card to animate Avatar &amp; hear tactile/Braille guide):</h4>
             <div id="isl-sequence-strip" class="sequence-strip" role="list" aria-label="Translated ISL sign sequence">
               <!-- Populated dynamically -->
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- TWO-WAY LIVE COMMUNICATION DIALOGUE HUB (DEAF SIGNER ⇄ BLIND SPEAKER) -->
+      <div class="card twoway-hub-card" id="twoway-bridge-section" aria-label="Two-Way Deaf and Blind Live Conversation Hub">
+        <div class="twoway-header">
+          <div>
+            <span class="badge-pill">🔄 Live Two-Way Communication System</span>
+            <h3>Deaf Signer (ISL / Text) ⇄ Blind Listener (Audio / Braille / Avatar)</h3>
+            <p class="text-secondary">Every message from either partner is automatically translated into <strong>Spoken Audio</strong>, <strong>6-Dot Tactile Braille</strong>, and <strong>Animated On-Screen ISL Avatar Signs</strong>.</p>
+          </div>
+          <div class="twoway-header-actions">
+            <button type="button" id="btn-read-last-chat" class="btn-primary btn-sm" aria-label="Read latest conversation message and avatar posture aloud">
+              🔊 Read Latest Message &amp; Avatar
+            </button>
+            <button type="button" id="btn-clear-chat" class="btn-outline btn-sm" aria-label="Clear two-way conversation log">
+              🗑️ Clear Chat
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Deaf Partner Reply Bar (Tap ISL Signs or Type Reply to Speak Aloud to Blind User) -->
+        <div class="deaf-reply-bar">
+          <div class="deaf-reply-input-row">
+            <label for="deaf-partner-input" class="field-label">🤟 Deaf Partner Reply (Type or tap ISL signs below — speaks aloud &amp; generates Braille for Blind user):</label>
+            <div class="text-input-row">
+              <input type="text" id="deaf-partner-input" class="text-input" placeholder="Deaf partner: type reply here to speak aloud to blind user..." />
+              <button type="button" id="btn-deaf-send-reply" class="btn-secondary">🔊 Speak &amp; Send to Blind User</button>
+            </div>
+          </div>
+          <div id="deaf-quick-sign-chips" class="chip-row" role="group" aria-label="Quick ISL sign replies for Deaf partner">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Live Two-Way Conversation Log -->
+        <div id="twoway-chat-log" class="twoway-chat-log" role="log" aria-live="polite" aria-label="Two-way conversation messages">
+          <!-- Populated dynamically -->
         </div>
       </div>
     </section>

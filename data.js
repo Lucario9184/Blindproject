@@ -1,8 +1,6 @@
 /**
- * data.js — Indian Sign Language (ISL) Dataset & Custom SVG Hand Pose Generator
- * Tailored for both Deaf Visual Comprehension and Blind Tactile Audio Descriptions.
- * Includes 32 Conversational & Daily Signs, 26 Two-Handed Alphabet Letters (A-Z),
- * and 9 ISL Numbers (1-9), plus support for User-Trained Custom Signs.
+ * data.js — Indian Sign Language (ISL) Dataset, 6-Dot Braille Translation Engine,
+ * Expressive On-Screen ISL Signing Avatar, and Articulated 5-Finger SVG Hand Pose Generator.
  */
 
 window.ISL_SIGNS = [
@@ -423,7 +421,6 @@ window.ISL_PHRASE_IDIOMS = [
 ];
 
 // ================= ISL ALPHABET (A-Z) & NUMBERS (1-9) =================
-// Note: Indian Sign Language (ISL) uses distinctive TWO-HANDED finger-spelling for most letters!
 const ISL_ALPHABET_DATA = [
   { letter: "A", hands: "2-Handed ISL", guide: "Point your right index finger onto the tip of your open left thumb." },
   { letter: "B", hands: "2-Handed ISL", guide: "Curve the thumb and index finger of both hands into two 'C' circles and touch their tips together like spectacles." },
@@ -571,6 +568,265 @@ window.QUICK_BOARD_ITEMS = [
   }
 ];
 
+// ============================================================================
+// 6-DOT BRAILLE TRANSLATION ENGINE (Grade 1 / Unified & Bharati Braille)
+// ============================================================================
+// Standard 6-dot positions:
+//   (1) (4)
+//   (2) (5)
+//   (3) (6)
+const BRAILLE_MAP = {
+  a: [1, 0, 0, 0, 0, 0],
+  b: [1, 1, 0, 0, 0, 0],
+  c: [1, 0, 0, 1, 0, 0],
+  d: [1, 0, 0, 1, 1, 0],
+  e: [1, 0, 0, 0, 1, 0],
+  f: [1, 1, 0, 1, 0, 0],
+  g: [1, 1, 0, 1, 1, 0],
+  h: [1, 1, 0, 0, 1, 0],
+  i: [0, 1, 0, 1, 0, 0],
+  j: [0, 1, 0, 1, 1, 0],
+  k: [1, 0, 1, 0, 0, 0],
+  l: [1, 1, 1, 0, 0, 0],
+  m: [1, 0, 1, 1, 0, 0],
+  n: [1, 0, 1, 1, 1, 0],
+  o: [1, 0, 1, 0, 1, 0],
+  p: [1, 1, 1, 1, 0, 0],
+  q: [1, 1, 1, 1, 1, 0],
+  r: [1, 1, 1, 0, 1, 0],
+  s: [0, 1, 1, 1, 0, 0],
+  t: [0, 1, 1, 1, 1, 0],
+  u: [1, 0, 1, 0, 0, 1],
+  v: [1, 1, 1, 0, 0, 1],
+  w: [0, 1, 0, 1, 1, 1],
+  x: [1, 0, 1, 1, 0, 1],
+  y: [1, 0, 1, 1, 1, 1],
+  z: [1, 0, 1, 0, 1, 1],
+  "1": [1, 0, 0, 0, 0, 0],
+  "2": [1, 1, 0, 0, 0, 0],
+  "3": [1, 0, 0, 1, 0, 0],
+  "4": [1, 0, 0, 1, 1, 0],
+  "5": [1, 0, 0, 0, 1, 0],
+  "6": [1, 1, 0, 1, 0, 0],
+  "7": [1, 1, 0, 1, 1, 0],
+  "8": [1, 1, 0, 0, 1, 0],
+  "9": [0, 1, 0, 1, 0, 0],
+  "0": [0, 1, 0, 1, 1, 0],
+  ",": [0, 1, 0, 0, 0, 0],
+  ".": [0, 1, 0, 0, 1, 1],
+  "?": [0, 1, 1, 0, 0, 1],
+  "!": [0, 1, 1, 0, 1, 0],
+  "-": [0, 0, 1, 0, 0, 1],
+  " ": [0, 0, 0, 0, 0, 0]
+};
+
+function dotsToUnicode(dots) {
+  let mask = 0;
+  for (let i = 0; i < 6; i++) {
+    if (dots[i]) mask |= 1 << i;
+  }
+  return String.fromCharCode(0x2800 + mask);
+}
+
+function getActiveDotNumbers(dots) {
+  const nums = [];
+  for (let i = 0; i < 6; i++) {
+    if (dots[i]) nums.push(i + 1);
+  }
+  return nums;
+}
+
+window.BrailleEngine = {
+  /**
+   * Translates any English / ISL text string into Unicode Braille, 6-dot cell arrays, and spoken dot guides.
+   */
+  translate(rawText) {
+    const cleaned = (rawText || "")
+      .replace(/\/.*/g, "") // e.g., "Hello / Namaste" -> "Hello"
+      .trim();
+    if (!cleaned) {
+      return { unicode: "⠀", cells: [], spokenGuide: "Empty Braille line." };
+    }
+
+    const cells = [];
+    let unicode = "";
+    const spokenParts = [];
+
+    for (const ch of cleaned) {
+      const lower = ch.toLowerCase();
+      const isDigit = /^[0-9]$/.test(lower);
+      const dots = BRAILLE_MAP[lower] || [0, 0, 0, 0, 0, 0];
+      const uChar = dotsToUnicode(dots);
+      const activeNums = getActiveDotNumbers(dots);
+
+      if (isDigit) {
+        // Add Braille Number Indicator (dots 3-4-5-6 = ⠼)
+        const numSignDots = [0, 0, 1, 1, 1, 1];
+        unicode += dotsToUnicode(numSignDots);
+      }
+
+      unicode += uChar;
+      cells.push({
+        char: ch === " " ? "␣" : ch.toUpperCase(),
+        unicode: uChar,
+        dots,
+        activeNums,
+        isSpace: ch === " "
+      });
+
+      if (ch === " ") {
+        spokenParts.push("Space");
+      } else if (activeNums.length) {
+        spokenParts.push(`${ch.toUpperCase()} (dots ${activeNums.join("-")})`);
+      }
+    }
+
+    return {
+      sourceText: cleaned,
+      unicode,
+      cells,
+      spokenGuide: `Braille for "${cleaned}": ${spokenParts.slice(0, 18).join(", ")}.`
+    };
+  },
+
+  /**
+   * Renders visual & accessible 6-dot tactile Braille cells HTML for a given text.
+   */
+  renderBrailleCellsHTML(rawText, { maxCells = 16 } = {}) {
+    const result = this.translate(rawText);
+    const subset = result.cells.slice(0, maxCells);
+
+    if (!subset.length) {
+      return `<span class="placeholder-muted">Braille cells will appear here...</span>`;
+    }
+
+    return subset
+      .map((cell) => {
+        if (cell.isSpace) {
+          return `
+            <div class="braille-cell braille-space" role="img" aria-label="Braille Space">
+              <div class="braille-dots-grid">
+                <span class="b-dot"></span><span class="b-dot"></span>
+                <span class="b-dot"></span><span class="b-dot"></span>
+                <span class="b-dot"></span><span class="b-dot"></span>
+              </div>
+              <span class="braille-char-label">␣</span>
+            </div>
+          `;
+        }
+        // Grid order in 2 columns x 3 rows: (d1, d4), (d2, d5), (d3, d6)
+        const d = cell.dots;
+        const dotOrder = [
+          { on: d[0], num: 1 },
+          { on: d[3], num: 4 },
+          { on: d[1], num: 2 },
+          { on: d[4], num: 5 },
+          { on: d[2], num: 3 },
+          { on: d[5], num: 6 }
+        ];
+        return `
+          <div class="braille-cell" tabindex="0" role="img" aria-label="Character ${cell.char}, Braille dots ${cell.activeNums.join(" ")}">
+            <div class="braille-dots-grid">
+              ${dotOrder
+                .map(
+                  (dot) =>
+                    `<span class="b-dot ${dot.on ? "raised" : ""}" title="Dot ${dot.num}"></span>`
+                )
+                .join("")}
+            </div>
+            <span class="braille-char-label">${cell.char}</span>
+            <span class="braille-dot-nums">${cell.activeNums.join("") || "-"}</span>
+          </div>
+        `;
+      })
+      .join("");
+  }
+};
+
+/**
+ * Converts a sequence of ISL Sign Glosses into a natural, grammatically fluent sentence for Speech Generation.
+ */
+window.naturalizeISLGloss = function (signWordsArray) {
+  if (!signWordsArray || !signWordsArray.length) return "";
+  const cleanWords = signWordsArray.map((w) =>
+    w
+      .replace(/\/.*/g, "")
+      .replace(/^Letter\s+/i, "")
+      .replace(/^Number\s+/i, "")
+      .trim()
+  );
+
+  // Combine consecutive single letters into a spelled word
+  const merged = [];
+  let letterBuffer = "";
+  cleanWords.forEach((w) => {
+    if (w.length === 1 && /^[A-Za-z0-9]$/.test(w)) {
+      letterBuffer += w;
+    } else {
+      if (letterBuffer) {
+        merged.push(letterBuffer);
+        letterBuffer = "";
+      }
+      merged.push(w);
+    }
+  });
+  if (letterBuffer) merged.push(letterBuffer);
+
+  // If only 1 sign, use its full spokenPhrase if available
+  if (merged.length === 1) {
+    const match = window.ISL_SIGNS.find(
+      (s) => s.word.toLowerCase().startsWith(merged[0].toLowerCase())
+    );
+    if (match && match.category !== "alphabet" && match.category !== "numbers") {
+      return match.spokenPhrase;
+    }
+  }
+
+  // Construct natural English sentence from ISL gloss sequence
+  const phraseMap = {
+    hello: "Hello",
+    "thank you": "thank you",
+    yes: "yes",
+    no: "no",
+    please: "please",
+    sorry: "excuse me, I am sorry",
+    friend: "my friend",
+    good: "everything is good",
+    bad: "something is wrong",
+    care: "I care about you",
+    name: "what is your name",
+    understand: "I understand",
+    mother: "mother",
+    father: "father",
+    help: "please help me",
+    blind: "I am visually impaired",
+    deaf: "I am deaf",
+    water: "I need drinking water",
+    food: "I would like food to eat",
+    where: "where is",
+    stop: "please wait a moment",
+    repeat: "please repeat that again",
+    "slow down": "please communicate slowly",
+    restroom: "the restroom",
+    home: "home",
+    money: "how much does it cost",
+    time: "what time is it",
+    bus: "the bus or train",
+    emergency: "Emergency! I need urgent help",
+    doctor: "please call a doctor",
+    pain: "I am in pain",
+    phone: "please make a phone call"
+  };
+
+  const parts = merged.map((w) => {
+    const key = w.toLowerCase();
+    return phraseMap[key] || w;
+  });
+
+  const rawJoined = parts.join(", ");
+  return rawJoined.charAt(0).toUpperCase() + rawJoined.slice(1) + ".";
+};
+
 /**
  * Helper to draw an articulated 5-finger SVG hand given finger extension states [thumb, index, middle, ring, pinky]
  */
@@ -578,12 +834,11 @@ function renderArticulatedHandSVG(fingerStates, { x = 100, y = 105, scale = 1, m
   const [th, idx, mid, rng, pnk] = fingerStates;
   const flip = mirror ? -1 : 1;
 
-  // Finger X offsets relative to palm center
   const fConfigs = [
-    { val: idx, dx: -16, baseLen: 36, label: "I" },
-    { val: mid, dx: -5, baseLen: 41, label: "M" },
-    { val: rng, dx: 6, baseLen: 37, label: "R" },
-    { val: pnk, dx: 17, baseLen: 29, label: "P" }
+    { val: idx, dx: -16, baseLen: 36 },
+    { val: mid, dx: -5, baseLen: 41 },
+    { val: rng, dx: 6, baseLen: 37 },
+    { val: pnk, dx: 17, baseLen: 29 }
   ];
 
   const fingersSvg = fConfigs
@@ -600,7 +855,6 @@ function renderArticulatedHandSVG(fingerStates, { x = 100, y = 105, scale = 1, m
     })
     .join("");
 
-  // Thumb geometry
   const thumbAngle = th >= 0.75 ? -38 * flip : th >= 0.35 ? -18 * flip : 12 * flip;
   const thumbLen = th >= 0.75 ? 28 : 18;
   const thumbStroke = th >= 0.75 ? highlightColor : "#64748b";
@@ -608,12 +862,9 @@ function renderArticulatedHandSVG(fingerStates, { x = 100, y = 105, scale = 1, m
 
   return `
     <g transform="translate(${x}, ${y}) scale(${scale})">
-      <!-- Wrist & Palm -->
       <rect x="-14" y="16" width="28" height="16" rx="4" fill="#0f172a" stroke="#475569" stroke-width="2"/>
       <rect x="-23" y="-20" width="46" height="40" rx="12" fill="#1e293b" stroke="#38bdf8" stroke-width="2.5"/>
-      <!-- 4 Fingers -->
       ${fingersSvg}
-      <!-- Thumb -->
       <g transform="translate(${thumbX}, 0) rotate(${thumbAngle})">
         <rect x="-5" y="${-thumbLen}" width="10" height="${thumbLen + 6}" rx="5" fill="#1e293b" stroke="${thumbStroke}" stroke-width="2.5"/>
       </g>
@@ -622,94 +873,332 @@ function renderArticulatedHandSVG(fingerStates, { x = 100, y = 105, scale = 1, m
 }
 
 /**
- * Map a sign's poseType / fingerState to articulated finger arrays & motion annotations
+ * Map a sign's poseType / fingerState to articulated finger arrays, avatar hand coordinates, facial expression & motion cues
  */
 function getPoseVisualSpec(signObj) {
   if (signObj.fingerState && Array.isArray(signObj.fingerState)) {
-    return { hands: [signObj.fingerState], motion: "Hold Steady" };
+    return {
+      hands: [signObj.fingerState],
+      motion: "Hold Steady",
+      avatarPos: [{ x: 142, y: 112 }],
+      expression: "friendly",
+      avatarAction: `Avatar raises dominant hand at chest level showing ${signObj.word}.`
+    };
   }
   const p = signObj.poseType || "";
   switch (p) {
     case "namaste":
-      return { hands: [[1, 1, 1, 1, 1], [1, 1, 1, 1, 1]], motion: "Join Palms (Namaste)" };
+      return {
+        hands: [[1, 1, 1, 1, 1], [1, 1, 1, 1, 1]],
+        motion: "Join Palms (Namaste)",
+        avatarPos: [{ x: 86, y: 122 }, { x: 114, y: 122 }],
+        expression: "smile",
+        avatarAction: "Avatar brings both open palms together at heart level in a respectful Indian Namaste with a warm smile."
+      };
     case "chin_forward":
-      return { hands: [[1, 1, 1, 1, 1]], motion: "Chin ➔ Forward" };
+      return {
+        hands: [[1, 1, 1, 1, 1]],
+        motion: "Chin ➔ Forward",
+        avatarPos: [{ x: 118, y: 92 }],
+        expression: "smile",
+        avatarAction: "Avatar touches flat right fingertips to the chin and extends the hand forward toward you in gratitude."
+      };
     case "thumb_up":
-      return { hands: [[1, 0, 0, 0, 0]], motion: "Thumb Up + Nod" };
+      return {
+        hands: [[1, 0, 0, 0, 0]],
+        motion: "Thumb Up + Nod",
+        avatarPos: [{ x: 142, y: 112 }],
+        expression: "smile",
+        avatarAction: "Avatar nods head affirmatively while holding a crisp thumbs-up gesture at chest height."
+      };
     case "thumb_down":
-      return { hands: [[1, 0, 0, 0, 0]], motion: "Thumb Down" };
+      return {
+        hands: [[1, 0, 0, 0, 0]],
+        motion: "Thumb Down",
+        avatarPos: [{ x: 142, y: 126 }],
+        expression: "serious",
+        avatarAction: "Avatar points thumb downward with a concerned expression."
+      };
     case "ok_sign":
-      return { hands: [[0.5, 0.5, 1, 1, 1]], motion: "Index+Thumb Circle" };
+      return {
+        hands: [[0.5, 0.5, 1, 1, 1]],
+        motion: "Index+Thumb Circle",
+        avatarPos: [{ x: 142, y: 108 }],
+        expression: "smile",
+        avatarAction: "Avatar forms a precise circle with thumb and index finger while extending middle, ring, and pinky fingers."
+      };
     case "wave_no":
-      return { hands: [[0, 1, 0, 0, 0]], motion: "Wave Left ⇄ Right" };
+      return {
+        hands: [[0, 1, 0, 0, 0]],
+        motion: "Wave Left ⇄ Right",
+        avatarPos: [{ x: 142, y: 105 }],
+        expression: "serious",
+        avatarAction: "Avatar extends the right index finger upright and waves it side-to-side while shaking the head No."
+      };
     case "chest_circle":
     case "fist_chest":
-      return { hands: [p === "fist_chest" ? [0, 0, 0, 0, 0] : [1, 1, 1, 1, 1]], motion: "Circular on Chest ↻" };
+      return {
+        hands: [p === "fist_chest" ? [0, 0, 0, 0, 0] : [1, 1, 1, 1, 1]],
+        motion: "Circular on Chest ↻",
+        avatarPos: [{ x: 104, y: 124 }],
+        expression: "friendly",
+        avatarAction: "Avatar places the dominant hand over the center of the chest and moves it in a gentle clockwise circle."
+      };
     case "clasp_hands":
-      return { hands: [[0.5, 1, 0, 0, 0], [0.5, 1, 0, 0, 0]], motion: "Clasp / Hook Hands" };
+      return {
+        hands: [[0.5, 1, 0, 0, 0], [0.5, 1, 0, 0, 0]],
+        motion: "Clasp / Hook Hands",
+        avatarPos: [{ x: 84, y: 125 }, { x: 116, y: 125 }],
+        expression: "smile",
+        avatarAction: "Avatar clasps both hands warmly together in front of the torso to sign Friend."
+      };
     case "ily_hand":
-      return { hands: [[1, 1, 0, 0, 1]], motion: "Thumb + Index + Pinky" };
+      return {
+        hands: [[1, 1, 0, 0, 1]],
+        motion: "Thumb + Index + Pinky",
+        avatarPos: [{ x: 144, y: 106 }],
+        expression: "smile",
+        avatarAction: "Avatar extends the thumb, index finger, and pinky finger outward while curling the middle and ring fingers."
+      };
     case "help_lift":
-      return { hands: [[1, 1, 1, 1, 1], [1, 0, 0, 0, 0]], motion: "Lift Both Upward ↑" };
+      return {
+        hands: [[1, 1, 1, 1, 1], [1, 0, 0, 0, 0]],
+        motion: "Lift Both Upward ↑",
+        avatarPos: [{ x: 84, y: 126 }, { x: 116, y: 116 }],
+        expression: "urgent",
+        avatarAction: "Avatar supports the right thumb-up fist on top of the flat left palm and lifts both hands upward."
+      };
     case "eyes_point":
-      return { hands: [[0, 1, 1, 0, 0]], motion: "V-Fingers at Eyes" };
+      return {
+        hands: [[0, 1, 1, 0, 0]],
+        motion: "V-Fingers at Eyes",
+        avatarPos: [{ x: 124, y: 68 }],
+        expression: "friendly",
+        avatarAction: "Avatar raises index and middle fingers in a V-shape directly beside the eyes to indicate Vision / Blindness."
+      };
     case "ear_to_mouth":
     case "temple_point":
-      return { hands: [[0, 1, 0, 0, 0]], motion: p === "ear_to_mouth" ? "Ear ➔ Mouth" : "Flick at Temple ↑" };
+      return {
+        hands: [[0, 1, 0, 0, 0]],
+        motion: p === "ear_to_mouth" ? "Ear ➔ Mouth" : "Flick at Temple ↑",
+        avatarPos: [{ x: 132, y: 66 }],
+        expression: "friendly",
+        avatarAction:
+          p === "ear_to_mouth"
+            ? "Avatar touches the index fingertip near the ear and arcs it toward the mouth to sign Deaf."
+            : "Avatar raises the index finger beside the forehead temple to sign Understand."
+      };
     case "drink_cup":
-      return { hands: [[0.5, 0.5, 0.5, 0.5, 0.5]], motion: "C-Cup to Mouth" };
+      return {
+        hands: [[0.5, 0.5, 0.5, 0.5, 0.5]],
+        motion: "C-Cup to Mouth",
+        avatarPos: [{ x: 116, y: 86 }],
+        expression: "friendly",
+        avatarAction: "Avatar curves the right hand into a C-cup tumbler shape and tilts it toward the mouth as if drinking water."
+      };
     case "eat_bunch":
     case "money_rub":
-      return { hands: [[0.5, 0.5, 0.5, 0, 0]], motion: p === "eat_bunch" ? "Bunched Tips to Mouth" : "Rub Thumb & Tips" };
+      return {
+        hands: [[0.5, 0.5, 0.5, 0, 0]],
+        motion: p === "eat_bunch" ? "Bunched Tips to Mouth" : "Rub Thumb & Tips",
+        avatarPos: [{ x: p === "eat_bunch" ? 114 : 140, y: p === "eat_bunch" ? 86 : 114 }],
+        expression: "friendly",
+        avatarAction:
+          p === "eat_bunch"
+            ? "Avatar brings bunched fingertips to the mouth to sign Food / Eat."
+            : "Avatar rubs the thumb across the index and middle fingertips at chest level to sign Money."
+      };
     case "palms_up_query":
     case "alarm_wave":
     case "roof_hands":
-      return { hands: [[1, 1, 1, 1, 1], [1, 1, 1, 1, 1]], motion: p === "roof_hands" ? "Fingertips Touch /\\" : "Both Hands Active" };
+      return {
+        hands: [[1, 1, 1, 1, 1], [1, 1, 1, 1, 1]],
+        motion: p === "roof_hands" ? "Fingertips Touch /\\" : p === "alarm_wave" ? "Wave Overhead 🚨" : "Palms Up Query",
+        avatarPos:
+          p === "alarm_wave"
+            ? [{ x: 52, y: 68 }, { x: 148, y: 68 }]
+            : p === "roof_hands"
+            ? [{ x: 82, y: 102 }, { x: 118, y: 102 }]
+            : [{ x: 60, y: 122 }, { x: 140, y: 122 }],
+        expression: p === "alarm_wave" ? "urgent" : p === "palms_up_query" ? "question" : "friendly",
+        avatarAction:
+          p === "alarm_wave"
+            ? "Avatar raises both open hands high above the shoulders, waving urgently for Emergency."
+            : p === "roof_hands"
+            ? "Avatar angles both flat hands together so the fingertips meet in a pitched house roof peak."
+            : "Avatar holds both open palms out with raised questioning eyebrows to ask Where."
+      };
     case "open_palm_stop":
     case "chin_thumb":
     case "forehead_thumb":
-      return { hands: [[1, 1, 1, 1, 1]], motion: "5 Digits Extended" };
+      return {
+        hands: [[1, 1, 1, 1, 1]],
+        motion: "5 Digits Extended",
+        avatarPos: [
+          {
+            x: p === "open_palm_stop" ? 142 : 122,
+            y: p === "forehead_thumb" ? 56 : p === "chin_thumb" ? 88 : 110
+          }
+        ],
+        expression: "friendly",
+        avatarAction:
+          p === "forehead_thumb"
+            ? "Avatar taps the open thumb tip against the forehead to sign Father."
+            : p === "chin_thumb"
+            ? "Avatar taps the open thumb tip against the chin to sign Mother."
+            : "Avatar extends a flat open palm forward to sign Stop / Wait."
+      };
     case "pinky_up":
     case "num_6":
-      return { hands: [[0, 0, 0, 0, 1]], motion: "Pinky Extended Up" };
+      return {
+        hands: [[0, 0, 0, 0, 1]],
+        motion: "Pinky Extended Up",
+        avatarPos: [{ x: 142, y: 110 }],
+        expression: "friendly",
+        avatarAction: "Avatar raises the pinky finger straight upward while curling the other fingers."
+      };
     case "phone_hand":
-      return { hands: [[1, 0, 0, 0, 1]], motion: "Thumb + Pinky (Phone)" };
+      return {
+        hands: [[1, 0, 0, 0, 1]],
+        motion: "Thumb + Pinky (Phone)",
+        avatarPos: [{ x: 132, y: 78 }],
+        expression: "friendly",
+        avatarAction: "Avatar holds the thumb near the ear and pinky near the mouth like a telephone receiver."
+      };
     case "wrist_pulse":
     case "two_finger_cross":
-      return { hands: [[0, 1, 1, 0, 0], [0, 1, 1, 0, 0]], motion: "2-Finger Contact" };
+      return {
+        hands: [[0, 1, 1, 0, 0], [0, 1, 1, 0, 0]],
+        motion: "2-Finger Contact",
+        avatarPos: [{ x: 82, y: 122 }, { x: 118, y: 118 }],
+        expression: "friendly",
+        avatarAction:
+          p === "wrist_pulse"
+            ? "Avatar rests two fingertips of the right hand on the left wrist as if checking a patient's pulse for Doctor."
+            : "Avatar taps the extended index and middle fingers of both hands crosswise to sign Name."
+      };
     case "index_pain":
     case "wrist_watch":
-      return { hands: [[0, 1, 0, 0, 0], [0, 1, 0, 0, 0]], motion: "Index Point / Tap" };
-    case "num_1":
-      return { hands: [[0, 1, 0, 0, 0]], motion: "Index Straight Up" };
-    case "num_2":
-      return { hands: [[0, 1, 1, 0, 0]], motion: "Index + Middle V" };
-    case "num_3":
-      return { hands: [[0, 1, 1, 1, 0]], motion: "3 Fingers Up" };
-    case "num_4":
-      return { hands: [[0, 1, 1, 1, 1]], motion: "4 Fingers Up" };
-    case "num_5":
-      return { hands: [[1, 1, 1, 1, 1]], motion: "All 5 Digits Open" };
-    case "num_7":
-      return { hands: [[0, 0.5, 0, 0, 0]], motion: "Hooked Index" };
-    case "num_8":
-      return { hands: [[1, 1, 1, 0, 0]], motion: "Thumb + Index + Middle" };
-    case "num_9":
-      return { hands: [[1, 1, 1, 1, 0]], motion: "4 Digits Extended" };
+      return {
+        hands: [[0, 1, 0, 0, 0], [0, 1, 0, 0, 0]],
+        motion: "Index Point / Tap",
+        avatarPos: [{ x: 80, y: 120 }, { x: 120, y: 120 }],
+        expression: p === "index_pain" ? "urgent" : "question",
+        avatarAction:
+          p === "index_pain"
+            ? "Avatar points both index fingers inward toward each other with a pained expression."
+            : "Avatar taps the back of the left wrist with the right index finger like pointing to a watch for Time."
+      };
     default: {
       const isTwo = (signObj.hands || "").includes("2");
       return {
         hands: isTwo ? [[1, 1, 0, 0, 0], [1, 1, 1, 1, 1]] : [[1, 1, 1, 1, 1]],
-        motion: signObj.hands || "ISL Posture"
+        motion: signObj.hands || "ISL Posture",
+        avatarPos: isTwo ? [{ x: 74, y: 118 }, { x: 126, y: 118 }] : [{ x: 138, y: 112 }],
+        expression: "friendly",
+        avatarAction: `Avatar performs ${signObj.word} (${signObj.hands}).`
       };
     }
   }
 }
 
+window.getAvatarDescription = function (signObj) {
+  if (!signObj) return "Avatar is standing ready in neutral posture.";
+  const spec = getPoseVisualSpec(signObj);
+  return `On-Screen ISL Avatar is signing "${signObj.word}" (${signObj.hands}): ${spec.avatarAction} Physical guide: ${signObj.tactileGuide}`;
+};
+
+/**
+ * Generates an expressive On-Screen ISL Signing Avatar SVG (Upper Body + Facial Expression + Articulated Hands)
+ */
+window.renderISLAvatarSVG = function (signObj) {
+  const label = signObj.letterChar || signObj.word.split(" ")[0].toUpperCase();
+  const spec = getPoseVisualSpec(signObj);
+  const isTwoHanded = spec.hands.length === 2;
+
+  // Facial mouth & eyebrow geometry based on expression
+  let mouthPath = "M 92 72 Q 100 79 108 72"; // warm smile
+  let browLeft = "M 85 52 Q 90 49 95 52";
+  let browRight = "M 105 52 Q 110 49 115 52";
+  if (spec.expression === "question") {
+    mouthPath = "M 95 73 Q 100 70 105 73";
+    browLeft = "M 85 49 Q 90 44 95 49";
+    browRight = "M 105 49 Q 110 44 115 49";
+  } else if (spec.expression === "urgent") {
+    mouthPath = "M 93 75 Q 100 69 107 75";
+    browLeft = "M 85 48 L 95 52";
+    browRight = "M 115 48 L 105 52";
+  }
+
+  const pos1 = spec.avatarPos[0] || { x: 138, y: 112 };
+  const pos2 = spec.avatarPos[1] || { x: 62, y: 112 };
+
+  return `
+    <svg viewBox="0 0 200 200" width="100%" height="100%" role="img" aria-label="${window.getAvatarDescription(signObj)}">
+      <defs>
+        <radialGradient id="avatarHalo" cx="50%" cy="45%" r="52%">
+          <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.26"/>
+          <stop offset="100%" stop-color="#090d16" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="200" height="200" rx="18" fill="#090d16"/>
+      <circle cx="100" cy="92" r="78" fill="url(#avatarHalo)" stroke="#1e293b" stroke-width="1.5"/>
+
+      <!-- Top Motion Banner -->
+      <rect x="20" y="6" width="160" height="19" rx="9.5" fill="#121929" stroke="#38bdf8" stroke-width="1"/>
+      <text x="100" y="19" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="9.5" fill="#7dd3fc">
+        AVATAR: ${spec.motion}
+      </text>
+
+      <!-- Avatar Torso & Shoulders -->
+      <path d="M 48 152 C 48 112, 72 98, 100 98 C 128 98, 152 112, 152 152 Z" fill="#1e293b" stroke="#475569" stroke-width="2.5"/>
+      <!-- Neck & Collar -->
+      <rect x="91" y="84" width="18" height="16" rx="6" fill="#cbd5e1"/>
+      <path d="M 84 98 L 100 114 L 116 98" fill="none" stroke="#38bdf8" stroke-width="2"/>
+
+      <!-- Avatar Head -->
+      <circle cx="100" cy="62" r="24" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>
+      <!-- Hair / Headband Accent -->
+      <path d="M 77 56 C 80 36, 120 36, 123 56" fill="none" stroke="#fde047" stroke-width="3" stroke-linecap="round"/>
+      <!-- Eyebrows & Eyes -->
+      <path d="${browLeft}" fill="none" stroke="#fde047" stroke-width="2" stroke-linecap="round"/>
+      <path d="${browRight}" fill="none" stroke="#fde047" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="90" cy="58" r="2.8" fill="#f8fafc"/>
+      <circle cx="110" cy="58" r="2.8" fill="#f8fafc"/>
+      <!-- Mouth -->
+      <path d="${mouthPath}" fill="none" stroke="#fde047" stroke-width="2.2" stroke-linecap="round"/>
+
+      <!-- Arm Guides from Shoulders to Active Hand Positions -->
+      ${
+        isTwoHanded
+          ? `
+            <path d="M 62 118 Q 66 134 ${pos1.x} ${pos1.y}" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-dasharray="3 2"/>
+            <path d="M 138 118 Q 134 134 ${pos2.x} ${pos2.y}" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-dasharray="3 2"/>
+            ${renderArticulatedHandSVG(spec.hands[0], { x: pos1.x, y: pos1.y, scale: 0.56, mirror: true })}
+            ${renderArticulatedHandSVG(spec.hands[1], { x: pos2.x, y: pos2.y, scale: 0.56, mirror: false })}
+          `
+          : `
+            <path d="M 138 118 Q 146 128 ${pos1.x} ${pos1.y}" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-dasharray="3 2"/>
+            ${renderArticulatedHandSVG(spec.hands[0], { x: pos1.x, y: pos1.y, scale: 0.62, mirror: false })}
+          `
+      }
+
+      <!-- Bottom High-Contrast ISL Label -->
+      <rect x="12" y="156" width="176" height="32" rx="8" fill="#38bdf8"/>
+      <text x="100" y="177" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="14" fill="#000000">
+        ${signObj.emoji || "🤟"} ISL: ${label}
+      </text>
+    </svg>
+  `;
+};
+
 /**
  * Generates a high-contrast, anatomically articulated Deaf-friendly SVG illustration for any ISL sign or letter.
  */
-window.renderISLSignSVG = function (signObj) {
+window.renderISLSignSVG = function (signObj, { mode = "hand" } = {}) {
+  if (mode === "avatar") {
+    return window.renderISLAvatarSVG(signObj);
+  }
   const label = signObj.letterChar || signObj.word.split(" ")[0].toUpperCase();
   const emoji = signObj.emoji || "🤟";
   const spec = getPoseVisualSpec(signObj);

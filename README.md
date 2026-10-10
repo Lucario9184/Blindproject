@@ -1,34 +1,30 @@
-# SanketSetu — Indian Sign Language (ISL) ⇄ Blind Accessibility Bridge
+# SanketSetu — Indian Sign Language (ISL) ⇄ Braille ⇄ Blind Audio Bridge
 
-**SanketSetu** is a two-way assistive web platform connecting **Deaf / Hard-of-Hearing Indian Sign Language (ISL) signers** and **Blind / Visually Impaired users**, while also serving as an eyes-free **Tactile Audio ISL Learning Portal**.
+**SanketSetu** is a two-way assistive web platform connecting **Deaf / Hard-of-Hearing Indian Sign Language (ISL) signers** and **Blind / Visually Impaired users**, combining **3D Biomechanical ISL Hand Recognition**, **Real-Time Sign-to-Text & Natural Speech Generation**, **6-Dot Tactile & Sonic Braille Translation**, an **Expressive On-Screen ISL Signing Avatar**, and a **Live Two-Way Communication Hub**.
 
-## Key Features (Precision 1 Upgrade)
+## Key Features
 
-1. **High-Precision 3D Biomechanical ISL Sign-to-Speech (Camera → Audio for Blind Users)**
-   - **Scale-Invariant 3D Landmark Engine**: Normalizes all 21 MediaPipe 3D hand landmarks by palm scale (`wrist` to `middle MCP`) and applies **Exponential Moving Average (EMA) smoothing** to eliminate webcam jitter at any camera distance.
-   - **True 3D Joint Angle & Curl Telemetry**: Computes real-time 3D joint angles (`0%–100%` extension) for all five digits (*Thumb, Index, Middle, Ring, Pinky*) with live visual telemetry meters and a circular **Hold-to-Lock Stability Progress Ring**.
-   - **12-Frame Temporal Motion Tracking**: Detects horizontal wave (`No`, `Hello`, `Where`), vertical nod (`Yes`, `Help`), and rapid beacon motion (`Emergency`), while rejecting neutral/transitioning poses to prevent false positives.
-   - **Adjustable Precision Modes & Scope**: Choose between **Strict (85% Conf • 12 Frames)**, **High Precision (78% Conf • 8 Frames)**, or **Fast (70% Conf • 5 Frames)**, and filter detection between **All Signs + Numbers (41+)**, **Conversational & Custom Only**, or **ISL Numbers (1–9) Only**.
+1. **Live ISL Sign-to-Text, 6-Dot Braille & Natural Speech Generator (Tab 1)**
+   - **Scale-Invariant 3D Landmark Engine**: Normalizes all 21 MediaPipe 3D hand landmarks by palm scale (`wrist` to `middle MCP`) with **Exponential Moving Average (EMA) smoothing**, **true 3D joint angles**, and **12-frame temporal motion tracking**.
+   - **Natural Speech Synthesis (`naturalizeISLGloss`)**: Converts sequences of detected ISL sign glosses into grammatically fluent spoken English sentences with customizable **Voice**, **Speed**, and **Pitch**.
+   - **Live 6-Dot Tactile & Sonic Braille Translation (`BrailleEngine`)**: Automatically translates detected signs and sentences into Unicode Braille (`⠓⠑⠇⠇⠕`) and interactive **2×3 raised 6-dot Braille cells**, with **Spoken Dot Guides** (`🔊 Read Braille Dots`) and **Web Audio + Haptic Sonic Braille Pulses** (`📳 Sonic Braille Pulses` / `B` key).
 
-2. **Interactive Custom ISL Sign Calibration & Training Studio (`➕ Add / Train New Sign`)**
-   - Train and add your own custom ISL signs directly from the UI.
-   - **Capture Live 3D Hand Pose from Webcam** to record a normalized 21-point 3D landmark template, or configure the 5-finger extension states manually.
-   - Custom signs persist in `localStorage` and work immediately across Live Camera Detection, Instant Simulator, Speech-to-ISL Translator, and Tactile Dictionary.
+2. **Two-Way Deaf ⇄ Blind Communication System, On-Screen ISL Avatar & Braille Composer (Tab 2)**
+   - **Expressive On-Screen ISL Signing Avatar (`renderISLAvatarSVG`)**: Upper-body avatar with dynamic facial expressions (smile, questioning brows, urgent alert) and articulated hands positioned at exact anatomical landmarks (forehead, eyes, ear, chin, chest, wrist) alongside the 5-finger close-up diagram.
+   - **On-Screen Text & Avatar Audio Reader (`🔊 Read Text & Avatar` / `S` Key)**: Reads aloud the active text on screen, a step-by-step description of what the on-screen ISL Avatar is currently signing, and the 6-dot Braille dot breakdown.
+   - **Interactive 6-Dot Perkins-Style Braille Keyer**: Toggle Dots 1–6 to compose text directly in 6-dot Braille with live character preview and audio feedback.
+   - **Live Two-Way Conversation Hub**: Full dialogue log between **🤟 Deaf Signer** (via Camera signs, quick-reply chips, or typed replies) and **🦯 Blind Speaker** (via voice dictation, text, or 6-dot Braille), where every message includes an ISL Avatar, English text, 6-dot Braille, and one-tap audio narration.
 
-3. **Expanded 67+ Built-In ISL Vocabulary & Articulated 5-Finger SVG Diagrams**
-   - **32 Conversational, Daily Need, Family, Travel & Emergency Signs** (*Hello/Namaste, Thank You, Yes, No, Please, Sorry, Friend, Good, Bad, Care/Love, Name, Understand, Mother, Father, Help, Blind, Deaf, Water, Food, Where, Stop/Wait, Repeat, Slow Down, Restroom/Toilet, Home, Money/Pay, Time/When, Bus/Train, Emergency, Doctor, Pain/Hurt, Phone/Call*).
-   - **26 Two-Handed ISL Alphabet Letters (A–Z)** and **9 ISL Numbers (1–9)**.
-   - **Articulated 5-Finger SVG Hand Pose Renderer** displaying exact per-finger extension, thumb angle, and motion cues.
+3. **Tactile Audio ISL Dictionary, Quiz & Custom Sign Calibration Studio (Tab 3)**
+   - **67+ Built-In Signs** (32 Conversational/Daily/Emergency signs, 26 Two-Handed ISL Alphabet letters A–Z, and 9 ISL Numbers 1–9), each displaying its ISL Avatar, 6-dot Braille, and spoken tactile guide.
+   - **Custom ISL Sign Studio (`➕ Add / Train New Sign`)**: Capture a live 21-point 3D hand pose from your webcam or configure 5-finger extension states manually.
 
-4. **High-Precision Speech-to-ISL Translator (Blind Speaker → Deaf Viewer)**
-   - Multi-word ISL idiom recognizer (*"thank you"*, *"i am blind"*, *"how are you"*, *"slow down"*, *"excuse me"*, etc.) + morphological word stemmer and live interim speech transcription.
-
-5. **100% Eyes-Free Navigation, Musical Earcons & Ultra High-Contrast Mode**
-   - **Web Audio API Synthesized Earcons**, **Auto-Narrate on Focus**, **Ultra High-Contrast Yellow-on-Black Mode** (`C` key), and **Emergency SOS Beacon**.
+4. **100% Eyes-Free Navigation, Musical Earcons & Ultra High-Contrast Mode (Tab 4)**
+   - **Keyboard Shortcuts**: `1`–`4` (Switch Modes), `S` (Read Screen Text & Avatar Aloud), `B` (Play Sonic Braille Pulses & Read Dots), `Space` / `Alt+V` (Voice Command), `H` (Orientation Guide), `C` (Ultra Contrast Yellow-on-Black), `Q`–`P` (Quick-Board Phrases).
 
 ## How to Run Locally
 
-Open [`index.html`](./index.html) directly in any modern browser (Chrome, Edge, Safari), or serve the folder over `localhost` so webcam and microphone permissions persist cleanly:
+Open [`index.html`](./index.html) directly in any modern browser (Chrome, Edge, Safari), or serve the folder over `localhost`:
 
 ```bash
 python3 -m http.server 8080
