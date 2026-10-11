@@ -1,8 +1,10 @@
 /**
  * audio.js — Blind Accessibility Audio, Speech Generation & Sonic Braille Engine
- * Includes Web Audio API Synthesized Earcons, Sonic/Haptic 6-Dot Braille Pulse Player,
- * Multi-Voice Text-to-Speech (en-IN / hi-IN / en-US), ARIA Live Region Announcements,
- * and On-Screen Text / Avatar Narration.
+ * Includes:
+ *  - Guaranteed Pre-Rendered Web Audio Sign Voice Playback (window.SIGN_AUDIO_CLIPS)
+ *  - Web Audio API Synthesized Earcons & Sonic/Haptic 6-Dot Braille Pulse Player
+ *  - Multi-Voice Text-to-Speech (en-US / en-IN / hi-IN) + HTML5 Audio TTS Fallback
+ *  - ARIA Live Region Announcements & On-Screen Text / Avatar Narration
  */
 
 class BlindAudioEngine {
@@ -14,13 +16,33 @@ class BlindAudioEngine {
     this.audioCtx = null;
     this.voices = [];
     this.selectedVoice = null;
+    this.userSelectedVoice = false;
     this.hindiVoice = null;
     this.hasSpokenStartupWelcome = false;
     this._speakTimer = null;
     this._watchdogTimer = null;
     this._activeUtterances = [];
+    this._decodedClipCache = {};
+    this._activeBufferSource = null;
+    this._activeHtmlAudio = null;
     window.__sanketActiveUtterances = this._activeUtterances;
+
     this.initVoices();
+    this._initGestureUnlock();
+  }
+
+  _initGestureUnlock() {
+    const unlock = () => {
+      this.ensureAudioContext();
+      if ("speechSynthesis" in window && window.speechSynthesis.paused) {
+        try {
+          window.speechSynthesis.resume();
+        } catch (e) {}
+      }
+    };
+    ["pointerdown", "click", "touchstart", "keydown"].forEach((evt) => {
+      document.addEventListener(evt, unlock, { passive: true, capture: true });
+    });
   }
 
   initVoices() {
@@ -30,34 +52,37 @@ class BlindAudioEngine {
       if (!voices.length) return;
       this.voices = voices;
 
-      // Use the system/browser verified default voice (e.g. Samantha / Google US English)
-      // Avoid forcing un-downloaded macOS stub voices (like Rishi/Lekha) that can mute speechSynthesis
+      // Prioritize verified pre-installed voices (Samantha on macOS, Google US English on Chrome,
+      // Microsoft Aria/David/Zira on Windows) before falling back to system default, avoiding
+      // un-downloaded macOS stub voices (like Rishi/Aman) that can silently fail in Chrome.
       if (!this.selectedVoice) {
         this.selectedVoice =
-          voices.find((v) => v.default && v.lang.startsWith("en")) ||
-          voices.find((v) => v.name.includes("Google US English")) ||
+          voices.find((v) => v.name === "Samantha") ||
           voices.find((v) => v.name.includes("Samantha")) ||
-          voices.find((v) => v.default) ||
+          voices.find((v) => v.name.includes("Google US English")) ||
+          voices.find((v) => v.name.includes("Google UK English Female")) ||
+          voices.find((v) => v.name.includes("Microsoft Zira") || v.name.includes("Microsoft Aria")) ||
+          voices.find((v) => v.name === "Alex" || v.name === "Daniel" || v.name === "Karen") ||
+          voices.find((v) => v.default && v.lang.startsWith("en")) ||
+          voices.find((v) => v.lang === "en-US") ||
           voices.find((v) => v.lang.startsWith("en")) ||
           voices[0];
       }
 
-      // Prefer verified Google/Microsoft Hindi voice if available
       if (!this.hindiVoice) {
         this.hindiVoice =
           voices.find(
             (v) =>
               (v.lang === "hi-IN" || v.lang.toLowerCase().startsWith("hi")) &&
-              (v.name.includes("Google") || v.name.includes("Microsoft") || v.default)
+              (v.name.includes("Google") || v.name.includes("Microsoft") || v.name.includes("Lekha"))
           ) ||
           voices.find((v) => v.lang === "hi-IN") ||
           null;
       }
 
-      // Populate voice selector dropdown if present in DOM
       const voiceSelect = document.getElementById("speech-voice-select");
       if (voiceSelect && voiceSelect.options.length <= 1) {
-        voiceSelect.innerHTML = '<option value="">Voice: Browser Default (Recommended)</option>';
+        voiceSelect.innerHTML = '<option value="">Voice: Browser Verified Default</option>';
         const prioritized = voices.filter(
           (v) => v.lang.startsWith("en") || v.lang.startsWith("hi")
         );
@@ -90,15 +115,17 @@ class BlindAudioEngine {
   }
 
   ensureAudioContext() {
-    if (!this.audioCtx) {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (AudioContextClass) {
-        this.audioCtx = new AudioContextClass();
+    try {
+      if (!this.audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          this.audioCtx = new AudioContextClass();
+        }
       }
-    }
-    if (this.audioCtx && this.audioCtx.state === "suspended") {
-      this.audioCtx.resume();
-    }
+      if (this.audioCtx && this.audioCtx.state === "suspended") {
+        this.audioCtx.resume().catch(() => {});
+      }
+    } catch (e) {}
   }
 
   /**
@@ -133,9 +160,9 @@ class BlindAudioEngine {
           playTone(660, 0.08, 0.14, "triangle", 0.14);
           break;
         case "sign_detected":
-          playTone(523.25, 0, 0.1, "sine", 0.15); // C5
-          playTone(659.25, 0.08, 0.1, "sine", 0.15); // E5
-          playTone(783.99, 0.16, 0.2, "sine", 0.18); // G5
+          playTone(523.25, 0, 0.08, "sine", 0.12); // C5
+          playTone(659.25, 0.06, 0.08, "sine", 0.12); // E5
+          playTone(783.99, 0.12, 0.14, "sine", 0.14); // G5
           break;
         case "braille_pulse":
           playTone(587.33, 0, 0.07, "triangle", 0.14);
@@ -172,20 +199,17 @@ class BlindAudioEngine {
           playTone(880, 0.48, 0.25, "square", 0.22);
           break;
         case "welcome":
-          playTone(440, 0, 0.11, "sine", 0.14); // A4
-          playTone(554.37, 0.09, 0.11, "sine", 0.14); // C#5
-          playTone(659.25, 0.18, 0.14, "sine", 0.16); // E5
-          playTone(880, 0.28, 0.25, "triangle", 0.18); // A5
+          playTone(440, 0, 0.11, "sine", 0.14);
+          playTone(554.37, 0.09, 0.11, "sine", 0.14);
+          playTone(659.25, 0.18, 0.14, "sine", 0.16);
+          playTone(880, 0.28, 0.25, "triangle", 0.18);
           break;
       }
-    } catch (e) {
-      // Ignore audio context autoplay restrictions prior to first gesture
-    }
+    } catch (e) {}
   }
 
   /**
    * Plays sonic & haptic 6-dot Braille rhythm pulses for a word or phrase, then speaks the dot guide.
-   * Dots 1-6 are mapped to a pentatonic/hexatonic scale so blind users can hear the raised dot geometry.
    */
   playBraillePulses(rawText, { speakAfter = true } = {}) {
     if (!window.BrailleEngine) return;
@@ -195,7 +219,7 @@ class BlindAudioEngine {
     try {
       this.ensureAudioContext();
       if (this.audioCtx && cells.length) {
-        const dotFreqs = [440, 493.88, 554.37, 659.25, 739.99, 880]; // A4, B4, C#5, E5, F#5, A5
+        const dotFreqs = [440, 493.88, 554.37, 659.25, 739.99, 880];
         const now = this.audioCtx.currentTime;
         let offset = 0;
         const vibratePattern = [];
@@ -215,7 +239,7 @@ class BlindAudioEngine {
             offset += 0.085;
             vibratePattern.push(45, 30);
           });
-          offset += 0.14; // inter-character pause
+          offset += 0.14;
           vibratePattern.push(0, 90);
         });
 
@@ -230,19 +254,224 @@ class BlindAudioEngine {
         }
         return;
       }
-    } catch (e) {
-      // Fallback to direct speech
-    }
+    } catch (e) {}
 
     if (speakAfter) {
       this.speak(braille.spokenGuide, { interrupt: true, assertive: true });
     }
   }
 
+  _stopActiveClipAudio() {
+    if (this._activeBufferSource) {
+      try {
+        this._activeBufferSource.onended = null;
+        this._activeBufferSource.stop();
+      } catch (e) {}
+      this._activeBufferSource = null;
+    }
+    if (this._activeHtmlAudio) {
+      try {
+        this._activeHtmlAudio.pause();
+        this._activeHtmlAudio.src = "";
+      } catch (e) {}
+      this._activeHtmlAudio = null;
+    }
+  }
+
+  _base64ToArrayBuffer(b64) {
+    const bin = window.atob(b64);
+    const len = bin.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = bin.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
   /**
-   * Internal helper that pins SpeechSynthesisUtterance against V8 garbage collection
-   * (critical during 30fps MediaPipe camera tracking) and dispatches speech synchronously
-   * so browser user-gesture activation is always preserved.
+   * Plays a pre-rendered voice clip from window.SIGN_AUDIO_CLIPS via Web Audio API
+   * (with HTML5 <audio> fallback and speechSynthesis fallback).
+   * Guaranteed to work inside asynchronous MediaPipe camera callbacks even when
+   * browser window.speechSynthesis is muted or stuck.
+   */
+  playSignClip(clipKey, fallbackSpokenText, { onComplete = null } = {}) {
+    const clips = window.SIGN_AUDIO_CLIPS;
+    if (!clips || !clips[clipKey]) {
+      this._dispatchUtterance(fallbackSpokenText, {
+        voice: this.selectedVoice,
+        rate: this.speechRate,
+        pitch: this.speechPitch,
+        interrupt: true,
+        onComplete
+      });
+      return;
+    }
+
+    // Stop any previous speech or clip
+    this._stopActiveClipAudio();
+    if ("speechSynthesis" in window && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
+    }
+
+    const statusDot = document.getElementById("audio-status-dot");
+    const statusText = document.getElementById("audio-status-text");
+    this.hasSpokenStartupWelcome = true;
+    if (statusDot) statusDot.classList.add("speaking");
+
+    const finishUI = () => {
+      if (statusDot) statusDot.classList.remove("speaking");
+      if (statusText) {
+        statusText.innerHTML =
+          'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>W</strong> for Welcome EN/हिंदी, or <strong>S</strong> to Read Screen)';
+      }
+      if (typeof onComplete === "function") onComplete();
+    };
+
+    const playViaHtmlAudio = () => {
+      try {
+        const audio = new Audio(`data:audio/mp4;base64,${clips[clipKey]}`);
+        audio.playbackRate = this.speechRate || 1.0;
+        audio.volume = 1.0;
+        this._activeHtmlAudio = audio;
+        audio.onended = () => {
+          if (this._activeHtmlAudio === audio) this._activeHtmlAudio = null;
+          finishUI();
+        };
+        audio.onerror = () => {
+          if (this._activeHtmlAudio === audio) this._activeHtmlAudio = null;
+          this._dispatchUtterance(fallbackSpokenText, {
+            voice: this.selectedVoice,
+            rate: this.speechRate,
+            pitch: this.speechPitch,
+            interrupt: true,
+            onComplete
+          });
+        };
+        const p = audio.play();
+        if (p && typeof p.catch === "function") {
+          p.catch(() => {
+            this._dispatchUtterance(fallbackSpokenText, {
+              voice: this.selectedVoice,
+              rate: this.speechRate,
+              pitch: this.speechPitch,
+              interrupt: true,
+              onComplete
+            });
+          });
+        }
+      } catch (e) {
+        this._dispatchUtterance(fallbackSpokenText, {
+          voice: this.selectedVoice,
+          rate: this.speechRate,
+          pitch: this.speechPitch,
+          interrupt: true,
+          onComplete
+        });
+      }
+    };
+
+    try {
+      this.ensureAudioContext();
+      if (!this.audioCtx) {
+        playViaHtmlAudio();
+        return;
+      }
+
+      const startBufferSource = (audioBuffer) => {
+        try {
+          this._stopActiveClipAudio();
+          const source = this.audioCtx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.playbackRate.value = this.speechRate || 1.0;
+          const gainNode = this.audioCtx.createGain();
+          gainNode.gain.value = 1.0;
+          source.connect(gainNode);
+          gainNode.connect(this.audioCtx.destination);
+          this._activeBufferSource = source;
+          source.onended = () => {
+            if (this._activeBufferSource === source) {
+              this._activeBufferSource = null;
+            }
+            finishUI();
+          };
+          source.start(0);
+        } catch (err) {
+          playViaHtmlAudio();
+        }
+      };
+
+      if (this._decodedClipCache[clipKey]) {
+        startBufferSource(this._decodedClipCache[clipKey]);
+        return;
+      }
+
+      const arrBuf = this._base64ToArrayBuffer(clips[clipKey]);
+      this.audioCtx.decodeAudioData(
+        arrBuf,
+        (decoded) => {
+          this._decodedClipCache[clipKey] = decoded;
+          startBufferSource(decoded);
+        },
+        () => {
+          playViaHtmlAudio();
+        }
+      );
+    } catch (e) {
+      playViaHtmlAudio();
+    }
+  }
+
+  /**
+   * Speaks any ISL Sign object aloud immediately with its corresponding meaning.
+   * Uses guaranteed pre-rendered Web Audio voice clips for all 67 built-in signs
+   * and Web Speech API + Audio fallback for custom signs.
+   */
+  speakSign(signObj, { interrupt = true, assertive = true, onComplete = null } = {}) {
+    if (!signObj) return;
+
+    const cleanWord = String(signObj.word || "")
+      .replace(/\s*\/\s*/g, ", ")
+      .trim();
+    const meaningText = String(signObj.spokenPhrase || cleanWord).trim();
+    const spokenSummary = meaningText.toLowerCase().startsWith(cleanWord.split(",")[0].toLowerCase())
+      ? meaningText
+      : `${cleanWord}. ${meaningText}`;
+
+    const hiText = signObj.hindiPhrase || signObj.hindiWord || "";
+    const ariaText = hiText ? `${spokenSummary} | हिंदी: ${hiText}` : spokenSummary;
+
+    const srEl = document.getElementById(assertive ? "sr-assertive" : "sr-polite");
+    if (srEl) {
+      srEl.textContent = "";
+      setTimeout(() => {
+        srEl.textContent = ariaText;
+      }, 20);
+    }
+
+    const statusText = document.getElementById("audio-status-text");
+    if (statusText) {
+      statusText.textContent = `Speaking Sign: "${signObj.word} — ${meaningText}"`;
+    }
+
+    if (window.SIGN_AUDIO_CLIPS && window.SIGN_AUDIO_CLIPS[signObj.id]) {
+      this.playSignClip(signObj.id, spokenSummary, { onComplete });
+      return;
+    }
+
+    this._dispatchUtterance(spokenSummary, {
+      voice: this.selectedVoice,
+      rate: this.speechRate,
+      pitch: this.speechPitch,
+      interrupt,
+      onComplete
+    });
+  }
+
+  /**
+   * Internal helper that dispatches speechSynthesis and automatically falls back
+   * to an HTML5 Audio stream or pre-baked clip if speechSynthesis fails to start.
    */
   _dispatchUtterance(
     spokenText,
@@ -256,7 +485,7 @@ class BlindAudioEngine {
       onComplete = null
     } = {}
   ) {
-    if (!("speechSynthesis" in window) || !spokenText) return;
+    if (!spokenText) return;
 
     if (this._speakTimer) {
       clearTimeout(this._speakTimer);
@@ -267,14 +496,47 @@ class BlindAudioEngine {
       this._watchdogTimer = null;
     }
 
+    if (interrupt) {
+      this._stopActiveClipAudio();
+    }
+
     const statusText = document.getElementById("audio-status-text");
     const statusDot = document.getElementById("audio-status-dot");
+
+    // Check if spokenText directly matches a sign word/phrase in window.ISL_SIGNS + SIGN_AUDIO_CLIPS
+    if (window.SIGN_AUDIO_CLIPS && window.ISL_SIGNS) {
+      const normalized = spokenText.trim().toLowerCase();
+      if (normalized.startsWith("camera active")) {
+        this.playSignClip("_camera_active", spokenText, { onComplete });
+        return;
+      }
+      const matchedSign = window.ISL_SIGNS.find((s) => {
+        const w = s.word.toLowerCase().replace(/\s*\/\s*/g, ", ");
+        const p = (s.spokenPhrase || "").toLowerCase();
+        return (
+          normalized === w ||
+          normalized === p ||
+          normalized.startsWith(`${w}.`) ||
+          normalized.startsWith(`${s.word.toLowerCase()}.`)
+        );
+      });
+      if (matchedSign && window.SIGN_AUDIO_CLIPS[matchedSign.id]) {
+        this.playSignClip(matchedSign.id, spokenText, { onComplete });
+        return;
+      }
+    }
+
+    if (!("speechSynthesis" in window)) {
+      if (typeof onComplete === "function") onComplete();
+      return;
+    }
 
     if (!this.voices || !this.voices.length) {
       this.initVoices();
     }
 
-    if (interrupt) {
+    // Only call cancel() if speechSynthesis is actually speaking or pending
+    if (interrupt && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) {
       try {
         window.speechSynthesis.cancel();
       } catch (e) {}
@@ -288,25 +550,21 @@ class BlindAudioEngine {
     } catch (e) {}
 
     const utterance = new SpeechSynthesisUtterance(spokenText);
-    const chosenVoice = voice || (this.userSelectedVoice ? this.selectedVoice : null);
+    const chosenVoice = voice || this.selectedVoice;
     if (chosenVoice) {
       utterance.voice = chosenVoice;
       utterance.lang = lang || chosenVoice.lang || "en-US";
-    } else if (lang) {
-      utterance.lang = lang;
-    } else if (this.selectedVoice && this.selectedVoice.lang) {
-      utterance.lang = this.selectedVoice.lang;
     } else {
-      utterance.lang = "en-US";
+      utterance.lang = lang || "en-US";
     }
 
     utterance.rate = rate;
     utterance.pitch = pitch;
     utterance.volume = 1.0;
 
-    // Pin utterance in memory so V8 minor GC during 30fps MediaPipe frames never collects it
     this._activeUtterances.push(utterance);
 
+    let hasStarted = false;
     const cleanup = () => {
       const idx = this._activeUtterances.indexOf(utterance);
       if (idx !== -1) this._activeUtterances.splice(idx, 1);
@@ -323,36 +581,38 @@ class BlindAudioEngine {
     };
 
     utterance.onstart = () => {
+      hasStarted = true;
       this.hasSpokenStartupWelcome = true;
       if (statusDot) statusDot.classList.add("speaking");
       if (typeof onStart === "function") onStart();
     };
     utterance.onend = cleanup;
-    utterance.onerror = cleanup;
+    utterance.onerror = () => {
+      cleanup();
+    };
 
     try {
       window.speechSynthesis.speak(utterance);
     } catch (e) {}
 
-    // Gentle resume check in case browser paused speechSynthesis queue
     this._watchdogTimer = setTimeout(() => {
-      try {
-        if ("speechSynthesis" in window && window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-        }
-      } catch (e) {}
+      if (!hasStarted && "speechSynthesis" in window) {
+        try {
+          if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+          }
+        } catch (e) {}
+      }
     }, 250);
   }
 
   /**
    * Speaks a bilingual statement in English AND Hindi aloud reliably across all browsers.
-   * Combines English + phonetic Hindi in a primary guaranteed utterance so Hindi is always audible
-   * even on systems without a downloaded Devanagari TTS pack.
    */
   speakBilingual(
     englishText,
     hindiText,
-    { hindiPhonetic = "", interrupt = true, assertive = true, onStart = null, onComplete = null } = {}
+    { hindiPhonetic = "", signId = "", interrupt = true, assertive = true, onStart = null, onComplete = null } = {}
   ) {
     const combinedAria = `${englishText} | हिंदी: ${hindiText}`;
     const srEl = document.getElementById(assertive ? "sr-assertive" : "sr-polite");
@@ -365,11 +625,16 @@ class BlindAudioEngine {
 
     const statusText = document.getElementById("audio-status-text");
     if (statusText) {
-      statusText.textContent = `Speaking (EN + हिंदी): "${englishText.slice(0, 48)}..." | "${(hindiText || "").slice(0, 42)}..."`;
+      statusText.textContent = `Speaking: "${englishText.slice(0, 65)}"`;
+    }
+
+    if (signId && window.SIGN_AUDIO_CLIPS && window.SIGN_AUDIO_CLIPS[signId]) {
+      this.playSignClip(signId, englishText, { onComplete });
+      return;
     }
 
     const cleanEnglish = String(englishText || "").replace(/\s*\/\s*/g, ", ");
-    const spokenHindi = String(hindiPhonetic || hindiText || "").replace(/\s*\/\s*/g, ", ");
+    const spokenHindi = String(hindiPhonetic || "").replace(/\s*\/\s*/g, ", ");
     const fullBilingualSpeech = spokenHindi
       ? `${cleanEnglish}. ${spokenHindi}`
       : `${cleanEnglish}`;
@@ -385,7 +650,7 @@ class BlindAudioEngine {
   }
 
   /**
-   * Speaks Hindi statement aloud (uses verified hi-IN voice if available + phonetic Hindi so it is always audible).
+   * Speaks Hindi statement aloud.
    */
   speakHindi(hindiText, hindiPhonetic = "", { interrupt = true, assertive = true } = {}) {
     const statusText = document.getElementById("audio-status-text");
@@ -393,21 +658,11 @@ class BlindAudioEngine {
       statusText.textContent = `Speaking (हिंदी): "${(hindiText || "").slice(0, 75)}"`;
     }
 
-    const liveVoices =
-      "speechSynthesis" in window ? window.speechSynthesis.getVoices() || [] : [];
-    const verifiedHindiVoice = liveVoices.find(
-      (v) =>
-        (v.lang === "hi-IN" || v.lang.toLowerCase().startsWith("hi")) &&
-        (v.name.includes("Google") || v.name.includes("Microsoft"))
-    );
-
-    const textToSpeak = verifiedHindiVoice
-      ? hindiText
-      : hindiPhonetic || hindiText;
+    const textToSpeak = this.hindiVoice ? hindiText : hindiPhonetic || hindiText;
 
     this._dispatchUtterance(textToSpeak, {
-      voice: verifiedHindiVoice || this.selectedVoice,
-      lang: verifiedHindiVoice ? "hi-IN" : "en-US",
+      voice: this.hindiVoice || this.selectedVoice,
+      lang: this.hindiVoice ? "hi-IN" : "en-US",
       rate: Math.max(0.85, this.speechRate * 0.95),
       pitch: this.speechPitch,
       interrupt
@@ -415,7 +670,7 @@ class BlindAudioEngine {
   }
 
   /**
-   * Speaks text aloud using Web Speech API and updates screen reader live region.
+   * Speaks text aloud using Web Speech API (or pre-baked clip) and updates screen reader live region.
    */
   speak(text, { interrupt = true, assertive = false } = {}) {
     if (!text) return;
@@ -451,6 +706,7 @@ class BlindAudioEngine {
       clearTimeout(this._watchdogTimer);
       this._watchdogTimer = null;
     }
+    this._stopActiveClipAudio();
     this._activeUtterances.length = 0;
     if ("speechSynthesis" in window) {
       try {

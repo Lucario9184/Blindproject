@@ -156,7 +156,7 @@ window.ISL_SIGNS = [
     category: "greetings",
     emoji: "👩",
     hands: "1-Handed ISL Sign",
-    spokenPhrase: "Mother.",
+    spokenPhrase: "Mother. Meaning: Mother, Mom.",
     tactileGuide: "Spread all five fingers of your dominant hand open and tap the tip of your thumb gently against the side of your chin.",
     poseType: "chin_thumb",
     simLabel: "👩 Mother"
@@ -168,7 +168,7 @@ window.ISL_SIGNS = [
     category: "greetings",
     emoji: "👨",
     hands: "1-Handed ISL Sign",
-    spokenPhrase: "Father.",
+    spokenPhrase: "Father. Meaning: Father, Dad.",
     tactileGuide: "Spread all five fingers of your dominant hand open and tap the tip of your thumb gently against the center or side of your forehead.",
     poseType: "forehead_thumb",
     simLabel: "👨 Father"
