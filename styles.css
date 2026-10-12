@@ -183,63 +183,62 @@ nav.top {
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
 }
 nav.top .bar {
-  max-width: 1380px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 12px 24px;
+  padding: 8px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow: visible;
 }
 .brand {
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-weight: 700;
   display: flex;
   flex-shrink: 0;
   cursor: pointer;
 }
 .brand-logo-svg {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
   background: var(--orange-deep);
   color: #fff;
   display: grid;
   place-items: center;
-  font-size: 18px;
+  font-size: 16px;
 }
 .brand-name {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--ink);
+  white-space: nowrap;
 }
 .brand-name span {
   color: var(--ink-3);
   font-weight: 500;
-  font-size: 13px;
-  margin-left: 4px;
+  font-size: 12px;
+  margin-left: 3px;
 }
 .nav-links {
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   display: flex;
   flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  max-width: 100%;
-  padding: 2px 0;
-}
-.nav-links::-webkit-scrollbar {
-  display: none;
+  overflow: visible;
+  padding: 0;
+  flex-shrink: 1;
+  min-width: 0;
 }
 .nav-links a {
   color: var(--ink-2);
   white-space: nowrap;
-  border-radius: 8px;
-  padding: 7px 12px;
-  font-size: 13.5px;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
   font-weight: 600;
   transition: all 0.15s;
   cursor: pointer;
@@ -253,23 +252,9 @@ nav.top .bar {
   background: var(--orange-deep);
   color: #fff;
 }
-@media (max-width: 1180px) {
-  nav.top .bar {
-    flex-wrap: wrap;
-    padding: 10px 16px;
-    gap: 8px;
-  }
-  .nav-links {
-    order: 3;
-    width: 100%;
-    padding-top: 8px;
-    border-top: 1px solid var(--line);
-    justify-content: flex-start;
-  }
-}
 .nav-cta {
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   display: flex;
   flex-shrink: 0;
 }
@@ -277,13 +262,92 @@ nav.top .bar {
   border: 1px solid var(--line-2);
   background: var(--bg-elevated);
   color: var(--ink);
-  border-radius: 8px;
-  padding: 7px 12px;
-  font-size: 13px;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
-  max-width: 195px;
+  max-width: 145px;
   outline: none;
+}
+.theme-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  padding: 6px;
+  color: var(--ink-2);
+}
+.nav-btn-cta {
+  padding: 6px 11px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* STRICT SINGLE-LINE RESPONSIVENESS (Never wrap, Never slide or hide Bhashini Impact!) */
+@media (max-width: 1200px) {
+  nav.top .bar {
+    padding: 7px 12px;
+    gap: 6px;
+  }
+  .brand-name span {
+    display: none;
+  }
+  .nav-links {
+    gap: 2px;
+  }
+  .nav-links a {
+    padding: 4px 6px;
+    font-size: 11.5px;
+  }
+  .nav-lang-select {
+    max-width: 125px;
+    font-size: 11px;
+    padding: 4px 6px;
+  }
+}
+@media (max-width: 980px) {
+  nav.top .bar {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+  .brand-logo-svg {
+    width: 26px;
+    height: 26px;
+    font-size: 14px;
+  }
+  .brand-name {
+    font-size: 14px;
+  }
+  .nav-links a {
+    padding: 4px 5px;
+    font-size: 10.5px;
+  }
+  .nav-lang-select {
+    max-width: 110px;
+    font-size: 10.5px;
+  }
+  .nav-btn-cta {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+}
+@media (max-width: 760px) {
+  nav.top {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  nav.top::-webkit-scrollbar {
+    display: none;
+  }
+  nav.top .bar {
+    min-width: 680px;
+  }
 }
 
 .btn, .btn-primary, .btn-secondary, .btn-outline, .btn-ghost {
@@ -1107,12 +1171,15 @@ section.block {
 
 /* Interactive Pipeline Live Runner Bar */
 .pipeline-runner {
-  margin-top: 20px;
+  margin-top: 24px;
   border-radius: 22px;
-  padding: 22px 26px;
+  padding: 24px 28px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
+  border: 1px solid var(--line);
+  background: var(--bg-surface);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 .pipeline-runner-head {
   display: flex;
@@ -1121,12 +1188,145 @@ section.block {
   flex-wrap: wrap;
   gap: 12px;
 }
-.pipeline-runner-controls {
+
+/* Built-in Page Alternatives Grid */
+.pipeline-alternatives-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 4px;
+}
+@media (max-width: 900px) {
+  .pipeline-alternatives-grid { grid-template-columns: 1fr; }
+}
+.pipe-alt-card {
+  border: 1px solid var(--line-2);
+  background: var(--bg-elevated);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+.pipe-alt-card:hover {
+  border-color: var(--orange-deep);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 0, 0.08);
+}
+.pipe-alt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pipe-alt-header h4 {
+  font-size: 13.5px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+}
+.pipe-alt-header .badge-tag {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--bg-interactive);
+  color: var(--orange-deep);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.pipe-alt-desc {
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.45;
+  margin: 0;
+}
+.pipe-alt-card .btn {
+  align-self: flex-start;
+  font-size: 12px;
+  padding: 5px 12px;
+}
+
+/* Expanded Quick-Test Preset Pills */
+.pipeline-presets-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pipeline-presets-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.pipeline-presets-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
+.pipeline-presets-grid .test-pill {
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.pipeline-presets-grid .test-pill:hover {
+  border-color: var(--orange-deep);
+  background: var(--bg-interactive);
+  color: var(--orange-deep);
+}
+.pipeline-presets-grid .test-pill.active {
+  background: var(--orange-deep);
+  color: #fff;
+  border-color: var(--orange-deep);
+  box-shadow: 0 2px 8px rgba(255, 107, 0, 0.25);
+}
+
+/* Freeform 5,000+ Sign Search & Dropdown Bar */
+.pipeline-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--bg-interactive);
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+.pipeline-search-bar input[type="search"] {
+  flex: 1 1 200px;
+  min-width: 180px;
+  padding: 7px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  font-size: 12.5px;
+  background: var(--bg-surface);
+  color: var(--ink);
+  outline: none;
+}
+.pipeline-search-bar select {
+  flex: 1 1 260px;
+  min-width: 220px;
+  padding: 7px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  font-size: 12.5px;
+  background: var(--bg-surface);
+  color: var(--ink);
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
 .pipeline-live-output {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -1142,26 +1342,33 @@ section.block {
   border: 1px solid var(--line);
   background: #ffffff99;
   border-radius: 14px;
-  padding: 12px 14px;
+  padding: 14px 14px;
   font-size: 12.5px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  transition: all 0.25s ease;
 }
 [data-bs-theme="dark"] .pipe-out-box {
   background: #ffffff0a;
 }
+.pipe-out-box.highlight {
+  border-color: var(--orange-deep);
+  box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.2);
+}
 .pipe-out-box .po-lbl {
   font-family: var(--font-jetbrains-mono), monospace;
-  font-size: 10px;
+  font-size: 10.5px;
   text-transform: uppercase;
   color: var(--ink-3);
   letter-spacing: 0.08em;
+  font-weight: 700;
 }
 .pipe-out-box .po-val {
   font-weight: 600;
   color: var(--ink);
-  font-size: 13.5px;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 /* Mission Context & Facts (.ctx, .fact-list, .impact-grid, .ling-panel, .os-callout) */

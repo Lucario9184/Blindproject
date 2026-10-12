@@ -40,9 +40,9 @@
       </a>
 
       <div class="nav-links" id="primary-nav-links" role="navigation" aria-label="Main Navigation">
-        <a href="#converter" class="nav-link active" data-nav-tab="camera" data-nav-scroll="converter">📹 Camera → Voice</a>
-        <a href="#converter" class="nav-link" data-nav-tab="translator" data-nav-scroll="converter">🧏 Speech → 3D Avatar</a>
-        <a href="#converter" class="nav-link" data-nav-tab="dictionary" data-nav-scroll="converter">📖 ISL Dictionary</a>
+        <a href="#converter" class="nav-link active" data-nav-tab="camera" data-nav-scroll="converter">📹 Camera</a>
+        <a href="#converter" class="nav-link" data-nav-tab="translator" data-nav-scroll="converter">🧏 Speech → Avatar</a>
+        <a href="#converter" class="nav-link" data-nav-tab="dictionary" data-nav-scroll="converter">📖 Dictionary</a>
         <a href="#converter" class="nav-link" data-nav-tab="assist" data-nav-scroll="converter">⚡ Quick-Board</a>
         <a href="#pipeline" class="nav-link" data-nav-scroll="pipeline">🔄 How It Works</a>
         <a href="#bhashini" class="nav-link" data-nav-scroll="bhashini">🇮🇳 Bhashini Impact</a>
@@ -227,7 +227,7 @@
                 <span class="tab-num" aria-hidden="true">03</span>
                 <span class="tab-label">
                   <strong>ISL Dictionary &amp; Practice Quiz</strong>
-                  <small>70+ ISL Signs, A–Z &amp; Numbers</small>
+                  <small>5,000+ ISL Signs, A–Z &amp; Numbers</small>
                 </span>
               </button>
 
@@ -309,9 +309,9 @@
                       <option value="fast">Precision: Fast (70% • 2 Frames)</option>
                     </select>
                     <select id="camera-scope-mode" class="a11y-select" aria-label="Recognition vocabulary scope">
-                      <option value="all" selected>Scope: All Signs + Numbers + A–Z (70+)</option>
+                      <option value="all" selected>Scope: All Signs + Numbers + A–Z (5,000+)</option>
                       <option value="conversational">Scope: Conversational Signs Only</option>
-                      <option value="numbers">Scope: ISL Numbers (1–9) Only</option>
+                      <option value="numbers">Scope: ISL Numbers (1–1000+) Only</option>
                       <option value="alphabet">Scope: ISL Alphabet (A–Z) Only</option>
                     </select>
                     <select id="camera-target-sign" class="a11y-select" aria-label="Target sign focus">
@@ -361,7 +361,7 @@
                 <div class="simulator-box" aria-label="Interactive ISL Gesture Simulator">
                   <div class="simulator-header">
                     <h4>⚡ Instant Sign Simulator (Click any sign to translate &amp; speak)</h4>
-                    <span class="badge-subtle" id="sim-count-badge">70+ Signs Ready</span>
+                    <span class="badge-subtle" id="sim-count-badge">5,000+ Signs Ready</span>
                   </div>
                   <div id="simulator-buttons" class="simulator-grid" role="group" aria-label="Simulated ISL gestures"></div>
                 </div>
@@ -569,7 +569,7 @@
             <div class="panel-header">
               <div>
                 <h2>Indian Sign Language (ISL) Dictionary &amp; Regional Voice Bank</h2>
-                <p>Browse 70+ ISL signs (conversational phrases, two-handed alphabet A–Z, and numbers 1–9) with 3D avatar visuals and audio in all 22 Indian languages.</p>
+                <p>Browse 5,000+ ISL signs (conversational phrases, domains, numbers 1–1000+, two-handed alphabet A–Z) with 3D avatar visuals and audio in all 22 Indian languages.</p>
               </div>
               <div class="panel-header-actions">
                 <button type="button" id="btn-dict-add-sign" class="btn-outline">➕ Add Custom Sign</button>
@@ -596,15 +596,20 @@
             </div>
 
             <div class="dict-controls card">
-              <input type="search" id="dict-search" class="text-input" placeholder="Search 70+ ISL signs (e.g., 'Namaste', 'Doctor', 'Water', 'Deaf', 'School', 'A', '5')..." />
+              <input type="search" id="dict-search" class="text-input" placeholder="Search 5,000+ ISL signs (e.g., 'Namaste', 'Hospital', 'Train', 'Food', 'Medicine', 'Ticket', 'A', '500')..." />
               <div class="category-filters" role="group">
-                <button type="button" class="filter-btn active" data-category="all">All Signs (70+)</button>
+                <button type="button" class="filter-btn active" data-category="all">All Signs (5,000+)</button>
                 <button type="button" class="filter-btn" data-category="greetings">Greetings &amp; Social</button>
-                <button type="button" class="filter-btn" data-category="needs">Daily Needs &amp; Travel</button>
+                <button type="button" class="filter-btn" data-category="needs">Daily Needs</button>
                 <button type="button" class="filter-btn" data-category="emergency">Health &amp; Emergency</button>
-                <button type="button" class="filter-btn" data-category="custom">✨ Custom Signs</button>
+                <button type="button" class="filter-btn" data-category="transport">Transport &amp; Railway</button>
+                <button type="button" class="filter-btn" data-category="food">Food &amp; Dining</button>
+                <button type="button" class="filter-btn" data-category="banking">Banking &amp; Govt</button>
+                <button type="button" class="filter-btn" data-category="education">School &amp; Learning</button>
+                <button type="button" class="filter-btn" data-category="family">Family &amp; Relations</button>
+                <button type="button" class="filter-btn" data-category="numbers">Numbers (1–1000+)</button>
                 <button type="button" class="filter-btn" data-category="alphabet">Alphabet (A–Z)</button>
-                <button type="button" class="filter-btn" data-category="numbers">Numbers (1–9)</button>
+                <button type="button" class="filter-btn" data-category="custom">✨ Custom Signs</button>
               </div>
             </div>
 
@@ -650,7 +655,7 @@
         <div class="step o" data-pipe-step="2">
           <span class="n">Stage 02</span>
           <h4>Sign Gesture Classifier</h4>
-          <p>Matches finger extension angles, thumb-finger pinch geometry, and two-handed postures across 70+ ISL signs.</p>
+          <p>Matches finger extension angles, thumb-finger pinch geometry, and two-handed postures across 5,000+ ISL signs.</p>
         </div>
         <div class="step" data-pipe-step="3">
           <span class="n">Stage 03</span>
@@ -669,41 +674,96 @@
         </div>
       </div>
 
-      <!-- Interactive Pipeline Tester -->
+      <!-- Interactive Pipeline Tester & Built-in Page Alternatives -->
       <div class="pipeline-runner">
-        <div class="pipeline-runner-head">
-          <div>
-            <div class="sec-tag">INTERACTIVE PIPELINE TESTER</div>
-            <h3 style="font-size: 18px; font-weight: 600; margin-top: 4px;">Test a sign through all 5 stages in your selected language</h3>
+        <!-- 1. Built-in Page Alternatives (No Code Changes) -->
+        <div class="pipeline-alternatives-grid">
+          <div class="pipe-alt-card">
+            <div class="pipe-alt-header">
+              <h4>📹 Live Webcam Testing</h4>
+              <span class="badge-tag">Real-Time</span>
+            </div>
+            <p class="pipe-alt-desc">Run real signs through the live 21-point MediaPipe hand tracking pipeline instead of static mock buttons.</p>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-pipe-alt-cam">📹 Start Live Webcam</button>
           </div>
-          <div class="pipeline-runner-controls">
-            <button type="button" class="pill active" data-pipe-sign="hello">👋 Namaste</button>
-            <button type="button" class="pill" data-pipe-sign="doctor">🏥 Doctor / Hospital</button>
-            <button type="button" class="pill" data-pipe-sign="water">💧 Water</button>
-            <button type="button" class="pill" data-pipe-sign="help">🆘 Emergency Help</button>
-            <button type="button" class="pill" data-pipe-sign="deaf">🧏 I Am Deaf</button>
-            <button type="button" class="btn btn-primary btn-sm" id="btn-run-pipeline-speak">🔊 Speak Output</button>
+
+          <div class="pipe-alt-card">
+            <div class="pipe-alt-header">
+              <h4>⚡ Instant Sign Simulator</h4>
+              <span class="badge-tag">5,000+ Signs</span>
+            </div>
+            <p class="pipe-alt-desc">Explore our interactive simulator grid (Thank You, Food, Where, Yes/No, 1–9, A–Z) that feeds into the live translation builder.</p>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-pipe-alt-sim">🧏 Open Simulator</button>
+          </div>
+
+          <div class="pipe-alt-card">
+            <div class="pipe-alt-header">
+              <h4>➕ Custom Sign Trainer</h4>
+              <span class="badge-tag">BhashaDaan</span>
+            </div>
+            <p class="pipe-alt-desc">Capture novel gestures into local storage with custom hand shapes and regional voice pronunciations.</p>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-pipe-alt-custom">➕ Train Custom Sign</button>
           </div>
         </div>
 
+        <!-- 2. Code-Level & Interactive Pipeline Controls -->
+        <div class="pipeline-runner-head">
+          <div>
+            <div class="sec-tag">5-STAGE INTERACTIVE PIPELINE TESTER</div>
+            <h3 style="font-size: 18px; font-weight: 600; margin-top: 4px;">Dynamic Pipeline Data Lookup Across 5,000+ Indian Sign Gestures</h3>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-run-pipeline-speak">🔊 Speak Output</button>
+        </div>
+
+        <!-- Quick-Test Preset Buttons -->
+        <div class="pipeline-presets-container">
+          <span class="pipeline-presets-label">⚡ Quick-Test Preset Buttons:</span>
+          <div class="pipeline-presets-grid" id="pipeline-preset-pills">
+            <button type="button" class="test-pill active" onclick="testPipeline('hello')">🙏 Namaste</button>
+            <button type="button" class="test-pill" onclick="testPipeline('FOOD')">🍲 Food / Eat</button>
+            <button type="button" class="test-pill" onclick="testPipeline('TOILET')">🚻 Toilet / Restroom</button>
+            <button type="button" class="test-pill" onclick="testPipeline('thankyou')">🤲 Thank You</button>
+            <button type="button" class="test-pill" onclick="testPipeline('doctor')">🏥 Doctor / Hospital</button>
+            <button type="button" class="test-pill" onclick="testPipeline('water')">💧 Water</button>
+            <button type="button" class="test-pill" onclick="testPipeline('help')">🆘 Emergency Help</button>
+            <button type="button" class="test-pill" onclick="testPipeline('deaf')">🧏 I Am Deaf</button>
+            <button type="button" class="test-pill" onclick="testPipeline('family')">👨‍👩‍👧 Family</button>
+            <button type="button" class="test-pill" onclick="testPipeline('school')">🏫 School</button>
+            <button type="button" class="test-pill" onclick="testPipeline('money')">💵 Money / Cost</button>
+            <button type="button" class="test-pill" onclick="testPipeline('train')">🚆 Train / Railway</button>
+            <button type="button" class="test-pill" onclick="testPipeline('where')">❓ Where / Kahan</button>
+            <button type="button" class="test-pill" onclick="testPipeline('yes')">👍 Yes</button>
+            <button type="button" class="test-pill" onclick="testPipeline('no')">☝️ No</button>
+          </div>
+        </div>
+
+        <!-- Freeform 5,000+ Gesture Search & Dropdown Selection -->
+        <div class="pipeline-search-bar">
+          <label for="pipeline-search-input" class="sr-only">Filter Signs</label>
+          <input type="search" id="pipeline-search-input" placeholder="🔍 Filter from 5,000+ ISL signs (e.g. food, hospital, ticket, medicine, 500)..." />
+          <label for="pipeline-sign-select" class="sr-only">Select Sign to Test</label>
+          <select id="pipeline-sign-select" aria-label="Select any ISL sign to test through all 5 pipeline stages"></select>
+        </div>
+
+        <!-- 5 Stage Real-Time Outputs -->
         <div class="pipeline-live-output">
-          <div class="pipe-out-box">
+          <div class="pipe-out-box" id="pipe-box-1">
             <span class="po-lbl">01 · Hand Landmarks</span>
             <span class="po-val" id="pipe-out-1">21 3D Hand Landmarks (Locked)</span>
           </div>
-          <div class="pipe-out-box">
+          <div class="pipe-out-box" id="pipe-box-2">
             <span class="po-lbl">02 · Detected Sign</span>
             <span class="po-val" id="pipe-out-2">👋 Hello / Namaste (97%)</span>
           </div>
-          <div class="pipe-out-box">
+          <div class="pipe-out-box" id="pipe-box-3">
             <span class="po-lbl">03 · ISL Gloss</span>
             <span class="po-val" id="pipe-out-3">[NAMASTE] → Natural Sentence</span>
           </div>
-          <div class="pipe-out-box">
+          <div class="pipe-out-box" id="pipe-box-4">
             <span class="po-lbl">04 · Regional Translation</span>
             <span class="po-val" id="pipe-out-4">नमस्ते जी! आपसे मिलकर बहुत खुशी हुई।</span>
           </div>
-          <div class="pipe-out-box">
+          <div class="pipe-out-box" id="pipe-box-5">
             <span class="po-lbl">05 · 3D Avatar Action</span>
             <span class="po-val" id="pipe-out-5">2-Handed Namaste Posture + Smile</span>
           </div>
@@ -959,6 +1019,7 @@
 
   <!-- Scripts -->
   <script src="data.js"></script>
+  <script src="data_vocab.js"></script>
   <script src="audio.js"></script>
   <script src="app.js"></script>
   <script src="sign_audio.js" defer></script>

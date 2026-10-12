@@ -507,21 +507,20 @@
       if (nativeTextEl && tr) nativeTextEl.textContent = `${tr.flag} ${tr.langName}: ${tr.phrase}`;
     }
 
-    // 2. Update 5-Stage #pipeline Live Inspector
-    const pipeSign = window.ISL_SIGNS.find((s) => s.id === currentPipeSignId) || window.ISL_SIGNS[0];
-    if (pipeSign) {
-      const tr = window.getSignTranslation(pipeSign, langCode);
+    // 2. Update 5-Stage #pipeline Live Inspector using dynamic stage data lookup
+    if (window.getPipelineStageData) {
+      const data = window.getPipelineStageData(currentPipeSignId, langCode);
       const p1 = document.getElementById("pipe-out-1");
       const p2 = document.getElementById("pipe-out-2");
       const p3 = document.getElementById("pipe-out-3");
       const p4 = document.getElementById("pipe-out-4");
       const p5 = document.getElementById("pipe-out-5");
 
-      if (p1) p1.textContent = `21 Hand + 468 Face pts (${pipeSign.hands})`;
-      if (p2) p2.textContent = `${pipeSign.emoji} ${pipeSign.word} (Conf: 0.97)`;
-      if (p3) p3.textContent = `[${pipeSign.word.split("/")[0].trim().toUpperCase()}] → SOV Reordered`;
-      if (p4 && tr) p4.textContent = `${tr.flag} ${tr.nativeName}: "${tr.phrase}"`;
-      if (p5) p5.textContent = window.getAvatarDescription ? window.getAvatarDescription(pipeSign) : pipeSign.tactileGuide;
+      if (p1) p1.textContent = data.landmarks;
+      if (p2) p2.textContent = data.detected;
+      if (p3) p3.textContent = data.gloss;
+      if (p4) p4.textContent = data.translation;
+      if (p5) p5.textContent = data.avatarAction;
     }
   }
 
@@ -664,31 +663,152 @@
       });
     }
 
-    // 5-Stage Pipeline Live Trace buttons ([data-pipe-sign])
-    document.querySelectorAll("[data-pipe-sign]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        currentPipeSignId = btn.dataset.pipeSign || "hello";
-        document.querySelectorAll("[data-pipe-sign]").forEach((b) => b.classList.toggle("active", b === btn));
-        updateHeroAndPipelinePreview();
-        // Animate stage highlight 01 -> 05
-        const steps = document.querySelectorAll("#pipeline-steps-grid .step");
-        steps.forEach((s, idx) => {
-          setTimeout(() => {
-            steps.forEach((st) => st.classList.remove("active-stage"));
-            s.classList.add("active-stage");
-          }, idx * 140);
-        });
-        const signObj = window.ISL_SIGNS.find((s) => s.id === currentPipeSignId);
+    // =========================================================================
+    // 5-STAGE PIPELINE INTERACTIVE TESTER & FREEFORM 5,000+ RUNNER
+    // =========================================================================
+    window.testPipeline = function (signKeyOrId, { speak = true } = {}) {
+      currentPipeSignId = signKeyOrId || "hello";
+
+      // Highlight matching preset pill
+      document.querySelectorAll("#pipeline-preset-pills .test-pill").forEach((btn) => {
+        const onclickAttr = btn.getAttribute("onclick") || "";
+        const matches =
+          onclickAttr.includes(`'${signKeyOrId}'`) ||
+          onclickAttr.includes(`"${signKeyOrId}"`) ||
+          btn.dataset.pipeSign === signKeyOrId;
+        btn.classList.toggle("active", matches);
+      });
+
+      // Synchronize dropdown selection
+      const pipeSelect = document.getElementById("pipeline-sign-select");
+      if (pipeSelect) {
+        const matchOpt = [...pipeSelect.options].find(
+          (o) =>
+            o.value.toLowerCase() === (signKeyOrId || "").toLowerCase() ||
+            o.value.toUpperCase() === (signKeyOrId || "").toUpperCase()
+        );
+        if (matchOpt) pipeSelect.value = matchOpt.value;
+      }
+
+      updateHeroAndPipelinePreview();
+
+      // Sequential animation of stages 1 -> 5 and output cards 1 -> 5
+      const steps = document.querySelectorAll("#pipeline-steps-grid .step");
+      steps.forEach((s, idx) => {
+        setTimeout(() => {
+          steps.forEach((st) => st.classList.remove("active-stage"));
+          s.classList.add("active-stage");
+          const box = document.getElementById(`pipe-box-${idx + 1}`);
+          if (box) {
+            box.classList.add("highlight");
+            setTimeout(() => box.classList.remove("highlight"), 320);
+          }
+        }, idx * 120);
+      });
+
+      if (speak) {
+        const signObj =
+          window.ISL_SIGNS.find(
+            (s) => s.id.toLowerCase() === (signKeyOrId || "").toLowerCase()
+          ) ||
+          window.ISL_SIGNS[0];
         if (signObj) {
           window.audioEngine.speakSignInLang(signObj, state.signOutputLang, { interrupt: true });
         }
+      }
+    };
+
+    // Built-in alternatives navigation cards
+    const btnAltCam = document.getElementById("btn-pipe-alt-cam");
+    if (btnAltCam) {
+      btnAltCam.addEventListener("click", () => {
+        switchTab("camera", { announce: false });
+        const convEl = document.getElementById("converter");
+        if (convEl) convEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        const camBtn = document.getElementById("btn-toggle-camera");
+        if (camBtn && !state.cameraRunning) camBtn.click();
       });
-    });
+    }
+
+    const btnAltSim = document.getElementById("btn-pipe-alt-sim");
+    if (btnAltSim) {
+      btnAltSim.addEventListener("click", () => {
+        switchTab("camera", { announce: false });
+        const simBox = document.querySelector(".simulator-box");
+        if (simBox) simBox.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+
+    const btnAltCustom = document.getElementById("btn-pipe-alt-custom");
+    if (btnAltCustom) {
+      btnAltCustom.addEventListener("click", () => {
+        const openModalBtn = document.getElementById("btn-open-custom-sign");
+        if (openModalBtn) openModalBtn.click();
+      });
+    }
+
+    // Freeform 5,000+ Sign Search and Select Dropdown
+    const pipeSelect = document.getElementById("pipeline-sign-select");
+    const pipeSearch = document.getElementById("pipeline-search-input");
+
+    function populatePipelineSelect(filterText = "") {
+      if (!pipeSelect) return;
+      const filter = (filterText || "").trim().toLowerCase();
+      pipeSelect.innerHTML = "";
+
+      const matched = window.ISL_SIGNS.filter((s) => {
+        if (!filter) return true;
+        return (
+          s.id.toLowerCase().includes(filter) ||
+          s.word.toLowerCase().includes(filter) ||
+          s.keywords.some((k) => k.includes(filter))
+        );
+      });
+
+      const toRender = matched.slice(0, 300);
+      toRender.forEach((s) => {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = `${s.emoji || "🤟"} ${s.word} [${s.category}]`;
+        if (s.id.toLowerCase() === (currentPipeSignId || "").toLowerCase()) {
+          opt.selected = true;
+        }
+        pipeSelect.appendChild(opt);
+      });
+
+      if (matched.length > 300) {
+        const moreOpt = document.createElement("option");
+        moreOpt.disabled = true;
+        moreOpt.textContent = `... and ${matched.length - 300} more gestures (type in search box to filter)`;
+        pipeSelect.appendChild(moreOpt);
+      }
+    }
+
+    if (pipeSelect) {
+      populatePipelineSelect();
+      pipeSelect.addEventListener("change", () => {
+        if (pipeSelect.value) {
+          window.testPipeline(pipeSelect.value);
+        }
+      });
+    }
+
+    if (pipeSearch) {
+      pipeSearch.addEventListener("input", (e) => {
+        populatePipelineSelect(e.target.value);
+        if (pipeSelect && pipeSelect.options.length > 0 && !pipeSelect.options[0].disabled) {
+          window.testPipeline(pipeSelect.options[0].value, { speak: false });
+        }
+      });
+    }
 
     const pipeSpeakBtn = document.getElementById("btn-run-pipeline-speak");
     if (pipeSpeakBtn) {
       pipeSpeakBtn.addEventListener("click", () => {
-        const signObj = window.ISL_SIGNS.find((s) => s.id === currentPipeSignId) || window.ISL_SIGNS[0];
+        const signObj =
+          window.ISL_SIGNS.find(
+            (s) => s.id.toLowerCase() === (currentPipeSignId || "").toLowerCase()
+          ) || window.ISL_SIGNS[0];
         if (signObj) {
           window.audioEngine.speakSignInLang(signObj, state.signOutputLang, { interrupt: true });
         }
@@ -1165,10 +1285,13 @@
 
     const badge = document.getElementById("sim-count-badge");
     if (badge) {
-      badge.textContent = `${simSigns.length} Signs Ready`;
+      badge.textContent = window.ISL_SIGNS.length >= 5000 ? "5,000+ Signs Ready" : `${simSigns.length} Signs Ready`;
     }
 
-    simSigns.forEach((sign) => {
+    // Keep the simulator grid instant and responsive with top core conversational gestures
+    const displayGridSigns = simSigns.slice(0, 48);
+
+    displayGridSigns.forEach((sign) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "sim-btn";
@@ -3207,6 +3330,8 @@
     renderDictionaryGrid();
   }
 
+  let dictDisplayCount = 60;
+
   function renderDictionaryGrid() {
     const grid = document.getElementById("dictionary-grid");
     if (!grid) return;
@@ -3229,7 +3354,10 @@
     }
 
     grid.innerHTML = "";
-    filtered.forEach((sign) => {
+    const limit = state.dictSearch ? Math.min(filtered.length, 120) : Math.min(filtered.length, dictDisplayCount);
+    const toRender = filtered.slice(0, limit);
+
+    toRender.forEach((sign) => {
       const bWord = window.BrailleEngine.translate(sign.word);
       const hiTr = window.getSignTranslation ? window.getSignTranslation(sign, "hi") : { word: sign.word };
       const maiTr = window.getSignTranslation ? window.getSignTranslation(sign, "mai") : { word: sign.word };
@@ -3293,6 +3421,27 @@
 
       grid.appendChild(card);
     });
+
+    if (filtered.length > limit) {
+      const loadMoreCard = document.createElement("div");
+      loadMoreCard.className = "dict-load-more-card card";
+      loadMoreCard.style.gridColumn = "1 / -1";
+      loadMoreCard.style.textAlign = "center";
+      loadMoreCard.style.padding = "20px";
+      loadMoreCard.innerHTML = `
+        <p style="font-size:14px;font-weight:600;color:var(--ink-2);margin-bottom:10px;">
+          Showing ${limit} of ${filtered.length.toLocaleString()} Indian Sign Gestures
+        </p>
+        <button type="button" class="btn btn-outline" id="btn-dict-load-more">
+          ➕ Load More Signs (${(filtered.length - limit).toLocaleString()} Remaining)
+        </button>
+      `;
+      loadMoreCard.querySelector("#btn-dict-load-more").addEventListener("click", () => {
+        dictDisplayCount += 60;
+        renderDictionaryGrid();
+      });
+      grid.appendChild(loadMoreCard);
+    }
   }
 
   function startAudioQuiz() {
