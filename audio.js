@@ -44,57 +44,54 @@ class BlindAudioEngine {
   _connectHumanWarmthChain(source) {
     const baseRate = this.speechRate || 1.0;
     let rateMult = 1.0;
-    let detuneCents = 0;
-    let chestGain = 2.8;
-    let presenceFreq = 2750;
-    let presenceGain = 2.0;
+    let chestGain = 1.6;
+    let presenceFreq = 2800;
+    let presenceGain = 1.4;
 
     if (this.humanVoiceStyle === "natural_male") {
-      rateMult = 0.95;
-      detuneCents = -210;
-      chestGain = 3.8;
-      presenceFreq = 2200;
-      presenceGain = 1.8;
+      rateMult = 0.98;
+      chestGain = 2.2;
+      presenceFreq = 2400;
+      presenceGain = 1.3;
     } else if (this.humanVoiceStyle === "gentle_elder") {
-      rateMult = 0.89;
-      detuneCents = -85;
-      chestGain = 3.2;
-      presenceFreq = 2500;
-      presenceGain = 2.2;
+      rateMult = 0.92;
+      chestGain = 2.0;
+      presenceFreq = 2600;
+      presenceGain = 1.5;
     } else if (this.humanVoiceStyle === "expressive_friend") {
-      rateMult = 1.03;
-      detuneCents = 55;
-      chestGain = 2.5;
-      presenceFreq = 3000;
-      presenceGain = 2.3;
+      rateMult = 1.02;
+      chestGain = 1.4;
+      presenceFreq = 3100;
+      presenceGain = 1.6;
     }
 
-    source.playbackRate.value = Math.max(0.65, Math.min(1.6, baseRate * rateMult));
+    // Preserve 100% authentic human vocal formants (zero artificial pitch detuning)
+    source.playbackRate.value = Math.max(0.7, Math.min(1.5, baseRate * rateMult));
     if (source.detune) {
       try {
-        source.detune.value = detuneCents;
+        source.detune.value = 0;
       } catch (e) {}
     }
 
     try {
       const lowShelf = this.audioCtx.createBiquadFilter();
       lowShelf.type = "lowshelf";
-      lowShelf.frequency.value = 185;
+      lowShelf.frequency.value = 175;
       lowShelf.gain.value = chestGain;
 
       const presence = this.audioCtx.createBiquadFilter();
       presence.type = "peaking";
       presence.frequency.value = presenceFreq;
-      presence.Q.value = 1.1;
+      presence.Q.value = 1.0;
       presence.gain.value = presenceGain;
 
       const deHarsh = this.audioCtx.createBiquadFilter();
       deHarsh.type = "highshelf";
-      deHarsh.frequency.value = 8800;
-      deHarsh.gain.value = -2.4;
+      deHarsh.frequency.value = 9000;
+      deHarsh.gain.value = -1.5;
 
       const gainNode = this.audioCtx.createGain();
-      gainNode.gain.value = 1.08;
+      gainNode.gain.value = 1.05;
 
       source.connect(lowShelf);
       lowShelf.connect(presence);
@@ -514,23 +511,29 @@ class BlindAudioEngine {
    */
   getRegionalClipBase64(langCode, clipKey) {
     if (!clipKey) return null;
-    if (
-      window.SIGN_AUDIO_CLIPS_LANG &&
-      window.SIGN_AUDIO_CLIPS_LANG[langCode] &&
-      window.SIGN_AUDIO_CLIPS_LANG[langCode][clipKey]
-    ) {
-      return window.SIGN_AUDIO_CLIPS_LANG[langCode][clipKey];
+    const altKey = clipKey.startsWith("letter_")
+      ? "alpha_" + clipKey.slice(7)
+      : clipKey.startsWith("alpha_")
+      ? "letter_" + clipKey.slice(6)
+      : clipKey;
+
+    if (window.SIGN_AUDIO_CLIPS_LANG && window.SIGN_AUDIO_CLIPS_LANG[langCode]) {
+      const langClips = window.SIGN_AUDIO_CLIPS_LANG[langCode];
+      if (langClips[clipKey]) return langClips[clipKey];
+      if (langClips[altKey]) return langClips[altKey];
     }
-    if (langCode === "en") {
-      return (window.SIGN_AUDIO_CLIPS && window.SIGN_AUDIO_CLIPS[clipKey]) || null;
+    if (langCode === "en" && window.SIGN_AUDIO_CLIPS) {
+      return window.SIGN_AUDIO_CLIPS[clipKey] || window.SIGN_AUDIO_CLIPS[altKey] || null;
     }
-    // For numbers/alphabet in regional Indian languages, fall back to Hindi WaveNet human clip if available
-    if (
-      window.SIGN_AUDIO_CLIPS_LANG &&
-      window.SIGN_AUDIO_CLIPS_LANG.hi &&
-      window.SIGN_AUDIO_CLIPS_LANG.hi[clipKey]
-    ) {
-      return window.SIGN_AUDIO_CLIPS_LANG.hi[clipKey];
+    // Only for alphabet letters (A-Z) or system prompts, fall back to Hindi/English neural clip if needed
+    const isAlphabetOrSys =
+      clipKey.startsWith("letter_") || clipKey.startsWith("alpha_") || clipKey.startsWith("_");
+    if (isAlphabetOrSys && window.SIGN_AUDIO_CLIPS_LANG && window.SIGN_AUDIO_CLIPS_LANG.hi) {
+      return (
+        window.SIGN_AUDIO_CLIPS_LANG.hi[clipKey] ||
+        window.SIGN_AUDIO_CLIPS_LANG.hi[altKey] ||
+        null
+      );
     }
     return null;
   }
@@ -966,20 +969,28 @@ class BlindAudioEngine {
     if (prefix === "en") {
       return { voice: this.selectedVoice || null, isNativeScriptSupported: true };
     }
-    if (["hi", "mai", "bho", "mag", "raj", "bgc", "hne", "mr", "ne", "kok", "doi", "or"].includes(prefix) && this.hindiVoice) {
+
+    // 1. Prefer an exact installed OS/browser regional voice (e.g. mr-IN, ta-IN, te-IN, bn-IN, gu-IN, kn-IN, ml-IN, pa-IN)
+    const direct =
+      this.voices.find((v) => v.lang.toLowerCase() === (voiceLang || "").toLowerCase()) ||
+      this.voices.find((v) => v.lang.toLowerCase().startsWith(prefix + "-"));
+    if (direct) return { voice: direct, isNativeScriptSupported: true };
+
+    // 2. For Devanagari & phonetic-Devanagari regional languages, use native Hindi voice
+    if (
+      ["hi", "mai", "bho", "mag", "raj", "bgc", "hne", "mr", "ne", "kok", "doi", "or", "pa", "as"].includes(
+        prefix
+      ) &&
+      this.hindiVoice
+    ) {
       return { voice: this.hindiVoice, isNativeScriptSupported: true };
     }
 
-    const direct =
-      this.voices.find((v) => v.lang.toLowerCase() === (voiceLang || "").toLowerCase()) ||
-      this.voices.find((v) => v.lang.toLowerCase().startsWith(prefix));
-    if (direct) return { voice: direct, isNativeScriptSupported: true };
-
     if (fallbackLang && fallbackLang.startsWith("hi") && this.hindiVoice) {
-      return { voice: this.hindiVoice, isNativeScriptSupported: false };
+      return { voice: this.hindiVoice, isNativeScriptSupported: true };
     }
 
-    return { voice: this.selectedVoice || null, isNativeScriptSupported: false };
+    return { voice: this.hindiVoice || this.selectedVoice || null, isNativeScriptSupported: Boolean(this.hindiVoice) };
   }
 
   /**
@@ -1001,18 +1012,18 @@ class BlindAudioEngine {
       )}&q=${encodeURIComponent(text.slice(0, 195))}`;
       const audio = new Audio();
       audio.referrerPolicy = "no-referrer";
-      audio.crossOrigin = "anonymous";
+      // Do NOT set audio.crossOrigin = "anonymous" as translate_tts does not send CORS headers
       audio.src = url;
       const baseRate = this.speechRate || 1.0;
       const rateMult =
         this.humanVoiceStyle === "natural_male"
-          ? 0.95
+          ? 0.98
           : this.humanVoiceStyle === "gentle_elder"
-          ? 0.89
+          ? 0.92
           : this.humanVoiceStyle === "expressive_friend"
-          ? 1.03
+          ? 1.02
           : 1.0;
-      audio.playbackRate = Math.max(0.65, Math.min(1.5, baseRate * rateMult));
+      audio.playbackRate = Math.max(0.7, Math.min(1.5, baseRate * rateMult));
       audio.volume = 1.0;
       this._activeHtmlAudio = audio;
       audio.onended = () => {
@@ -1023,7 +1034,7 @@ class BlindAudioEngine {
       audio.onerror = () => {
         if (this._activeHtmlAudio === audio) this._activeHtmlAudio = null;
         this._dispatchUtterance(fallbackText || text, {
-          voice,
+          voice: voice || this.hindiVoice || this.selectedVoice,
           lang,
           rate: this.speechRate,
           pitch: this.speechPitch,
@@ -1036,7 +1047,7 @@ class BlindAudioEngine {
       if (p && typeof p.catch === "function") {
         p.catch(() => {
           this._dispatchUtterance(fallbackText || text, {
-            voice,
+            voice: voice || this.hindiVoice || this.selectedVoice,
             lang,
             rate: this.speechRate,
             pitch: this.speechPitch,
@@ -1048,7 +1059,7 @@ class BlindAudioEngine {
       }
     } catch (e) {
       this._dispatchUtterance(fallbackText || text, {
-        voice,
+        voice: voice || this.hindiVoice || this.selectedVoice,
         lang,
         rate: this.speechRate,
         pitch: this.speechPitch,
@@ -1061,7 +1072,7 @@ class BlindAudioEngine {
 
   /**
    * Speaks any ISL sign in the selected regional state language mode using guaranteed pre-rendered
-   * 24kHz Google WaveNet Neural Human Voice clips across all 22 Indian State & Local Speaking Languages
+   * 24kHz Neural Human Voice clips across all 22 Indian State & Local Speaking Languages
    * (with WebAudio Human Vocal Warmth EQ Chain + Live WaveNet Stream fallback for custom signs).
    */
   speakSignInLang(signObj, langSetting = "hi", { interrupt = true, assertive = true, onComplete = null } = {}) {
@@ -1138,7 +1149,7 @@ class BlindAudioEngine {
         tr.langCode === "en"
           ? `${signObj.word.replace(/\/.*/g, "")}. ${tr.phrase}`
           : isNativeScriptSupported
-          ? `${tr.word.replace(/\/.*/g, "")}। ${tr.phrase}`
+          ? `${tr.ttsText || tr.phrase}`
           : `${tr.langName}: ${tr.phonetic}`;
 
       if (clipB64) {
@@ -1150,13 +1161,70 @@ class BlindAudioEngine {
       } else {
         this.playLiveWaveNetStream(tr.ttsLang || "hi", tr.ttsText || tr.phrase, fallbackText, {
           voice,
-          lang: isNativeScriptSupported ? tr.voiceLang : "en-US",
+          lang: isNativeScriptSupported ? tr.voiceLang : "hi-IN",
           onComplete: () => playAtIndex(idx + 1)
         });
       }
     };
 
     playAtIndex(0);
+  }
+
+  /**
+   * Chains pre-rendered neural human voice clips for an array of ISL sign objects (or sign words)
+   * in the user's selected regional language so multi-sign sentences, Text-to-ISL translations,
+   * and Two-Way Chat messages speak with real native human voices instead of robotic speechSynthesis.
+   */
+  speakSignSequenceInLang(signItems, langSetting = "hi", { interrupt = true, onComplete = null } = {}) {
+    if (!signItems || !signItems.length) {
+      if (typeof onComplete === "function") onComplete();
+      return;
+    }
+
+    const resolvedSigns = signItems
+      .map((item) => {
+        if (!item) return null;
+        if (typeof item === "object" && item.id) return item;
+        const raw = String(item).trim();
+        const clean = raw.replace(/\/.*/g, "").trim().toLowerCase();
+        return (window.ISL_SIGNS || []).find(
+          (s) =>
+            s.id === clean ||
+            s.word.toLowerCase() === raw.toLowerCase() ||
+            s.word.toLowerCase().startsWith(clean)
+        );
+      })
+      .filter(Boolean);
+
+    if (!resolvedSigns.length) {
+      if (typeof onComplete === "function") onComplete();
+      return;
+    }
+
+    if (interrupt) {
+      this.stopSpeaking();
+    }
+
+    let primaryLang = langSetting;
+    if (langSetting === "en_hi" || langSetting === "multi_top" || langSetting === "all") {
+      primaryLang = "hi";
+    } else if (langSetting === "en_mai") {
+      primaryLang = "mai";
+    }
+
+    const playNextSign = (idx) => {
+      if (idx >= resolvedSigns.length) {
+        if (typeof onComplete === "function") onComplete();
+        return;
+      }
+      this.speakSignInLang(resolvedSigns[idx], primaryLang, {
+        interrupt: false,
+        assertive: idx === 0,
+        onComplete: () => playNextSign(idx + 1)
+      });
+    };
+
+    playNextSign(0);
   }
 
   stopSpeaking() {

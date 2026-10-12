@@ -5013,9 +5013,9 @@ window.SIGN_TRANSLATIONS = {
     },
     "or": {
       "word": "ମୋତେ ଘରକୁ ଯିବାର ଅଛି",
-      "phrase": "ଭାଇ, ମୋତେ ମୋ ଘରକୁ ଫେରିযିବାର ଅଛି।",
+      "phrase": "ଭାଇ, ମୋତେ ମୋ ଘରକୁ ଫେରିଯିବାର ଅଛି।",
       "phonetic": "Bhai, mote mo gharaku pherijibara achi.",
-      "ttsText": "भाई, मोते मो घरकु फेरिजिबार अछि।"
+      "ttsText": "भाई, मोते मो घरकु फेरिजिबारो अछि।"
     },
     "ta": {
       "word": "நான் வீட்டுக்குப் போகணும்",
@@ -5691,9 +5691,9 @@ window.SIGN_TRANSLATIONS = {
     },
     "or": {
       "word": "ଗୋଟିଏ ଫୋନ୍ ଲଗାଇ ଦିଅନ୍ତୁ",
-      "phrase": "ଭାଇ, ଦୟାକରି ମୋ ପାଇଁ ଗୋଟିଏ ଫୋନ୍ କଲ୍ লଗାଇ ଦିଅନ୍ତୁ।",
+      "phrase": "ଭାଇ, ଦୟାକରି ମୋ ପାଇଁ ଗୋଟିଏ ଫୋନ୍ କଲ୍ ଲଗାଇ ଦିଅନ୍ତୁ।",
       "phonetic": "Bhai, dayakari mo pain gotie phone call lagai diantu.",
-      "ttsText": "भाई, दयाकरि मो पाइँ गोटिए फोन कल लगाइ दिअन्तु।"
+      "ttsText": "भाई, दयाकरी मो पाइँ गोटिए फोन कल लगाइ दिअन्तु।"
     },
     "ta": {
       "word": "ஒரு போன் பண்ணிக் குடுங்க",
@@ -6045,6 +6045,7 @@ window.getSignTranslation = function (signObj, langCode = "hi") {
     const numEntry = REGIONAL_NUMBERS[signObj.letterChar];
     if (numEntry && numEntry[langCode]) {
       const numWord = numEntry[langCode];
+      const cleanSpokenNum = numWord.replace(/\s*\([^)]*\)/g, "").trim();
       return {
         langCode,
         langName: langMeta.name,
@@ -6056,7 +6057,7 @@ window.getSignTranslation = function (signObj, langCode = "hi") {
         word: `${numWord}`,
         phrase: `${numWord} — ${signObj.spokenPhrase}`,
         phonetic: `Number ${signObj.letterChar}, ${numEntry.phonetic}`,
-        ttsText: `${numWord}`,
+        ttsText: `${cleanSpokenNum}`,
         ttsLang: langMeta.ttsLang || "hi",
         voiceLang: langMeta.voiceLang,
         fallbackVoice: langMeta.fallbackVoice || "hi-IN"

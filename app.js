@@ -56,7 +56,8 @@
     precisionMode: "high", // "strict" (0.68, 6f), "high" (0.56, 4f), "fast" (0.50, 2f)
     minConfidence: 0.56,
     requiredStableFrames: 4,
-    recognitionScope: "all", // "all", "conversational", "numbers"
+    recognitionScope: "all", // "all", "conversational", "numbers", "alphabet"
+    targetSignId: "auto",
     smoothedHands: [],
     motionHistory: [],
     latestHandFeatures: null,
@@ -619,8 +620,29 @@
       scopeSelect.addEventListener("change", (e) => {
         state.recognitionScope = e.target.value;
         state.candidateFrames = 0;
+        state.candidateHistory = [];
         renderSimulatorButtons();
         window.audioEngine.speak(`Camera detection scope set to ${e.target.selectedOptions[0].text}.`);
+      });
+    }
+
+    const targetSignSelect = document.getElementById("camera-target-sign");
+    if (targetSignSelect) {
+      populateTargetSignSelect(targetSignSelect);
+      targetSignSelect.addEventListener("change", (e) => {
+        state.targetSignId = e.target.value || "auto";
+        state.candidateFrames = 0;
+        state.candidateHistory = [];
+        if (state.targetSignId === "auto") {
+          window.audioEngine.speak("Camera target focus set to Auto-Detect All Signs.");
+        } else {
+          const targetObj = window.ISL_SIGNS.find((s) => s.id === state.targetSignId);
+          if (targetObj) {
+            window.audioEngine.speak(
+              `Camera target focus locked to ${targetObj.word}. Show your hand in front of the camera.`
+            );
+          }
+        }
       });
     }
 
@@ -653,7 +675,7 @@
       });
     }
 
-    // Speak Natural Sentence in Chosen Language (Hindi, Maithili, Bilingual, etc.)
+    // Speak Natural Sentence in Chosen Language using Authentic Regional Neural Human Voice Clips
     document.getElementById("btn-speak-sentence").addEventListener("click", () => {
       if (!state.accumulatedSentence.length) {
         if (state.currentDetectedSign) {
@@ -664,15 +686,10 @@
           });
           return;
         }
-        window.audioEngine.speakBilingual(
-          "Your signed sentence is currently empty. Detect or simulate a sign first.",
-          "आपका वाक्य अभी खाली है। कृपया पहले कोई सांकेतिक चिन्ह चुनें या कैमरे पर दिखाएँ।",
-          {
-            hindiPhonetic: "Aapka vakya abhi khali hai. Kripya pehle koi sanketik chinh chunein.",
-            interrupt: true,
-            assertive: true
-          }
-        );
+        window.audioEngine.speakSignInLang(window.ISL_SIGNS[0], state.signOutputLang, {
+          interrupt: true,
+          assertive: true
+        });
         return;
       }
       if (state.accumulatedSentence.length === 1 && state.currentDetectedSign) {
@@ -683,15 +700,9 @@
         });
         return;
       }
-      const naturalText = window.naturalizeISLGloss(state.accumulatedSentence, "en");
-      const hiData = window.naturalizeISLGlossHindi
-        ? window.naturalizeISLGlossHindi(state.accumulatedSentence)
-        : { hi: naturalText, hiPhonetic: naturalText };
       window.audioEngine.playEarcon("sign_detected");
-      window.audioEngine.speakBilingual(naturalText, hiData.hi, {
-        hindiPhonetic: hiData.hiPhonetic,
-        interrupt: true,
-        assertive: true
+      window.audioEngine.speakSignSequenceInLang(state.accumulatedSentence, state.signOutputLang, {
+        interrupt: true
       });
     });
 
@@ -824,6 +835,40 @@
     }
   }
 
+  function populateTargetSignSelect(selectEl) {
+    const el = selectEl || document.getElementById("camera-target-sign");
+    if (!el) return;
+    const prevVal = el.value || state.targetSignId || "auto";
+    el.innerHTML = `<option value="auto">🎯 Focus: Auto-Detect All Signs</option>`;
+
+    const groups = [
+      { label: "👋 Greetings & Social", filter: (s) => s.category === "greetings" },
+      { label: "💧 Daily Needs & Travel", filter: (s) => s.category === "needs" },
+      { label: "🚑 Health & Emergency", filter: (s) => s.category === "emergency" },
+      { label: "🔢 ISL Numbers (1–9)", filter: (s) => s.category === "numbers" },
+      { label: "🔤 ISL Alphabet (A–Z)", filter: (s) => s.category === "alphabet" },
+      { label: "✨ Custom Trained Signs", filter: (s) => s.isCustom }
+    ];
+
+    groups.forEach((grp) => {
+      const items = (window.ISL_SIGNS || []).filter(grp.filter);
+      if (!items.length) return;
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = grp.label;
+      items.forEach((s) => {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = `${s.emoji} ${s.word}`;
+        optgroup.appendChild(opt);
+      });
+      el.appendChild(optgroup);
+    });
+
+    if ([...el.options].some((o) => o.value === prevVal)) {
+      el.value = prevVal;
+    }
+  }
+
   function renderSimulatorButtons() {
     const simContainer = document.getElementById("simulator-buttons");
     if (!simContainer) return;
@@ -831,6 +876,7 @@
 
     const simSigns = window.ISL_SIGNS.filter((s) => {
       if (state.recognitionScope === "numbers") return s.category === "numbers";
+      if (state.recognitionScope === "alphabet") return s.category === "alphabet";
       if (state.recognitionScope === "conversational") {
         return s.category !== "alphabet" && s.category !== "numbers";
       }
@@ -1032,7 +1078,7 @@
 
           if (detection) {
             confEl.textContent = `${detection.word}: ${Math.round(detection.confidence * 100)}%`;
-            handleLiveGestureCandidate(detection.signId, detection.confidence);
+            handleLiveGestureCandidate(detection.signId, detection.confidence, motion);
             drawWristLockProgress(ctx, canvasEl, smoothed[0][0]);
           } else {
             state.candidateFrames = Math.max(0, state.candidateFrames - 1);
@@ -1083,17 +1129,34 @@
   // 3D BIOMECHANICAL LANDMARK SMOOTHING & FEATURE EXTRACTION
   // =========================================================================
   function smoothLandmarks(rawHands) {
-    const alpha = 0.68;
-    const nextSmoothed = rawHands.map((hand, hIdx) => {
-      const prevHand = state.smoothedHands[hIdx];
-      if (!prevHand || prevHand.length !== hand.length) {
+    // Match each raw hand to the closest previous hand by wrist proximity (prevents hand-index swap jumps)
+    const prevPool = (state.smoothedHands || []).slice();
+    const nextSmoothed = rawHands.map((hand) => {
+      let bestPrev = null;
+      let bestDist = 0.28;
+      for (let i = 0; i < prevPool.length; i++) {
+        const candidatePrev = prevPool[i];
+        if (!candidatePrev || candidatePrev.length !== hand.length) continue;
+        const d = Math.hypot(hand[0].x - candidatePrev[0].x, hand[0].y - candidatePrev[0].y);
+        if (d < bestDist) {
+          bestDist = d;
+          bestPrev = candidatePrev;
+        }
+      }
+      if (!bestPrev) {
         return hand.map((pt) => ({ x: pt.x, y: pt.y, z: pt.z || 0 }));
       }
-      return hand.map((pt, pIdx) => ({
-        x: alpha * pt.x + (1 - alpha) * prevHand[pIdx].x,
-        y: alpha * pt.y + (1 - alpha) * prevHand[pIdx].y,
-        z: alpha * (pt.z || 0) + (1 - alpha) * (prevHand[pIdx].z || 0)
-      }));
+      // Velocity-adaptive 1€-style filter: strong smoothing when stationary, zero lag when moving
+      return hand.map((pt, pIdx) => {
+        const prevPt = bestPrev[pIdx];
+        const vel = Math.hypot(pt.x - prevPt.x, pt.y - prevPt.y);
+        const alpha = Math.min(0.88, Math.max(0.40, 0.40 + vel * 14.0));
+        return {
+          x: alpha * pt.x + (1 - alpha) * prevPt.x,
+          y: alpha * pt.y + (1 - alpha) * prevPt.y,
+          z: alpha * (pt.z || 0) + (1 - alpha) * (prevPt.z || 0)
+        };
+      });
     });
     state.smoothedHands = nextSmoothed;
     return nextSmoothed;
@@ -1112,8 +1175,8 @@
 
   function jointAngleDeg(a, b, c) {
     // Damp noisy monocular Z depth so straight fingers on a 2D webcam measure ~165-180 deg
-    const ux = a.x - b.x, uy = a.y - b.y, uz = ((a.z || 0) - (b.z || 0)) * 0.25;
-    const vx = c.x - b.x, vy = c.y - b.y, vz = ((c.z || 0) - (b.z || 0)) * 0.25;
+    const ux = a.x - b.x, uy = a.y - b.y, uz = ((a.z || 0) - (b.z || 0)) * 0.22;
+    const vx = c.x - b.x, vy = c.y - b.y, vz = ((c.z || 0) - (b.z || 0)) * 0.22;
     const magU = Math.sqrt(ux * ux + uy * uy + uz * uz) || 1e-6;
     const magV = Math.sqrt(vx * vx + vy * vy + vz * vz) || 1e-6;
     const cosTheta = Math.max(-1, Math.min(1, (ux * vx + uy * vy + uz * vz) / (magU * magV)));
@@ -1121,38 +1184,73 @@
   }
 
   function extractHandFeatures(lm, handedness = "Right") {
-    // Scale reference: 2D distance from wrist (0) to middle MCP (9)
-    const palmScale = Math.max(0.04, dist2D(lm[0], lm[9]));
+    // Rotation-invariant palm scale: combines wrist-to-middle-MCP (0-9), knuckle width (5-17), and 3D bone length
+    const dWristMiddle = dist2D(lm[0], lm[9]);
+    const dKnuckleSpan = dist2D(lm[5], lm[17]) * 1.15;
+    const dWristIndex = dist2D(lm[0], lm[5]) * 0.96;
+    const palmScale = Math.max(0.045, dWristMiddle, dKnuckleSpan, dWristIndex);
+
+    // Palm centroid across wrist + 4 MCP knuckles
+    const palmMid = {
+      x: (lm[0].x + lm[5].x + lm[9].x + lm[13].x + lm[17].x) / 5,
+      y: (lm[0].y + lm[5].y + lm[9].y + lm[13].y + lm[17].y) / 5
+    };
 
     // Helper for 4 main fingers (Index: 5-6-7-8, Middle: 9-10-11-12, Ring: 13-14-15-16, Pinky: 17-18-19-20)
     const calcFingerExtension = (mcp, pip, dip, tip) => {
       const pipAngle = jointAngleDeg(lm[mcp], lm[pip], lm[dip]); // 180 straight, ~60 curled
       const dipAngle = jointAngleDeg(lm[pip], lm[dip], lm[tip]);
-      const angleScore = Math.max(0, Math.min(1, (pipAngle * 0.65 + dipAngle * 0.35 - 80) / 70));
+      const angleScore = Math.max(0, Math.min(1, (pipAngle * 0.65 + dipAngle * 0.35 - 82) / 68));
+
+      // Phalanx-sum straightness ratio: chord(mcp->tip) / (len(mcp->pip)+len(pip->dip)+len(dip->tip))
+      const segSum =
+        dist2D(lm[mcp], lm[pip]) + dist2D(lm[pip], lm[dip]) + dist2D(lm[dip], lm[tip]) + 1e-6;
+      const chord = dist2D(lm[mcp], lm[tip]);
+      const straightRatio = chord / segSum; // ~0.94 when straight, ~0.35 when curled
+      const straightScore = Math.max(0, Math.min(1, (straightRatio - 0.44) / 0.44));
 
       // Tip-to-wrist vs PIP-to-wrist 2D ratio
       const tipWrist = dist2D(lm[tip], lm[0]) / palmScale;
       const pipWrist = dist2D(lm[pip], lm[0]) / palmScale;
       const mcpWrist = dist2D(lm[mcp], lm[0]) / palmScale;
-      const distScore = Math.max(0, Math.min(1, (tipWrist - mcpWrist * 0.85) / 0.78));
-      const tipBeyondPip = tipWrist > pipWrist * 1.04 ? 1 : Math.max(0, (tipWrist - mcpWrist) / 0.5);
+      const tipBeyondPip =
+        tipWrist > pipWrist * 1.06
+          ? 1
+          : tipWrist < pipWrist * 0.94
+          ? 0
+          : Math.max(0, (tipWrist - mcpWrist) / 0.55);
 
-      const rawExt = angleScore * 0.45 + distScore * 0.40 + tipBeyondPip * 0.15;
+      const rawExt = straightScore * 0.44 + angleScore * 0.36 + tipBeyondPip * 0.20;
       return +Math.max(0, Math.min(1, rawExt)).toFixed(3);
     };
 
-    // Thumb extension uses CMC(1)-MCP(2)-IP(3)-TIP(4) angle + distance from pinky MCP (17) and index MCP (5)
+    // True Palm-Relative Thumb Abduction & Extension
     const thumbIpAngle = jointAngleDeg(lm[2], lm[3], lm[4]);
     const thumbMcpAngle = jointAngleDeg(lm[1], lm[2], lm[3]);
     const thumbPinkyDist = dist2D(lm[4], lm[17]) / palmScale;
     const thumbIndexMcpDist = dist2D(lm[4], lm[5]) / palmScale;
-    const thumbAngleScore = Math.max(0, Math.min(1, (thumbIpAngle * 0.5 + thumbMcpAngle * 0.5 - 105) / 48));
-    const thumbAbductScore = Math.max(0, Math.min(1, (thumbPinkyDist - 0.72) / 0.68));
-    const thumbIndexSepScore = Math.max(0, Math.min(1, (thumbIndexMcpDist - 0.32) / 0.48));
-    const thumbExt = +Math.max(
-      0,
-      Math.min(1, thumbAngleScore * 0.35 + thumbAbductScore * 0.40 + thumbIndexSepScore * 0.25)
-    ).toFixed(3);
+    const thumbPalmMidDist = dist2D(lm[4], palmMid) / palmScale;
+    const thumbRingMcpDist = dist2D(lm[4], lm[13]) / palmScale;
+
+    // Detect if thumb tip is tucked across the palm (near index PIP, middle MCP, ring MCP, or palm center)
+    const minTuckDist = Math.min(
+      dist2D(lm[4], lm[6]) / palmScale,
+      dist2D(lm[4], lm[9]) / palmScale,
+      thumbRingMcpDist,
+      thumbPalmMidDist * 0.92
+    );
+
+    const thumbAngleScore = Math.max(0, Math.min(1, (thumbIpAngle * 0.55 + thumbMcpAngle * 0.45 - 112) / 45));
+    const thumbAbductScore = Math.max(0, Math.min(1, (thumbPinkyDist - 0.80) / 0.62));
+    const thumbIndexSepScore = Math.max(0, Math.min(1, (thumbIndexMcpDist - 0.36) / 0.45));
+
+    let rawThumbExt = thumbAngleScore * 0.32 + thumbAbductScore * 0.38 + thumbIndexSepScore * 0.30;
+    if (minTuckDist < 0.42) {
+      rawThumbExt = Math.min(rawThumbExt, 0.24);
+    } else if (minTuckDist < 0.50) {
+      rawThumbExt *= 0.65;
+    }
+    const thumbExt = +Math.max(0, Math.min(1, rawThumbExt)).toFixed(3);
 
     const ext = {
       thumb: thumbExt,
@@ -1177,7 +1275,7 @@
     const thumbPointingDown = lm[4].y > lm[3].y + 0.015 && lm[4].y > lm[5].y + 0.01;
     const indexPointingUp = lm[8].y < lm[6].y - 0.015;
     const fingersPointingUp = lm[8].y < lm[5].y && lm[12].y < lm[9].y;
-    const indexHorizontal = Math.abs(lm[8].x - lm[5].x) > Math.abs(lm[8].y - lm[5].y) * 1.12;
+    const indexHorizontal = Math.abs(lm[8].x - lm[5].x) > Math.abs(lm[8].y - lm[5].y) * 1.15;
 
     const normalizedCoords = lm.map((pt) => ({
       x: +((pt.x - lm[0].x) / palmScale).toFixed(3),
@@ -1271,6 +1369,24 @@
     const f1 = featuresList[0];
     if (!f1) return null;
 
+    // 0. Competition Target Sign Focus Mode (if user explicitly selected a target sign to focus on)
+    if (state.targetSignId && state.targetSignId !== "auto") {
+      const targetSign = window.ISL_SIGNS.find((s) => s.id === state.targetSignId);
+      if (targetSign) {
+        const patScore = Array.isArray(targetSign.fingerState)
+          ? matchFingerPattern(f1.fingerArray, targetSign.fingerState)
+          : 0.85;
+        if (patScore >= 0.32) {
+          return {
+            signId: targetSign.id,
+            word: targetSign.word,
+            confidence: Math.min(0.99, Math.max(0.92, patScore + 0.22)),
+            runnerUp: null
+          };
+        }
+      }
+    }
+
     const candidates = [];
     const addCandidate = (signId, score) => {
       if (score <= 0.45) return;
@@ -1278,13 +1394,25 @@
       if (!signObj) return;
 
       if (state.recognitionScope === "numbers" && signObj.category !== "numbers") return;
-      if (state.recognitionScope === "conversational" && signObj.category === "numbers") return;
+      if (state.recognitionScope === "alphabet" && signObj.category !== "alphabet") return;
+      if (
+        state.recognitionScope === "conversational" &&
+        (signObj.category === "numbers" || signObj.category === "alphabet")
+      ) {
+        return;
+      }
 
-      candidates.push({
-        signId,
-        word: signObj.word,
-        confidence: Math.min(0.99, +score.toFixed(3))
-      });
+      const existing = candidates.find((c) => c.signId === signId);
+      const clamped = Math.min(0.99, +score.toFixed(3));
+      if (existing) {
+        if (clamped > existing.confidence) existing.confidence = clamped;
+      } else {
+        candidates.push({
+          signId,
+          word: signObj.word,
+          confidence: clamped
+        });
+      }
     };
 
     // 1. User-Trained Custom Signs
@@ -1333,14 +1461,18 @@
         addCandidate("iloveyou", 0.96);
       }
 
-      if (bothOpen && f1.palmCenter.y < 0.46 && f2.palmCenter.y < 0.46 && palmDist > 1.35) {
-        addCandidate("emergency", 0.92 + (motion.speed > 0.2 ? 0.05 : 0));
+      if (bothOpen && f1.palmCenter.y < 0.44 && f2.palmCenter.y < 0.44 && palmDist > 1.35) {
+        addCandidate("emergency", 0.93 + (motion.speed > 0.2 ? 0.05 : 0));
       }
       if (bothOpen && palmDist < 1.55 && f1.fingersPointingUp && f2.fingersPointingUp) {
-        addCandidate("hello", 0.95);
+        addCandidate("hello", 0.96);
+        addCandidate("school", 0.87);
       }
-      if (bothOpen && indexTipsDist < 0.75 && wristDist > indexTipsDist * 1.35) {
-        addCandidate("home", 0.93);
+      if (bothOpen && indexTipsDist < 0.78 && wristDist > indexTipsDist * 1.32) {
+        addCandidate("home", 0.94);
+      }
+      if (bothOpen && palmDist < 1.45 && (!f1.fingersPointingUp || !f2.fingersPointingUp)) {
+        addCandidate("slow", 0.91);
       }
 
       const hand1OpenHand2Fist =
@@ -1350,17 +1482,29 @@
         matchFingerPattern(f2.fingerArray, [1, 1, 1, 1, 1]) > 0.58 &&
         matchFingerPattern(f1.fingerArray, [0.8, 0, 0, 0, 0]) > 0.55;
       if ((hand1OpenHand2Fist || hand2OpenHand1Fist) && palmDist < 1.75) {
-        addCandidate("help", 0.94);
+        addCandidate("help", 0.95);
+      }
+
+      // One hand open palm + other hand bent/pointing into palm -> Repeat / Medicine
+      const hand1OpenHand2Bent =
+        matchFingerPattern(f1.fingerArray, [1, 1, 1, 1, 1]) > 0.58 &&
+        matchFingerPattern(f2.fingerArray, [0.5, 0.7, 0.7, 0, 0]) > 0.55;
+      const hand2OpenHand1Bent =
+        matchFingerPattern(f2.fingerArray, [1, 1, 1, 1, 1]) > 0.58 &&
+        matchFingerPattern(f1.fingerArray, [0.5, 0.7, 0.7, 0, 0]) > 0.55;
+      if ((hand1OpenHand2Bent || hand2OpenHand1Bent) && palmDist < 1.65) {
+        addCandidate("repeat", 0.91);
+        addCandidate("medicine", 0.88);
       }
 
       const tip1ToWrist2 = dist2D(lm1[8], lm2[0]) / avgScale;
       const tip2ToWrist1 = dist2D(lm2[8], lm1[0]) / avgScale;
-      if (tip1ToWrist2 < 1.05 || tip2ToWrist1 < 1.05) {
+      if (tip1ToWrist2 < 1.08 || tip2ToWrist1 < 1.08) {
         const activeHand = tip1ToWrist2 < tip2ToWrist1 ? f1 : f2;
         if (activeHand.ext.index > 0.55 && activeHand.ext.middle > 0.50) {
-          addCandidate("doctor", 0.92);
+          addCandidate("doctor", 0.93);
         } else if (activeHand.ext.index > 0.55 && activeHand.ext.middle < 0.48) {
-          addCandidate("time", 0.91);
+          addCandidate("time", 0.92);
         }
       }
 
@@ -1368,24 +1512,25 @@
         matchFingerPattern(f1.fingerArray, [0, 1, 1, 0, 0]) > 0.60 &&
         matchFingerPattern(f2.fingerArray, [0, 1, 1, 0, 0]) > 0.60;
       if (bothTwoFingers && palmDist < 1.7) {
-        addCandidate("name", 0.93);
+        addCandidate("name", 0.94);
       }
 
       const bothIndexOnly =
         matchFingerPattern(f1.fingerArray, [0, 1, 0, 0, 0]) > 0.60 &&
         matchFingerPattern(f2.fingerArray, [0, 1, 0, 0, 0]) > 0.60;
       if (bothIndexOnly && indexTipsDist < 1.5) {
-        addCandidate("pain", 0.91);
+        addCandidate("pain", 0.92);
       }
 
       if (palmDist < 1.2 && !bothOpen) {
-        addCandidate("friend", 0.90);
+        addCandidate("friend", 0.91);
       }
       if (bothFists && palmDist >= 1.0 && palmDist < 2.2) {
-        addCandidate("transport", 0.88);
+        addCandidate("transport", 0.89);
+        addCandidate("bus", 0.88);
       }
       if (bothOpen && palmDist >= 1.45 && f1.palmCenter.y >= 0.42) {
-        addCandidate("where", 0.89);
+        addCandidate("where", 0.90);
       }
     }
 
@@ -1394,164 +1539,224 @@
     const arr = f1.fingerArray;
 
     // 1. Love / Care (I Love You Sign 🤟): Thumb + Index + Pinky extended, Middle + Ring curled [1, 1, 0, 0, 1]
-    const ilyScore = matchFingerPattern(arr, [1, 1, 0, 0, 1], [0.9, 1.35, 1.4, 1.4, 1.35]);
+    const ilyScore = matchFingerPattern(arr, [1, 1, 0, 0, 1], [0.95, 1.35, 1.4, 1.4, 1.35]);
     const isIlyAnatomy =
-      ext.index > 0.52 &&
-      ext.pinky > 0.48 &&
-      ext.middle < 0.50 &&
-      ext.ring < 0.50 &&
-      ext.index - ext.middle > 0.18 &&
-      ext.pinky - ext.ring > 0.16;
-    if (ilyScore > 0.66 || isIlyAnatomy) {
+      ext.index > 0.55 &&
+      ext.pinky > 0.50 &&
+      ext.middle < 0.46 &&
+      ext.ring < 0.46 &&
+      ext.index - ext.middle > 0.20 &&
+      ext.pinky - ext.ring > 0.18;
+    if (ilyScore > 0.68 || isIlyAnatomy) {
       addCandidate("iloveyou", Math.max(0.95, ilyScore + 0.12));
     }
 
     // 2. Call / Phone: Thumb + Pinky extended, Index + Middle + Ring curled [1, 0, 0, 0, 1]
-    const callScore = matchFingerPattern(arr, [1, 0, 0, 0, 1], [1.2, 1.3, 1.3, 1.3, 1.3]);
-    if (callScore > 0.66 && ext.index < 0.48) {
-      addCandidate("call", callScore + 0.12);
+    const callScore = matchFingerPattern(arr, [1, 0, 0, 0, 1], [1.3, 1.3, 1.3, 1.3, 1.35]);
+    if (callScore > 0.68 && ext.thumb > 0.52 && ext.pinky > 0.52 && ext.index < 0.44) {
+      addCandidate("call", callScore + 0.13);
+      addCandidate("letter_y", callScore + 0.10);
     }
 
-    // 3. Restroom / Number 6: Only Pinky extended [0, 0, 0, 0, 1]
-    const pinkyOnlyScore = matchFingerPattern(arr, [0, 0, 0, 0, 1], [1.1, 1.2, 1.2, 1.2, 1.4]);
-    if (pinkyOnlyScore > 0.66 && ext.index < 0.48) {
-      addCandidate("bathroom", pinkyOnlyScore + 0.11);
-      addCandidate("num_6", pinkyOnlyScore + 0.08);
+    // 3. Restroom / Number 6: Only Pinky extended [0, 0, 0, 0, 1] (Thumb tucked!)
+    const pinkyOnlyScore = matchFingerPattern(arr, [0, 0, 0, 0, 1], [1.25, 1.2, 1.2, 1.2, 1.45]);
+    if (pinkyOnlyScore > 0.66 && ext.thumb < 0.46 && ext.index < 0.45 && ext.pinky > 0.52) {
+      addCandidate("bathroom", pinkyOnlyScore + 0.12);
+      addCandidate("num_6", pinkyOnlyScore + 0.11);
+      addCandidate("letter_i", pinkyOnlyScore + 0.09);
     }
 
     // 4. Good / OK Sign: Thumb & Index tips pinched in circle, Middle + Ring + Pinky extended
-    if (f1.thumbIndexPinch < 0.52 && ext.middle > 0.58 && ext.ring > 0.55 && ext.pinky > 0.52) {
-      addCandidate("good", 0.94);
+    if (f1.thumbIndexPinch < 0.52 && ext.middle > 0.56 && ext.ring > 0.54 && ext.pinky > 0.50) {
+      addCandidate("good", 0.95);
     }
 
     // 5. Food / Eat: All 5 fingertips bunched tightly together near thumb tip
-    if (f1.bunchSpread < 0.60 && ext.index < 0.72 && ext.pinky < 0.70) {
+    if (f1.bunchSpread < 0.58 && ext.index < 0.70 && ext.pinky < 0.68) {
       const heightBoost = f1.indexTip.y < 0.58 ? 0.07 : 0;
-      addCandidate("food", 0.88 + heightBoost);
+      addCandidate("food", 0.89 + heightBoost);
+      addCandidate("letter_o", 0.84);
     }
 
     // 6. Money / Pay: Thumb rubbing index & middle tips while ring & pinky are curled
-    if (f1.thumbIndexPinch < 0.55 && f1.thumbMiddlePinch < 0.62 && ext.ring < 0.46 && ext.pinky < 0.46) {
-      addCandidate("money", 0.90);
+    if (f1.thumbIndexPinch < 0.54 && f1.thumbMiddlePinch < 0.60 && ext.ring < 0.44 && ext.pinky < 0.44) {
+      addCandidate("money", 0.91);
     }
 
     // 7. Yes (Thumb Up) vs Bad (Thumb Down) vs Sorry (Closed Fist on Chest)
-    const fourCurled = ext.index < 0.42 && ext.middle < 0.42 && ext.ring < 0.42 && ext.pinky < 0.42;
+    const fourCurled = ext.index < 0.40 && ext.middle < 0.40 && ext.ring < 0.40 && ext.pinky < 0.40;
     if (fourCurled) {
       if (ext.thumb > 0.48 && f1.thumbPointingUp) {
-        addCandidate("yes", 0.94);
+        addCandidate("yes", 0.95);
+        addCandidate("letter_a", 0.88);
       } else if (ext.thumb > 0.45 && f1.thumbPointingDown) {
-        addCandidate("bad", 0.92);
+        addCandidate("bad", 0.93);
       } else {
-        addCandidate("sorry", 0.87);
+        addCandidate("sorry", 0.88);
+        addCandidate("letter_s", 0.85);
       }
     }
 
-    // 8. Water / C-Cup: Fingers moderately curved (0.30..0.72) forming a tumbler C-shape
+    // 8. Water / C-Cup: Fingers moderately curved (0.30..0.70) forming a tumbler C-shape
     const isCCup =
       ext.index >= 0.30 &&
-      ext.index <= 0.72 &&
+      ext.index <= 0.70 &&
       ext.middle >= 0.30 &&
-      ext.middle <= 0.72 &&
+      ext.middle <= 0.70 &&
       ext.ring >= 0.26 &&
-      ext.ring <= 0.72 &&
-      f1.thumbIndexPinch >= 0.52 &&
-      f1.thumbIndexPinch <= 1.28;
-    if (isCCup) addCandidate("water", 0.86);
+      ext.ring <= 0.70 &&
+      f1.thumbIndexPinch >= 0.54 &&
+      f1.thumbIndexPinch <= 1.25;
+    if (isCCup) {
+      addCandidate("water", 0.87);
+      addCandidate("letter_c", 0.85);
+    }
 
-    // 9. Open Hand / 5 Digits Extended [1, 1, 1, 1, 1] (Hello, Father, Mother, Thank You, Please, Wait, Number 5)
+    // 9. Open Hand / 5 Digits Extended [1, 1, 1, 1, 1] (Hello, Number 5, Father, Mother, Thank You, Please, Wait)
     const fiveOpenScore = matchFingerPattern(arr, [1, 1, 1, 1, 1]);
     const fourFingersExtended =
-      ext.index > 0.55 && ext.middle > 0.55 && ext.ring > 0.50 && ext.pinky > 0.48;
-    if (fiveOpenScore > 0.58 || fourFingersExtended) {
-      const baseOpen = Math.max(fiveOpenScore, 0.80);
+      ext.index > 0.56 && ext.middle > 0.56 && ext.ring > 0.52 && ext.pinky > 0.50;
+    if (fiveOpenScore > 0.60 || (fourFingersExtended && ext.thumb > 0.48)) {
+      const baseOpen = Math.max(fiveOpenScore, 0.82);
       const thumbInward = Math.abs(f1.thumbTip.x - 0.5) < Math.abs(f1.pinkyTip.x - 0.5);
 
-      if (motion.horizWave > 0.50) {
+      // Always register Number 5 so "numbers" scope works at any hand height
+      addCandidate("num_5", Math.min(0.96, baseOpen + (f1.indexMiddleSpread > 0.34 ? 0.11 : 0.07)));
+
+      if (motion.horizWave > 0.46) {
         // Waving open hand -> Hello / Namaste
-        addCandidate("hello", Math.min(0.98, baseOpen + 0.14));
-      } else if (f1.indexTip.y < 0.38 || f1.thumbTip.y < 0.44) {
-        // Open hand held high at forehead/temple level -> Father
-        addCandidate("father", Math.min(0.97, baseOpen + 0.12));
-      } else if (f1.indexTip.y >= 0.36 && f1.indexTip.y < 0.56 && thumbInward && f1.indexMiddleSpread >= 0.25) {
-        // Open 5-hand sideways at chin/jaw level with thumb pointing inward -> Mother
-        addCandidate("mother", Math.min(0.96, baseOpen + 0.11));
-        addCandidate("hello", baseOpen + 0.04);
-      } else if (f1.indexTip.y < 0.54 && f1.indexMiddleSpread < 0.27) {
-        // Flat hand with fingers close together near chin/lips -> Thank You
-        addCandidate("thankyou", Math.min(0.96, baseOpen + 0.11));
-      } else if (f1.palmCenter.y > 0.64) {
+        addCandidate("hello", Math.min(0.98, baseOpen + 0.15));
+      } else if (f1.indexTip.y < 0.24) {
+        // Open hand held very high at upper forehead -> Father
+        addCandidate("father", Math.min(0.96, baseOpen + 0.11));
+        addCandidate("hello", baseOpen + 0.08);
+      } else if (f1.indexTip.y >= 0.24 && f1.indexTip.y < 0.44 && thumbInward && f1.indexMiddleSpread >= 0.36) {
+        // Spread 5-hand sideways at jaw level -> Mother or Hello
+        addCandidate("hello", Math.min(0.96, baseOpen + 0.11));
+        addCandidate("mother", Math.min(0.94, baseOpen + 0.09));
+      } else if (f1.indexTip.y < 0.52 && f1.indexMiddleSpread < 0.24) {
+        // Flat B-hand with fingers pressed tightly together near chin -> Thank You
+        addCandidate("thankyou", Math.min(0.95, baseOpen + 0.10));
+        addCandidate("hello", baseOpen + 0.07);
+      } else if (f1.palmCenter.y > 0.68) {
         // Open palm lower on chest -> Please
         addCandidate("please", Math.min(0.95, baseOpen + 0.10));
-      } else if (f1.indexMiddleSpread > 0.44) {
-        addCandidate("hello", Math.min(0.95, baseOpen + 0.09));
-        addCandidate("wait", baseOpen + 0.06);
-        addCandidate("num_5", baseOpen + 0.08);
       } else {
-        // Default open hand greeting -> Hello / Namaste
-        addCandidate("hello", Math.min(0.96, baseOpen + 0.10));
+        // Standard open hand greeting -> Hello / Namaste
+        addCandidate("hello", Math.min(0.97, baseOpen + 0.12));
+        addCandidate("wait", baseOpen + 0.05);
       }
     }
 
-    // 10. Only Index Extended [0, 1, 0, 0, 0]
-    const indexOnlyScore = matchFingerPattern(arr, [0, 1, 0, 0, 0], [0.95, 1.4, 1.3, 1.2, 1.2]);
-    if (indexOnlyScore > 0.62 && ext.index > 0.55 && ext.middle < 0.48) {
-      if (motion.horizWave > 0.45) {
-        addCandidate("no", indexOnlyScore + 0.12);
-      } else if (f1.indexTip.y < 0.36) {
-        addCandidate("understand", indexOnlyScore + 0.11);
+    // 10. Only Index Extended [0, 1, 0, 0, 0] (Number 1, No, Understand, Deaf, Letter D)
+    const indexOnlyScore = matchFingerPattern(arr, [0, 1, 0, 0, 0], [1.15, 1.45, 1.35, 1.25, 1.25]);
+    if (indexOnlyScore > 0.64 && ext.index > 0.56 && ext.middle < 0.45 && ext.thumb < 0.50) {
+      // Always register Number 1 and Letter D so "numbers" and "alphabet" scopes work at any height
+      addCandidate("num_1", Math.min(0.96, indexOnlyScore + 0.11));
+      addCandidate("letter_d", indexOnlyScore + 0.09);
+
+      if (motion.horizWave > 0.42) {
+        addCandidate("no", Math.min(0.97, indexOnlyScore + 0.14));
+      } else if (f1.indexTip.y < 0.25) {
+        addCandidate("understand", Math.min(0.95, indexOnlyScore + 0.12));
       } else if (f1.indexHorizontal) {
-        addCandidate("deaf", indexOnlyScore + 0.10);
+        addCandidate("deaf", Math.min(0.95, indexOnlyScore + 0.12));
       } else {
-        addCandidate("num_1", indexOnlyScore + 0.10);
-        addCandidate("no", indexOnlyScore + 0.08);
+        addCandidate("no", indexOnlyScore + 0.07);
       }
     }
 
-    // 11. Index + Middle Extended [0, 1, 1, 0, 0]
-    const twoFingerScore = matchFingerPattern(arr, [0, 1, 1, 0, 0], [1.0, 1.3, 1.3, 1.2, 1.2]);
-    if (twoFingerScore > 0.62 && ext.index > 0.55 && ext.middle > 0.55 && ext.ring < 0.50) {
-      if (f1.indexTip.y < 0.45) {
-        addCandidate("blind", twoFingerScore + 0.11);
+    // 11. Index + Middle Extended [0, 1, 1, 0, 0] (Number 2, Blind, Letter V / U)
+    const twoFingerScore = matchFingerPattern(arr, [0, 1, 1, 0, 0], [1.2, 1.35, 1.35, 1.25, 1.25]);
+    if (
+      twoFingerScore > 0.64 &&
+      ext.index > 0.56 &&
+      ext.middle > 0.56 &&
+      ext.ring < 0.46 &&
+      ext.pinky < 0.46 &&
+      ext.thumb < 0.50
+    ) {
+      addCandidate("num_2", Math.min(0.96, twoFingerScore + 0.11));
+      addCandidate(f1.indexMiddleSpread > 0.28 ? "letter_v" : "letter_u", twoFingerScore + 0.09);
+      if (f1.indexHorizontal || f1.indexTip.y < 0.34) {
+        addCandidate("blind", Math.min(0.96, twoFingerScore + 0.13));
       } else {
-        addCandidate("num_2", twoFingerScore + 0.10);
         addCandidate("blind", twoFingerScore + 0.07);
       }
     }
 
-    // 12. Dedicated ISL Numbers (3, 4, 7, 8, 9)
-    const num3Score = matchFingerPattern(arr, [0, 1, 1, 1, 0]);
-    if (num3Score > 0.64 && ext.index > 0.55 && ext.middle > 0.55 && ext.ring > 0.50 && ext.pinky < 0.48) {
-      addCandidate("num_3", num3Score + 0.10);
+    // 12. Dedicated ISL Numbers (3, 4, 7, 8, 9) & Alphabet Letters (W, B, L)
+    // Number 3 / Letter W: Index + Middle + Ring extended, Thumb & Pinky curled [0, 1, 1, 1, 0]
+    const num3Score = matchFingerPattern(arr, [0, 1, 1, 1, 0], [1.25, 1.2, 1.2, 1.25, 1.35]);
+    if (
+      num3Score > 0.64 &&
+      ext.thumb < 0.50 &&
+      ext.index > 0.55 &&
+      ext.middle > 0.55 &&
+      ext.ring > 0.50 &&
+      ext.pinky < 0.46
+    ) {
+      addCandidate("num_3", Math.min(0.96, num3Score + 0.12));
+      addCandidate("letter_w", num3Score + 0.10);
     }
 
-    const num4Score = matchFingerPattern(arr, [0, 1, 1, 1, 1], [1.3, 1.1, 1.1, 1.1, 1.1]);
-    if (num4Score > 0.64 && ext.thumb < 0.50 && ext.pinky > 0.50) {
-      addCandidate("num_4", num4Score + 0.10);
+    // Number 4 / Letter B: 4 Fingers extended, Thumb tucked [0, 1, 1, 1, 1]
+    const num4Score = matchFingerPattern(arr, [0, 1, 1, 1, 1], [1.45, 1.15, 1.15, 1.15, 1.2]);
+    if (
+      num4Score > 0.64 &&
+      ext.thumb < 0.46 &&
+      ext.index > 0.55 &&
+      ext.middle > 0.55 &&
+      ext.ring > 0.50 &&
+      ext.pinky > 0.50
+    ) {
+      addCandidate("num_4", Math.min(0.97, num4Score + 0.13));
+      addCandidate("letter_b", num4Score + 0.11);
+      if (f1.indexMiddleSpread < 0.25) {
+        addCandidate("thankyou", num4Score + 0.09);
+      }
     }
 
-    const num7Score = matchFingerPattern(arr, [0, 0.55, 0, 0, 0], [1.0, 1.4, 1.2, 1.2, 1.2]);
-    if (num7Score > 0.68 && ext.index >= 0.32 && ext.index <= 0.72 && ext.middle < 0.42) {
-      addCandidate("num_7", num7Score + 0.09);
+    // Number 7: Hooked Index [0, 0.55, 0, 0, 0]
+    const num7Score = matchFingerPattern(arr, [0, 0.55, 0, 0, 0], [1.1, 1.4, 1.25, 1.25, 1.25]);
+    if (num7Score > 0.68 && ext.index >= 0.30 && ext.index <= 0.68 && ext.middle < 0.40 && ext.thumb < 0.48) {
+      addCandidate("num_7", Math.min(0.95, num7Score + 0.10));
     }
 
-    const num8Score = matchFingerPattern(arr, [1, 1, 1, 0, 0], [1.3, 1.2, 1.2, 1.2, 1.2]);
-    if (num8Score > 0.66 && ext.thumb > 0.55 && ext.index > 0.55 && ext.middle > 0.55 && ext.ring < 0.48) {
-      addCandidate("num_8", num8Score + 0.09);
+    // Letter L: Thumb + Index extended at right angle [1, 1, 0, 0, 0]
+    const letterLScore = matchFingerPattern(arr, [1, 1, 0, 0, 0], [1.35, 1.35, 1.3, 1.2, 1.2]);
+    if (letterLScore > 0.68 && ext.thumb > 0.55 && ext.index > 0.56 && ext.middle < 0.44 && ext.pinky < 0.44) {
+      addCandidate("letter_l", Math.min(0.95, letterLScore + 0.11));
     }
 
-    const num9Score = matchFingerPattern(arr, [1, 1, 1, 1, 0], [1.2, 1.1, 1.1, 1.1, 1.3]);
-    if (num9Score > 0.66 && ext.thumb > 0.55 && ext.ring > 0.50 && ext.pinky < 0.48) {
-      addCandidate("num_9", num9Score + 0.09);
+    // Number 8: Thumb + Index + Middle extended, Ring & Pinky curled [1, 1, 1, 0, 0]
+    const num8Score = matchFingerPattern(arr, [1, 1, 1, 0, 0], [1.35, 1.2, 1.2, 1.3, 1.3]);
+    if (
+      num8Score > 0.66 &&
+      ext.thumb > 0.54 &&
+      ext.index > 0.55 &&
+      ext.middle > 0.55 &&
+      ext.ring < 0.46 &&
+      ext.pinky < 0.46
+    ) {
+      addCandidate("num_8", Math.min(0.96, num8Score + 0.11));
     }
 
-    // 13. Universal Nearest-Neighbor Fallback across all signs so a tracked hand never gets stuck
+    // Number 9: Thumb + Index + Middle + Ring extended, Pinky curled [1, 1, 1, 1, 0]
+    const num9Score = matchFingerPattern(arr, [1, 1, 1, 1, 0], [1.3, 1.15, 1.15, 1.2, 1.4]);
+    if (num9Score > 0.66 && ext.thumb > 0.54 && ext.ring > 0.50 && ext.pinky < 0.46) {
+      addCandidate("num_9", Math.min(0.96, num9Score + 0.11));
+    }
+
+    // 13. Universal Nearest-Neighbor Fallback across active scope
     if (!candidates.length) {
       const pool = window.ISL_SIGNS.filter((s) => {
-        if (s.category === "alphabet") return false;
         if (state.recognitionScope === "numbers") return s.category === "numbers";
-        if (state.recognitionScope === "conversational") return s.category !== "numbers";
-        return true;
+        if (state.recognitionScope === "alphabet") return s.category === "alphabet";
+        if (state.recognitionScope === "conversational") {
+          return s.category !== "numbers" && s.category !== "alphabet";
+        }
+        return s.category !== "alphabet";
       });
       let bestSign = null;
       let bestScore = 0;
@@ -1563,11 +1768,11 @@
           bestSign = s;
         }
       });
-      if (bestSign && bestScore > 0.48) {
+      if (bestSign && bestScore > 0.50) {
         candidates.push({
           signId: bestSign.id,
           word: bestSign.word,
-          confidence: Math.max(0.65, +bestScore.toFixed(3))
+          confidence: Math.max(0.66, +bestScore.toFixed(3))
         });
       }
     }
@@ -1682,14 +1887,26 @@
     updateLockProgressBar(0, "Waiting for hand pose...");
   }
 
-  function handleLiveGestureCandidate(signId, confidence) {
+  function handleLiveGestureCandidate(signId, confidence, motion) {
+    // Enforce minimum confidence threshold for the selected Precision Mode
+    if (confidence < (state.minConfidence || 0.56)) {
+      return;
+    }
+
+    // Motion-settle gate: while raising/lowering hand rapidly, pause lock-in unless it's a dynamic wave sign
+    const dynamicMotionSigns = ["hello", "no", "emergency", "yes", "where", "repeat"];
+    if (motion && motion.speed > 0.48 && !dynamicMotionSigns.includes(signId)) {
+      return;
+    }
+
     if (!state.candidateHistory) state.candidateHistory = [];
+    const maxWindow = Math.max(8, (state.requiredStableFrames || 4) + 2);
     state.candidateHistory.push(signId);
-    if (state.candidateHistory.length > 5) {
+    if (state.candidateHistory.length > maxWindow) {
       state.candidateHistory.shift();
     }
 
-    // Majority vote over the last 5 frames so a single frame jitter never resets lock progress
+    // Majority vote over the sliding window so a single frame jitter never resets lock progress
     const counts = {};
     let dominantId = signId;
     let dominantCount = 0;
@@ -1707,7 +1924,7 @@
     const now = Date.now();
     const timeSinceLast = now - state.lastSignTime;
     // Prevent hand transition while lowering hand from immediately cancelling the sign that is speaking
-    const cooldownMs = state.lastSignId === dominantId ? 3200 : 1500;
+    const cooldownMs = state.lastSignId === dominantId ? 3000 : 1400;
 
     if (state.candidateFrames >= state.requiredStableFrames && timeSinceLast > cooldownMs) {
       const signObj = window.ISL_SIGNS.find((s) => s.id === dominantId);
@@ -1937,6 +2154,7 @@
         window.ISL_SIGNS.unshift(newSign);
         saveCustomSignsToStorage();
 
+        populateTargetSignSelect();
         renderSimulatorButtons();
         renderDictionaryGrid();
         renderSavedCustomSignsList();
@@ -1980,6 +2198,7 @@
         const idx = window.ISL_SIGNS.findIndex((s) => s.id === cs.id);
         if (idx !== -1) window.ISL_SIGNS.splice(idx, 1);
         saveCustomSignsToStorage();
+        populateTargetSignSelect();
         renderSimulatorButtons();
         renderDictionaryGrid();
         renderSavedCustomSignsList();
@@ -2042,15 +2261,12 @@
       const current = state.translatedSequence[state.currentStageIndex];
       if (current) {
         window.audioEngine.playEarcon("avatar_read");
-        window.audioEngine.speakBilingual(
-          `${window.getAvatarDescription(current)} English meaning: "${current.spokenPhrase}".`,
-          current.hindiPhrase || current.hindiWord || current.spokenPhrase,
-          {
-            hindiPhonetic: current.hindiPhonetic || current.spokenPhrase,
-            interrupt: true,
-            assertive: true
-          }
-        );
+        window.audioEngine.speakSignInLang(current, state.signOutputLang, {
+          includeEnglishGuide: true,
+          guidePrefix: window.getAvatarDescription(current),
+          interrupt: true,
+          assertive: true
+        });
       }
     });
 
@@ -2299,21 +2515,9 @@
 
     if (speakConfirmation) {
       window.audioEngine.playEarcon("sign_detected");
-      const signWords = sequence.map((s) => s.word);
-      const signNames = signWords.join(", then ");
-      const hiData = window.naturalizeISLGlossHindi
-        ? window.naturalizeISLGlossHindi(signWords)
-        : { hi: signNames, hiPhonetic: signNames };
-
-      window.audioEngine.speakBilingual(
-        `Converted "${cleaned}" into ${sequence.length} Indian Sign Language signs: ${signNames}.`,
-        `हिंदी सांकेतिक अर्थ: ${hiData.hi}`,
-        {
-          hindiPhonetic: `Hindi sanketik arth: ${hiData.hiPhonetic}`,
-          interrupt: true,
-          assertive: true
-        }
-      );
+      window.audioEngine.speakSignSequenceInLang(sequence, state.signOutputLang, {
+        interrupt: true
+      });
       playStageSequence();
     }
   }
@@ -2567,19 +2771,33 @@
 
     if (speakNow) {
       window.audioEngine.playEarcon("sign_detected");
-      window.audioEngine.speak(
-        `${role === "deaf" ? "Deaf partner signed:" : "Blind user said:"} ${text}. ${window.getAvatarDescription(msgObj.signObj)}`,
-        { interrupt: true, assertive: true }
-      );
+      if (msgObj.signObj) {
+        window.audioEngine.speakSignInLang(msgObj.signObj, state.signOutputLang, {
+          interrupt: true,
+          assertive: true
+        });
+      } else {
+        window.audioEngine.speak(
+          `${role === "deaf" ? "Deaf partner signed:" : "Blind user said:"} ${text}.`,
+          { interrupt: true, assertive: true }
+        );
+      }
     }
   }
 
   function readChatMessageAloud(msgObj) {
     window.audioEngine.playEarcon("avatar_read");
-    window.audioEngine.speak(
-      `${msgObj.speakerLabel}. Message text: "${msgObj.text}". ISL Sequence: ${msgObj.glossText}. ${window.getAvatarDescription(msgObj.signObj)}`,
-      { interrupt: true, assertive: true }
-    );
+    if (msgObj && msgObj.signObj) {
+      window.audioEngine.speakSignInLang(msgObj.signObj, state.signOutputLang, {
+        interrupt: true,
+        assertive: true
+      });
+    } else if (msgObj) {
+      window.audioEngine.speak(
+        `${msgObj.speakerLabel}. Message text: "${msgObj.text}". ISL Sequence: ${msgObj.glossText}.`,
+        { interrupt: true, assertive: true }
+      );
+    }
   }
 
   function renderTwoWayChatLog() {
@@ -2843,16 +3061,21 @@
 
   function activateQuickBoardItem(item) {
     window.audioEngine.playEarcon("sign_detected");
-    window.audioEngine.speak(item.spoken, { interrupt: true, assertive: true });
 
     const signObj = window.ISL_SIGNS.find((s) => s.id === item.signId);
     if (signObj) {
+      window.audioEngine.speakSignInLang(signObj, state.signOutputLang, {
+        interrupt: true,
+        assertive: true
+      });
       state.translatedSequence = [signObj];
       state.lastTranslatedText = item.spoken;
       state.currentStageIndex = 0;
       renderSequenceStrip();
       renderActiveStageSign({ speakTactile: false });
       updateStageBrailleDisplay(item.spoken);
+    } else {
+      window.audioEngine.speak(item.spoken, { interrupt: true, assertive: true });
     }
   }
 

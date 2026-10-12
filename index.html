@@ -366,28 +366,43 @@
                 <option value="en_mai">🌐 Language: मैथिली + English</option>
                 <option value="multi_top">🌐 Language: हिन्दी + मैथिली + EN</option>
                 <option value="bho">🇮🇳 Language: भोजपुरी (Bhojpuri)</option>
+                <option value="mag">🇮🇳 Language: मगही (Magadh)</option>
+                <option value="raj">🇮🇳 Language: राजस्थानी (Marwari)</option>
+                <option value="bgc">🇮🇳 Language: हरियाणवी (Haryanvi)</option>
+                <option value="hne">🇮🇳 Language: छत्तीसगढ़ी (Chhattisgarhi)</option>
                 <option value="mr">🇮🇳 Language: मराठी (Marathi)</option>
-                <option value="bn">🇮🇳 Language: বাংলা (Bengali)</option>
-                <option value="ta">🇮🇳 Language: தமிழ் (Tamil)</option>
-                <option value="te">🇮🇳 Language: తెలుగు (Telugu)</option>
                 <option value="gu">🇮🇳 Language: ગુજરાતી (Gujarati)</option>
                 <option value="pa">🇮🇳 Language: ਪੰਜਾਬੀ (Punjabi)</option>
+                <option value="bn">🇮🇳 Language: বাংলা (Bengali)</option>
+                <option value="as">🇮🇳 Language: অসমীয়া (Assamese)</option>
+                <option value="or">🇮🇳 Language: ଓଡ଼ିଆ (Odia)</option>
+                <option value="ta">🇮🇳 Language: தமிழ் (Tamil)</option>
+                <option value="te">🇮🇳 Language: తెలుగు (Telugu)</option>
                 <option value="kn">🇮🇳 Language: ಕನ್ನಡ (Kannada)</option>
-                <option value="ur">🇮🇳 Language: اردو (Urdu)</option>
-                <option value="en">🇬🇧 Language: English Only</option>
-                <option value="all">🌍 Language: Speak All 12</option>
+                <option value="ml">🇮🇳 Language: മലയാളം (Malayalam)</option>
+                <option value="ur">🇮🇳 Language: اردو / کشمیری (Urdu)</option>
+                <option value="ne">🇮🇳 Language: नेपाली (Nepali)</option>
+                <option value="kok">🇮🇳 Language: कोंकणी (Konkani)</option>
+                <option value="doi">🇮🇳 Language: डोगरी / पहाड़ी (Dogri)</option>
+                <option value="en">🇬🇧 Language: Indian English</option>
+                <option value="all">🌍 Language: Speak All 22</option>
               </select>
               <label for="camera-precision-mode" class="sr-only">Camera Precision Sensitivity</label>
               <select id="camera-precision-mode" class="a11y-select" aria-label="Select camera gesture precision and stability threshold">
-                <option value="strict">Precision: Strict (85% Conf • 12 Frames)</option>
-                <option value="high" selected>Precision: High (78% Conf • 8 Frames)</option>
-                <option value="fast">Precision: Fast (70% Conf • 5 Frames)</option>
+                <option value="strict">Precision: Strict (85% Conf • 6 Frames)</option>
+                <option value="high" selected>Precision: High (78% Conf • 4 Frames)</option>
+                <option value="fast">Precision: Fast (70% Conf • 2 Frames)</option>
               </select>
               <label for="camera-scope-mode" class="sr-only">Recognition Vocabulary Scope</label>
               <select id="camera-scope-mode" class="a11y-select" aria-label="Select which ISL sign categories the camera detects">
-                <option value="all" selected>Detect: All Signs + Numbers (41+)</option>
+                <option value="all" selected>Detect: All Signs + Numbers + A–Z (70+)</option>
                 <option value="conversational">Detect: Conversational &amp; Custom Only</option>
                 <option value="numbers">Detect: ISL Numbers (1–9) Only</option>
+                <option value="alphabet">Detect: ISL Alphabet (A–Z) Only</option>
+              </select>
+              <label for="camera-target-sign" class="sr-only">Target Sign Focus (Competition Demo Assist)</label>
+              <select id="camera-target-sign" class="a11y-select" aria-label="Optional: Focus camera recognition on a specific sign for live stage demo">
+                <option value="auto" selected>🎯 Focus: Auto-Detect All Signs</option>
               </select>
             </div>
           </div>
@@ -475,15 +490,25 @@
                   <option value="en_mai">🌐 मैथिली + English</option>
                   <option value="multi_top">🌐 हिन्दी + मैथिली + EN</option>
                   <option value="bho">🇮🇳 भोजपुरी (Bhojpuri)</option>
+                  <option value="mag">🇮🇳 मगही (Magadh)</option>
+                  <option value="raj">🇮🇳 राजस्थानी (Marwari)</option>
+                  <option value="bgc">🇮🇳 हरियाणवी (Haryanvi)</option>
+                  <option value="hne">🇮🇳 छत्तीसगढ़ी (Chhattisgarhi)</option>
                   <option value="mr">🇮🇳 मराठी (Marathi)</option>
-                  <option value="bn">🇮🇳 বাংলা (Bengali)</option>
-                  <option value="ta">🇮🇳 தமிழ் (Tamil)</option>
-                  <option value="te">🇮🇳 తెలుగు (Telugu)</option>
                   <option value="gu">🇮🇳 ગુજરાતી (Gujarati)</option>
                   <option value="pa">🇮🇳 ਪੰਜਾਬੀ (Punjabi)</option>
+                  <option value="bn">🇮🇳 বাংলা (Bengali)</option>
+                  <option value="as">🇮🇳 অসমীয়া (Assamese)</option>
+                  <option value="or">🇮🇳 ଓଡ଼ିଆ (Odia)</option>
+                  <option value="ta">🇮🇳 தமிழ் (Tamil)</option>
+                  <option value="te">🇮🇳 తెలుగు (Telugu)</option>
                   <option value="kn">🇮🇳 ಕನ್ನಡ (Kannada)</option>
-                  <option value="ur">🇮🇳 اردو (Urdu)</option>
-                  <option value="en">🇬🇧 English Only</option>
+                  <option value="ml">🇮🇳 മലയാളം (Malayalam)</option>
+                  <option value="ur">🇮🇳 اردو / کشمیری (Urdu)</option>
+                  <option value="ne">🇮🇳 नेपाली (Nepali)</option>
+                  <option value="kok">🇮🇳 कोंकणी (Konkani)</option>
+                  <option value="doi">🇮🇳 डोगरी / पहाड़ी (Dogri)</option>
+                  <option value="en">🇬🇧 Indian English</option>
                   <option value="all">🌍 Speak All 22</option>
                 </select>
                 <button type="button" id="btn-speak-active-lang-cam" class="btn-primary btn-xs" aria-label="Speak detected sign in selected regional language">
@@ -690,15 +715,25 @@
                   <option value="en_mai">🌐 मैथिली + English</option>
                   <option value="multi_top">🌐 हिन्दी + मैथिली + EN</option>
                   <option value="bho">🇮🇳 भोजपुरी (Bhojpuri)</option>
+                  <option value="mag">🇮🇳 मगही (Magadh)</option>
+                  <option value="raj">🇮🇳 राजस्थानी (Marwari)</option>
+                  <option value="bgc">🇮🇳 हरियाणवी (Haryanvi)</option>
+                  <option value="hne">🇮🇳 छत्तीसगढ़ी (Chhattisgarhi)</option>
                   <option value="mr">🇮🇳 मराठी (Marathi)</option>
-                  <option value="bn">🇮🇳 বাংলা (Bengali)</option>
-                  <option value="ta">🇮🇳 தமிழ் (Tamil)</option>
-                  <option value="te">🇮🇳 తెలుగు (Telugu)</option>
                   <option value="gu">🇮🇳 ગુજરાતી (Gujarati)</option>
                   <option value="pa">🇮🇳 ਪੰਜਾਬੀ (Punjabi)</option>
+                  <option value="bn">🇮🇳 বাংলা (Bengali)</option>
+                  <option value="as">🇮🇳 অসমীয়া (Assamese)</option>
+                  <option value="or">🇮🇳 ଓଡ଼ିଆ (Odia)</option>
+                  <option value="ta">🇮🇳 தமிழ் (Tamil)</option>
+                  <option value="te">🇮🇳 తెలుగు (Telugu)</option>
                   <option value="kn">🇮🇳 ಕನ್ನಡ (Kannada)</option>
-                  <option value="ur">🇮🇳 اردو (Urdu)</option>
-                  <option value="en">🇬🇧 English Only</option>
+                  <option value="ml">🇮🇳 മലയാളം (Malayalam)</option>
+                  <option value="ur">🇮🇳 اردو / کشمیری (Urdu)</option>
+                  <option value="ne">🇮🇳 नेपाली (Nepali)</option>
+                  <option value="kok">🇮🇳 कोंकणी (Konkani)</option>
+                  <option value="doi">🇮🇳 डोगरी / पहाड़ी (Dogri)</option>
+                  <option value="en">🇬🇧 Indian English</option>
                   <option value="all">🌍 Speak All 22</option>
                 </select>
                 <button type="button" id="btn-speak-active-lang-stage" class="btn-primary btn-xs" aria-label="Speak active stage sign in selected regional language">
