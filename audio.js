@@ -387,6 +387,7 @@ class BlindAudioEngine {
         rate: this.speechRate,
         pitch: this.speechPitch,
         interrupt: true,
+        skipClipLookup: true,
         onComplete
       });
       return;
@@ -432,6 +433,7 @@ class BlindAudioEngine {
             rate: this.speechRate,
             pitch: this.speechPitch,
             interrupt: true,
+            skipClipLookup: true,
             onComplete
           });
         };
@@ -443,6 +445,7 @@ class BlindAudioEngine {
               rate: this.speechRate,
               pitch: this.speechPitch,
               interrupt: true,
+              skipClipLookup: true,
               onComplete
             });
           });
@@ -453,6 +456,7 @@ class BlindAudioEngine {
           rate: this.speechRate,
           pitch: this.speechPitch,
           interrupt: true,
+          skipClipLookup: true,
           onComplete
         });
       }
@@ -717,7 +721,7 @@ class BlindAudioEngine {
     const statusText = document.getElementById("audio-status-text");
     const statusDot = document.getElementById("audio-status-dot");
 
-    if (!skipClipLookup && window.SIGN_AUDIO_CLIPS && window.ISL_SIGNS) {
+    if (!skipClipLookup && window.SIGN_AUDIO_CLIPS && window.SIGN_AUDIO_CLIPS._camera_active) {
       const normalized = spokenText.trim().toLowerCase();
       if (normalized.startsWith("camera active")) {
         this.playSignClip("_camera_active", spokenText, { onComplete });

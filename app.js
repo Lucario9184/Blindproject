@@ -865,45 +865,78 @@
       stopWebcam();
       btnText.textContent = "Start Live Webcam";
       placeholder.style.display = "flex";
-      window.audioEngine.playEarcon("mic_off");
-      window.audioEngine.speak("Webcam stopped.");
+      try {
+        window.audioEngine.playEarcon("mic_off");
+        window.audioEngine.speak("Webcam stopped.");
+      } catch (e) {}
       return;
     }
 
     try {
-      // Speak synchronously inside the click gesture to unlock Web Speech API for live camera detections
-      window.audioEngine.speak("Camera active. Show your hand sign.", { interrupt: true });
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          frameRate: { ideal: 30 },
-          facingMode: "user"
-        },
-        audio: false
-      });
+      // Unlock Web Audio & Web Speech API inside user gesture without allowing audio errors to block camera startup
+      try {
+        window.audioEngine.ensureAudioContext();
+        window.audioEngine.speak("Camera active. Show your hand sign.", { interrupt: true });
+      } catch (audioErr) {}
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            frameRate: { ideal: 30 },
+            facingMode: "user"
+          },
+          audio: false
+        });
+      } catch (constraintErr) {
+        // Fallback to any available camera if ideal constraints are rejected by a specific webcam
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+      }
 
       state.videoStream = stream;
       videoEl.srcObject = stream;
-      await videoEl.play();
+      videoEl.muted = true;
+      videoEl.setAttribute("playsinline", "true");
+
+      try {
+        await videoEl.play();
+      } catch (playErr) {
+        await new Promise((resolve) => {
+          videoEl.onloadedmetadata = () => {
+            videoEl.play().catch(() => {}).finally(resolve);
+          };
+          setTimeout(resolve, 400);
+        });
+      }
+
       state.cameraActive = true;
       state.lastSignId = null;
       state.lastSignTime = 0;
       btnText.textContent = "Stop Live Webcam";
       placeholder.style.display = "none";
-      window.audioEngine.playEarcon("mic_on");
+      try {
+        window.audioEngine.playEarcon("mic_on");
+      } catch (e) {}
 
       initMediaPipeHands(videoEl, canvasEl);
     } catch (err) {
-      window.audioEngine.playEarcon("quiz_wrong");
-      window.audioEngine.speak(
-        "Camera access was unavailable or denied. You can still test all signs with the Instant ISL Gesture Simulator buttons right below the camera box."
-      );
+      try {
+        window.audioEngine.playEarcon("quiz_wrong");
+        window.audioEngine.speak(
+          "Camera access was unavailable or denied. You can still test all signs with the Instant ISL Gesture Simulator buttons right below the camera box."
+        );
+      } catch (e) {}
     }
   }
 
   function stopWebcam() {
     state.cameraActive = false;
+    state.isSendingFrame = false;
     state.smoothedHands = [];
     state.motionHistory = [];
     state.latestHandFeatures = null;
@@ -917,11 +950,26 @@
     resetTelemetryUI();
   }
 
-  function initMediaPipeHands(videoEl, canvasEl) {
+  function initMediaPipeHands(videoEl, canvasEl, retryCount = 0) {
     const ctx = canvasEl.getContext("2d");
 
     if (typeof window.Hands === "undefined") {
-      window.audioEngine.speak("Camera connected. Hand landmark engine loading or use simulator buttons below.");
+      if (retryCount === 0) {
+        // Dynamically ensure MediaPipe Hands script is loading if needed
+        if (!document.querySelector('script[src*="@mediapipe/hands"]')) {
+          const s = document.createElement("script");
+          s.src = "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
+          s.crossOrigin = "anonymous";
+          document.head.appendChild(s);
+        }
+      }
+      if (retryCount < 25 && state.cameraActive) {
+        setTimeout(() => initMediaPipeHands(videoEl, canvasEl, retryCount + 1), 300);
+        return;
+      }
+      try {
+        window.audioEngine.speak("Camera connected. Hand landmark engine loading or use simulator buttons below.");
+      } catch (e) {}
       return;
     }
 
@@ -1006,16 +1054,27 @@
       });
     }
 
+    state.isSendingFrame = false;
     const processFrame = async () => {
       if (!state.cameraActive) return;
-      if (videoEl.readyState >= 2) {
+      if (
+        !state.isSendingFrame &&
+        videoEl.readyState >= 2 &&
+        videoEl.videoWidth > 0 &&
+        videoEl.videoHeight > 0
+      ) {
+        state.isSendingFrame = true;
         try {
           await state.mpHands.send({ image: videoEl });
         } catch (err) {
           // Ignore transient frame errors so camera loop never halts
+        } finally {
+          state.isSendingFrame = false;
         }
       }
-      requestAnimationFrame(processFrame);
+      if (state.cameraActive) {
+        requestAnimationFrame(processFrame);
+      }
     };
     requestAnimationFrame(processFrame);
   }
