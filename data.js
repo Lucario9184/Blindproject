@@ -392,11 +392,51 @@ window.ISL_SIGNS = [
     tactileGuide: "Extend your thumb and pinky finger while curling your index, middle, and ring fingers into your palm. Hold the thumb near your ear and the pinky near your mouth like a telephone receiver.",
     poseType: "phone_hand",
     simLabel: "📞 Call / Phone"
+  },
+  {
+    id: "howareyou",
+    word: "How Are You?",
+    hindiWord: "आप कैसे हैं?",
+    keywords: ["how are you", "how are you doing", "how r u", "how you", "how", "kaise ho", "kaise hain", "kaisa hai", "kya haal hai", "haal", "kaise", "kem cho"],
+    category: "greetings",
+    emoji: "🤝",
+    hands: "2-Handed ISL Sign",
+    spokenPhrase: "How are you? I hope you are doing well.",
+    tactileGuide: "Hold both hands in front of your chest with open palms facing upward and slightly tilted toward you. Move both palms slightly outward in a gentle arc with a warm questioning smile.",
+    poseType: "how_are_you",
+    simLabel: "🤝 How Are You?"
+  },
+  {
+    id: "you",
+    word: "You",
+    hindiWord: "आप / तुम",
+    keywords: ["you", "your", "yours", "aap", "tum", "tu", "apka", "tumhara"],
+    category: "greetings",
+    emoji: "👉",
+    hands: "1-Handed ISL Sign",
+    spokenPhrase: "You / With you.",
+    tactileGuide: "Point your dominant hand index finger forward politely toward the person you are communicating with at chest level.",
+    poseType: "point_forward",
+    simLabel: "👉 You"
   }
 ];
 
 // Multi-word phrase idioms mapped directly to sign IDs for high-precision NLP translation
 window.ISL_PHRASE_IDIOMS = [
+  { phrase: "hello how are you are", signIds: ["hello", "howareyou"] },
+  { phrase: "hello how are you doing", signIds: ["hello", "howareyou"] },
+  { phrase: "hello how are you", signIds: ["hello", "howareyou"] },
+  { phrase: "how are you are", signIds: ["howareyou"] },
+  { phrase: "how are you doing", signIds: ["howareyou"] },
+  { phrase: "how are you", signIds: ["howareyou"] },
+  { phrase: "how r u", signIds: ["howareyou"] },
+  { phrase: "how you", signIds: ["howareyou"] },
+  { phrase: "kaise ho", signIds: ["howareyou"] },
+  { phrase: "kaise hain", signIds: ["howareyou"] },
+  { phrase: "kaisa hai", signIds: ["howareyou"] },
+  { phrase: "aap kaise hain", signIds: ["howareyou"] },
+  { phrase: "aap kaise ho", signIds: ["howareyou"] },
+  { phrase: "kya haal hai", signIds: ["howareyou"] },
   { phrase: "thank you very much good friend", signIds: ["thankyou", "friend"] },
   { phrase: "thank you very much", signIds: ["thankyou"] },
   { phrase: "good friend", signIds: ["friend"] },
@@ -409,7 +449,6 @@ window.ISL_PHRASE_IDIOMS = [
   { phrase: "hard of hearing", signIds: ["deaf"] },
   { phrase: "i love you", signIds: ["iloveyou"] },
   { phrase: "take care", signIds: ["iloveyou"] },
-  { phrase: "how are you", signIds: ["where", "good"] },
   { phrase: "what is your name", signIds: ["where", "name"] },
   { phrase: "my name is", signIds: ["name"] },
   { phrase: "slow down", signIds: ["slow"] },
@@ -1111,6 +1150,22 @@ function getPoseVisualSpec(signObj) {
         expression: "serious",
         avatarAction: "Avatar extends the right index finger upright and waves it side-to-side while shaking the head No."
       };
+    case "how_are_you":
+      return {
+        hands: [[1, 1, 1, 1, 1], [1, 1, 1, 1, 1]],
+        motion: "Open Palms Questioning 🤲",
+        avatarPos: [{ x: 82, y: 118 }, { x: 118, y: 118 }],
+        expression: "question",
+        avatarAction: "Avatar opens both hands facing upward with a warm smiling head tilt, asking 'How are you?'."
+      };
+    case "point_forward":
+      return {
+        hands: [[0, 1, 0, 0, 0]],
+        motion: "Point Index Forward 👉",
+        avatarPos: [{ x: 132, y: 116 }],
+        expression: "friendly",
+        avatarAction: "Avatar points the index finger forward politely toward the person."
+      };
     case "chest_circle":
     case "fist_chest":
       return {
@@ -1361,9 +1416,9 @@ window.getAvatarDescription = function (signObj) {
 };
 
 /**
- * Generates an expressive On-Screen ISL Signing Avatar SVG (Upper Body + Facial Expression + Articulated Hands)
+ * Generates an expressive 3D Realistic Human ISL Signing Avatar SVG
  */
-window.renderISLAvatarSVG = function (signObj) {
+function renderHumanAvatarSVG(signObj) {
   if (!signObj) return "";
   const label = signObj.letterChar || signObj.word.split(" ")[0].toUpperCase();
   const spec = getPoseVisualSpec(signObj);
@@ -1564,6 +1619,292 @@ window.renderISLAvatarSVG = function (signObj) {
       </g>
     </svg>
   `;
+}
+
+/**
+ * Generates an adorable, expressive Doraemon Cartoon Character ISL Signing Avatar SVG
+ */
+function renderDoraemonCartoonAvatarSVG(signObj) {
+  if (!signObj) return "";
+  const label = signObj.letterChar || signObj.word.split(" ")[0].toUpperCase();
+  const spec = getPoseVisualSpec(signObj);
+  const isTwoHanded = spec.hands.length === 2;
+  const safeAria = `Doraemon cartoon avatar is signing "${signObj.word}": ${spec.avatarAction}`;
+
+  const pos1 = spec.avatarPos[0] || { x: 138, y: 112 };
+  const pos2 = isTwoHanded ? (spec.avatarPos[1] || { x: 62, y: 112 }) : { x: 60, y: 162 };
+
+  const ex1 = (136 + pos1.x) / 2 + 10;
+  const ey1 = Math.max((115 + pos1.y) / 2 + 8, 126);
+  const ex2 = isTwoHanded ? (64 + pos2.x) / 2 - 10 : 54;
+  const ey2 = isTwoHanded ? Math.max((115 + pos2.y) / 2 + 8, 126) : 142;
+
+  let eyeBrows = "";
+  let pupilL = `<circle cx="93" cy="50" r="4.2" fill="#0f172a"/><circle cx="91.5" cy="48.5" r="1.4" fill="#ffffff"/>`;
+  let pupilR = `<circle cx="107" cy="50" r="4.2" fill="#0f172a"/><circle cx="105.5" cy="48.5" r="1.4" fill="#ffffff"/>`;
+  let mouthShape = `
+    <path d="M 83 75 Q 100 95 117 75 Z" fill="#dc2626" stroke="#991b1b" stroke-width="1.8"/>
+    <path d="M 89 83 Q 100 78 111 83 Q 100 93 89 83 Z" fill="#fb7185"/>
+  `;
+
+  if (spec.expression === "question") {
+    pupilL = `<circle cx="93" cy="47" r="4.5" fill="#0f172a"/><circle cx="91.5" cy="45.5" r="1.5" fill="#ffffff"/>`;
+    pupilR = `<circle cx="107" cy="52" r="4.2" fill="#0f172a"/><circle cx="105.5" cy="50.5" r="1.4" fill="#ffffff"/>`;
+    eyeBrows = `<path d="M 83 38 Q 91 33 99 38" fill="none" stroke="#0f172a" stroke-width="2.2" stroke-linecap="round"/>`;
+    mouthShape = `
+      <ellipse cx="100" cy="80" rx="9" ry="8" fill="#dc2626" stroke="#991b1b" stroke-width="1.6"/>
+      <ellipse cx="100" cy="83" rx="6" ry="4" fill="#fb7185"/>
+    `;
+  } else if (spec.expression === "urgent") {
+    pupilL = `<circle cx="93" cy="49" r="3.2" fill="#0f172a"/><circle cx="92" cy="48" r="1.2" fill="#ffffff"/>`;
+    pupilR = `<circle cx="107" cy="49" r="3.2" fill="#0f172a"/><circle cx="106" cy="48" r="1.2" fill="#ffffff"/>`;
+    eyeBrows = `
+      <line x1="82" y1="38" x2="96" y2="42" stroke="#0f172a" stroke-width="2.2" stroke-linecap="round"/>
+      <line x1="118" y1="38" x2="104" y2="42" stroke="#0f172a" stroke-width="2.2" stroke-linecap="round"/>
+    `;
+  }
+
+  return `
+    <svg viewBox="0 0 200 200" width="100%" height="100%" role="img" aria-label="${safeAria}">
+      <defs>
+        <radialGradient id="dorBg" cx="50%" cy="40%" r="65%">
+          <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.38"/>
+          <stop offset="60%" stop-color="#0369a1" stop-opacity="0.9"/>
+          <stop offset="100%" stop-color="#08152c" stop-opacity="1"/>
+        </radialGradient>
+        <radialGradient id="dorBodyBlue" cx="42%" cy="35%" r="65%">
+          <stop offset="0%" stop-color="#38bdf8"/>
+          <stop offset="45%" stop-color="#0284c7"/>
+          <stop offset="100%" stop-color="#0369a1"/>
+        </radialGradient>
+        <radialGradient id="dorBellGrad" cx="35%" cy="30%" r="70%">
+          <stop offset="0%" stop-color="#fef08a"/>
+          <stop offset="60%" stop-color="#facc15"/>
+          <stop offset="100%" stop-color="#ca8a04"/>
+        </radialGradient>
+        <radialGradient id="dorPawGrad" cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="70%" stop-color="#f1f5f9"/>
+          <stop offset="100%" stop-color="#cbd5e1"/>
+        </radialGradient>
+        <filter id="dorShadow" x="-15%" y="-15%" width="130%" height="130%">
+          <feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#000000" flood-opacity="0.55"/>
+        </filter>
+      </defs>
+
+      <!-- Stage Backdrop with Cartoon Aura -->
+      <rect width="200" height="200" rx="16" fill="url(#dorBg)"/>
+      <circle cx="100" cy="90" r="78" fill="none" stroke="#38bdf8" stroke-width="1.2" stroke-opacity="0.3" stroke-dasharray="4 4"/>
+      <!-- Anime Sparkles -->
+      <path d="M 24 38 L 26 30 L 28 38 L 36 40 L 28 42 L 26 50 L 24 42 L 16 40 Z" fill="#fef08a" opacity="0.65"/>
+      <path d="M 174 44 L 175.5 38 L 177 44 L 183 45.5 L 177 47 L 175.5 53 L 174 47 L 168 45.5 Z" fill="#fef08a" opacity="0.65"/>
+
+      <!-- Top Character Motion Badge -->
+      <rect x="14" y="7" width="172" height="20" rx="10" fill="#0c2340" stroke="#38bdf8" stroke-width="1.3"/>
+      <circle cx="25" cy="17" r="3.5" fill="#facc15">
+        <animate attributeName="opacity" values="1;0.35;1" dur="1.4s" repeatCount="indefinite"/>
+      </circle>
+      <text x="100" y="21" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="9.5" fill="#7dd3fc" letter-spacing="0.5">
+        🐱 DORAEMON ISL: ${spec.motion.toUpperCase()}
+      </text>
+
+      <!-- 3D Body & Round Blue Torso -->
+      <g filter="url(#dorShadow)">
+        <path d="M 62 100 C 62 100, 56 160, 100 160 C 144 160, 138 100, 138 100 Z" fill="url(#dorBodyBlue)" stroke="#0369a1" stroke-width="2.4"/>
+        <ellipse cx="100" cy="128" rx="26" ry="22" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.4"/>
+        <!-- 4D Magic Pocket -->
+        <path d="M 82 128 C 82 144, 118 144, 118 128 Z" fill="#f8fafc" stroke="#64748b" stroke-width="1.8"/>
+        <line x1="82" y1="128" x2="118" y2="128" stroke="#475569" stroke-width="1.6"/>
+      </g>
+
+      <!-- Collar & Golden Bell -->
+      <g filter="url(#dorShadow)">
+        <rect x="73" y="93" width="54" height="7" rx="3.5" fill="#ef4444" stroke="#991b1b" stroke-width="1.4"/>
+        <circle cx="100" cy="102" r="6.2" fill="url(#dorBellGrad)" stroke="#ca8a04" stroke-width="1.4"/>
+        <line x1="94.5" y1="101" x2="105.5" y2="101" stroke="#713f12" stroke-width="1.2"/>
+        <circle cx="100" cy="103.5" r="1.3" fill="#713f12"/>
+      </g>
+
+      <!-- Round Blue Doraemon Head -->
+      <g filter="url(#dorShadow)">
+        <circle cx="100" cy="62" r="35" fill="url(#dorBodyBlue)" stroke="#0369a1" stroke-width="2.2"/>
+        <ellipse cx="100" cy="67" rx="28.5" ry="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+
+        ${eyeBrows}
+        <ellipse cx="91.5" cy="47.5" rx="8" ry="11.5" fill="#ffffff" stroke="#0f172a" stroke-width="1.8"/>
+        ${pupilL}
+        <ellipse cx="108.5" cy="47.5" rx="8" ry="11.5" fill="#ffffff" stroke="#0f172a" stroke-width="1.8"/>
+        ${pupilR}
+
+        <!-- Red Round Nose with Shine -->
+        <circle cx="100" cy="59.5" r="5.6" fill="#ef4444" stroke="#b91c1c" stroke-width="1.4"/>
+        <circle cx="98.2" cy="57.8" r="1.7" fill="#ffffff"/>
+        <line x1="100" y1="65" x2="100" y2="74" stroke="#0f172a" stroke-width="2"/>
+
+        ${mouthShape}
+
+        <!-- 6 Whiskers -->
+        <line x1="68" y1="63" x2="90" y2="65" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="66" y1="69" x2="90" y2="69" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="68" y1="75" x2="90" y2="73" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="132" y1="63" x2="110" y2="65" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="134" y1="69" x2="110" y2="69" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="132" y1="75" x2="110" y2="73" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round"/>
+      </g>
+
+      <!-- Blue Arms & Articulated White Signing Hands (Paws) -->
+      <g filter="url(#dorShadow)">
+        ${
+          isTwoHanded
+            ? `
+          <path d="M 64 104 Q ${ex2} ${ey2} ${pos2.x} ${pos2.y}" fill="none" stroke="url(#dorBodyBlue)" stroke-width="11" stroke-linecap="round"/>
+          <circle cx="${pos2.x}" cy="${pos2.y}" r="12" fill="url(#dorPawGrad)" stroke="#0284c7" stroke-width="2.2"/>
+          <g transform="translate(${pos2.x - 14}, ${pos2.y - 14})">
+            ${renderArticulatedHandSVG(spec.hands[1] || spec.hands[0], { x: 14, y: 14, scale: 0.52, mirror: true })}
+          </g>
+        `
+            : `
+          <path d="M 64 104 Q 52 130 58 152" fill="none" stroke="url(#dorBodyBlue)" stroke-width="10" stroke-linecap="round"/>
+          <circle cx="58" cy="154" r="10" fill="url(#dorPawGrad)" stroke="#0284c7" stroke-width="2"/>
+        `
+        }
+
+        <path d="M 136 104 Q ${ex1} ${ey1} ${pos1.x} ${pos1.y}" fill="none" stroke="url(#dorBodyBlue)" stroke-width="11" stroke-linecap="round"/>
+        <circle cx="${pos1.x}" cy="${pos1.y}" r="12" fill="url(#dorPawGrad)" stroke="#0284c7" stroke-width="2.2"/>
+        <g transform="translate(${pos1.x - 14}, ${pos1.y - 14})">
+          <animateTransform attributeName="transform" type="translate" values="${pos1.x - 14} ${pos1.y - 14}; ${pos1.x - 14} ${pos1.y - 16.5}; ${pos1.x - 14} ${pos1.y - 14}" dur="1.8s" repeatCount="indefinite"/>
+          ${renderArticulatedHandSVG(spec.hands[0], { x: 14, y: 14, scale: 0.52, mirror: false })}
+        </g>
+      </g>
+
+      <!-- Bottom High-Contrast Gloss Banner -->
+      <g filter="url(#dorShadow)">
+        <rect x="12" y="156" width="176" height="33" rx="10" fill="#0284c7" stroke="#38bdf8" stroke-width="1.6"/>
+        <text x="100" y="178" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="13" fill="#ffffff" letter-spacing="0.4">
+          🐱 Doraemon: ${signObj.emoji || "🤟"} ${label}
+        </text>
+      </g>
+    </svg>
+  `;
+}
+
+/**
+ * Generates a Futuristic Cyber Robot Character ISL Signing Avatar SVG
+ */
+function renderCyberRobotAvatarSVG(signObj) {
+  if (!signObj) return "";
+  const label = signObj.letterChar || signObj.word.split(" ")[0].toUpperCase();
+  const spec = getPoseVisualSpec(signObj);
+  const isTwoHanded = spec.hands.length === 2;
+  const safeAria = `Cyber Robot avatar is signing "${signObj.word}": ${spec.avatarAction}`;
+
+  const pos1 = spec.avatarPos[0] || { x: 138, y: 112 };
+  const pos2 = isTwoHanded ? (spec.avatarPos[1] || { x: 62, y: 112 }) : { x: 60, y: 162 };
+
+  const ex1 = (136 + pos1.x) / 2 + 12;
+  const ey1 = Math.max((115 + pos1.y) / 2 + 8, 126);
+  const ex2 = isTwoHanded ? (64 + pos2.x) / 2 - 12 : 54;
+  const ey2 = isTwoHanded ? Math.max((115 + pos2.y) / 2 + 8, 126) : 142;
+
+  return `
+    <svg viewBox="0 0 200 200" width="100%" height="100%" role="img" aria-label="${safeAria}">
+      <defs>
+        <radialGradient id="robBg" cx="50%" cy="40%" r="65%">
+          <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.35"/>
+          <stop offset="70%" stop-color="#0f172a" stop-opacity="0.95"/>
+          <stop offset="100%" stop-color="#020617" stop-opacity="1"/>
+        </radialGradient>
+        <linearGradient id="robMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#475569"/>
+          <stop offset="50%" stop-color="#1e293b"/>
+          <stop offset="100%" stop-color="#0f172a"/>
+        </linearGradient>
+        <linearGradient id="robVisor" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#38bdf8"/>
+          <stop offset="50%" stop-color="#06b6d4"/>
+          <stop offset="100%" stop-color="#22d3ee"/>
+        </linearGradient>
+        <filter id="robGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#06b6d4" flood-opacity="0.8"/>
+        </filter>
+      </defs>
+
+      <rect width="200" height="200" rx="16" fill="url(#robBg)"/>
+      <circle cx="100" cy="90" r="76" fill="none" stroke="#06b6d4" stroke-width="1.2" stroke-opacity="0.25" stroke-dasharray="3 3"/>
+
+      <!-- Top Banner -->
+      <rect x="14" y="7" width="172" height="20" rx="10" fill="#020617" stroke="#06b6d4" stroke-width="1.4"/>
+      <circle cx="25" cy="17" r="3.5" fill="#22c55e">
+        <animate attributeName="opacity" values="1;0.4;1" dur="1.2s" repeatCount="indefinite"/>
+      </circle>
+      <text x="100" y="21" text-anchor="middle" font-family="monospace" font-weight="900" font-size="9" fill="#38bdf8" letter-spacing="0.8">
+        🤖 ROBO-SETU ISL: ${spec.motion.toUpperCase()}
+      </text>
+
+      <!-- Robotic Torso -->
+      <g>
+        <path d="M 52 156 L 68 100 L 132 100 L 148 156 Z" fill="url(#robMetal)" stroke="#38bdf8" stroke-width="1.8"/>
+        <circle cx="100" cy="126" r="12" fill="#020617" stroke="#06b6d4" stroke-width="2"/>
+        <circle cx="100" cy="126" r="6" fill="#38bdf8" filter="url(#robGlow)">
+          <animate attributeName="r" values="5;7;5" dur="1.8s" repeatCount="indefinite"/>
+        </circle>
+      </g>
+
+      <!-- Robotic Neck & Head -->
+      <g>
+        <rect x="92" y="86" width="16" height="15" fill="#334155" stroke="#06b6d4" stroke-width="1.2"/>
+        <path d="M 74 54 L 84 40 L 116 40 L 126 54 L 122 84 L 78 84 Z" fill="url(#robMetal)" stroke="#38bdf8" stroke-width="2"/>
+        <rect x="80" y="56" width="40" height="14" rx="4" fill="url(#robVisor)" filter="url(#robGlow)"/>
+        <line x1="84" y1="63" x2="116" y2="63" stroke="#ffffff" stroke-width="1.4" opacity="0.9"/>
+        <line x1="72" y1="58" x2="66" y2="48" stroke="#06b6d4" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="128" y1="58" x2="134" y2="48" stroke="#06b6d4" stroke-width="2.5" stroke-linecap="round"/>
+      </g>
+
+      <!-- Robotic Articulated Arms -->
+      <g>
+        ${
+          isTwoHanded
+            ? `
+          <path d="M 68 102 Q ${ex2} ${ey2} ${pos2.x} ${pos2.y}" fill="none" stroke="#475569" stroke-width="8" stroke-linecap="round"/>
+          <circle cx="${ex2}" cy="${ey2}" r="5" fill="#06b6d4"/>
+          <g transform="translate(${pos2.x - 14}, ${pos2.y - 14})">
+            ${renderArticulatedHandSVG(spec.hands[1] || spec.hands[0], { x: 14, y: 14, scale: 0.55, mirror: true })}
+          </g>
+        `
+            : `
+          <path d="M 68 102 Q 54 130 60 152" fill="none" stroke="#475569" stroke-width="8" stroke-linecap="round"/>
+        `
+        }
+
+        <path d="M 132 102 Q ${ex1} ${ey1} ${pos1.x} ${pos1.y}" fill="none" stroke="#475569" stroke-width="8" stroke-linecap="round"/>
+        <circle cx="${ex1}" cy="${ey1}" r="5" fill="#06b6d4"/>
+        <g transform="translate(${pos1.x - 14}, ${pos1.y - 14})">
+          ${renderArticulatedHandSVG(spec.hands[0], { x: 14, y: 14, scale: 0.55, mirror: false })}
+        </g>
+      </g>
+
+      <!-- Bottom Cyber Gloss Banner -->
+      <g>
+        <rect x="12" y="156" width="176" height="33" rx="10" fill="#090d16" stroke="#06b6d4" stroke-width="1.5"/>
+        <text x="100" y="178" text-anchor="middle" font-family="monospace" font-weight="900" font-size="12.5" fill="#38bdf8" letter-spacing="0.5">
+          🤖 ROBO: ${signObj.emoji || "🤟"} ${label}
+        </text>
+      </g>
+    </svg>
+  `;
+}
+
+/**
+ * Public Dispatcher for ISL Avatar SVG Rendering supporting Doraemon, Human, and Cyber Robot
+ */
+window.renderISLAvatarSVG = function (signObj, personaOverride) {
+  const persona = personaOverride || window.currentAvatarPersona || "doraemon";
+  if (persona === "doraemon") {
+    return renderDoraemonCartoonAvatarSVG(signObj);
+  } else if (persona === "robot") {
+    return renderCyberRobotAvatarSVG(signObj);
+  }
+  return renderHumanAvatarSVG(signObj);
 };
 
 /**

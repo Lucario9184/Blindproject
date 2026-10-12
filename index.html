@@ -476,6 +476,8 @@
                     <span class="field-label" style="margin-bottom:0;">Quick Conversation Phrases (Click to Sign):</span>
                   </div>
                   <div class="chip-row" role="group">
+                    <button type="button" class="chip-btn" data-sentence="Hello how are you">👋 "Hello, how are you?"</button>
+                    <button type="button" class="chip-btn" data-sentence="Doraemon hello how are you">🐱 "Doraemon, hello how are you?"</button>
                     <button type="button" class="chip-btn" data-sentence="Hello friend how are you">👋 "Hello friend, how are you?"</button>
                     <button type="button" class="chip-btn" data-sentence="Thank you very much good friend">🙏 "Thank you very much, good friend"</button>
                     <button type="button" class="chip-btn" data-sentence="Please help me I am deaf">🧏 "Please help me, I am Deaf"</button>
@@ -483,7 +485,6 @@
                     <button type="button" class="chip-btn" data-sentence="Where is the restroom washroom">🚻 "Where is the restroom?"</button>
                     <button type="button" class="chip-btn" data-sentence="Call doctor emergency help">🏥 "Call doctor, emergency help!"</button>
                     <button type="button" class="chip-btn" data-sentence="Please repeat slow I understand">🐢 "Please repeat slowly, I understand"</button>
-                    <button type="button" class="chip-btn" data-sentence="Good morning welcome namaste">☀️ "Good morning, welcome namaste"</button>
                   </div>
                 </div>
               </div>
@@ -501,6 +502,25 @@
                     <button type="button" id="btn-stage-next" class="btn-outline btn-sm">Next ⏭</button>
                     <button type="button" id="btn-stage-loop" class="btn-outline btn-sm" title="Toggle repeat gesture loop">🔁 Loop: OFF</button>
                     <button type="button" id="btn-stage-audiosync" class="btn-secondary btn-sm" title="Toggle audio spoken synchronized with avatar">🔊 Voice: ON</button>
+                  </div>
+                </div>
+
+                <!-- Avatar Character Persona Selector (Cartoon Doraemon / 3D Human / Cyber Robot) -->
+                <div class="avatar-persona-bar">
+                  <div class="persona-label">
+                    <span class="sec-tag" style="margin-bottom:0;font-size:10.5px;">🎭 AVATAR CHARACTER:</span>
+                    <strong id="active-persona-name" style="font-size:12.5px;color:var(--orange-deep);">🐱 Doraemon Cartoon</strong>
+                  </div>
+                  <div class="persona-btn-group" role="group" aria-label="Select 3D Avatar Character Style">
+                    <button type="button" class="btn-persona-pill active" data-persona="doraemon" title="Cartoon Doraemon character with cheerful animated gestures">
+                      🐱 Doraemon Cartoon
+                    </button>
+                    <button type="button" class="btn-persona-pill" data-persona="human" title="Realistic 3D human avatar signer">
+                      🧑 3D Human (Rahul)
+                    </button>
+                    <button type="button" class="btn-persona-pill" data-persona="robot" title="Futuristic cyber robotic signer">
+                      🤖 Cyber Robo-Setu
+                    </button>
                   </div>
                 </div>
 

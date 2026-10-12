@@ -53,6 +53,7 @@
     avatarSpeed: 1400,
     avatarLoop: false,
     avatarAudioSync: true,
+    avatarPersona: "doraemon",
     // Two-Way Conversation Hub State
     chatMessages: [],
     // Dictionary & Quiz State
@@ -2883,6 +2884,29 @@
       });
     }
 
+    document.querySelectorAll(".btn-persona-pill").forEach((pill) => {
+      pill.addEventListener("click", () => {
+        document.querySelectorAll(".btn-persona-pill").forEach((p) => p.classList.remove("active"));
+        pill.classList.add("active");
+        state.avatarPersona = pill.dataset.persona;
+        window.currentAvatarPersona = state.avatarPersona;
+        const nameEl = document.getElementById("active-persona-name");
+        if (nameEl) {
+          if (state.avatarPersona === "doraemon") nameEl.textContent = "🐱 Doraemon Cartoon";
+          else if (state.avatarPersona === "robot") nameEl.textContent = "🤖 Cyber Robo-Setu";
+          else nameEl.textContent = "🧑 3D Human (Rahul)";
+        }
+        renderActiveStageSign({ speakTactile: false });
+        window.audioEngine.speak(
+          state.avatarPersona === "doraemon"
+            ? "Doraemon cartoon avatar selected."
+            : state.avatarPersona === "robot"
+            ? "Cyber robot avatar selected."
+            : "Human 3D avatar selected."
+        );
+      });
+    });
+
     if (inputEl) {
       const matchBadge = document.getElementById("text-match-count");
       inputEl.addEventListener("input", () => {
@@ -3001,9 +3025,13 @@
     const sequence = [];
 
     const stopWords = new Set([
-      "a", "an", "the", "is", "am", "are", "was", "were", "to", "for", "of",
-      "in", "on", "at", "very", "much", "my", "me", "i", "you", "your", "can", "could", "would",
-      "में", "का", "की", "के", "को", "से", "पर", "है", "हूँ", "हैं", "मुझे", "मेरा", "मेरी"
+      "a", "an", "the", "is", "am", "are", "was", "were", "be", "been", "being",
+      "do", "does", "did", "have", "has", "had", "will", "would", "shall", "should", "can", "could", "may", "might", "must",
+      "to", "of", "in", "for", "on", "with", "at", "by", "from", "up", "about", "into", "over", "after",
+      "then", "than", "so", "that", "this", "these", "those", "it", "its", "there", "here",
+      "very", "much", "really", "just", "also", "too", "only", "then", "and", "or", "but", "if", "as",
+      "like", "full", "all",
+      "में", "का", "की", "के", "को", "से", "पर", "है", "हूँ", "हैं", "हो", "था", "थी", "थे", "लिए", "और", "या", "तो", "भी", "ही", "कर", "करना", "रहा", "रही", "रहे", "गया", "गई", "गए"
     ]);
 
     function matchSingleToken(tok) {
@@ -3060,6 +3088,12 @@
         continue;
       }
 
+      // In conversational multi-word sentences, filter out grammatical stopwords early
+      if (tokens.length > 1 && stopWords.has(token)) {
+        i++;
+        continue;
+      }
+
       // Try 3-word n-gram
       if (i + 2 < tokens.length) {
         const trigram = `${token} ${tokens[i + 1]} ${tokens[i + 2]}`;
@@ -3090,29 +3124,24 @@
         continue;
       }
 
-      // Skip common conversational stopwords if multi-word sentence
-      if (tokens.length > 1 && stopWords.has(token)) {
-        i++;
-        continue;
-      }
-
-      // Fallback for names, novel words, numbers, and regional script characters: Fingerspell in ISL
-      const transliterated = transliterateDevanagari(token) || token;
-      let addedFingerspell = false;
-      for (const ch of transliterated) {
-        const letterSign =
-          alphabetSigns.find((s) => s.letterChar && s.letterChar.toLowerCase() === ch.toLowerCase()) ||
-          numberSigns.find((s) => s.letterChar === ch);
-        if (letterSign) {
-          sequence.push(letterSign);
-          addedFingerspell = true;
+      // Fallback: If isolated single-word query (like a person's name or number), fingerspell it.
+      // In a full multi-word sentence, skip arbitrary non-keyword filler words without fingerspelling 30 letters.
+      if (tokens.length === 1) {
+        const transliterated = transliterateDevanagari(token) || token;
+        let addedFingerspell = false;
+        for (const ch of transliterated) {
+          const letterSign =
+            alphabetSigns.find((s) => s.letterChar && s.letterChar.toLowerCase() === ch.toLowerCase()) ||
+            numberSigns.find((s) => s.letterChar === ch);
+          if (letterSign) {
+            sequence.push(letterSign);
+            addedFingerspell = true;
+          }
         }
-      }
-
-      if (!addedFingerspell) {
-        // If single character or symbol
-        const directLetter = alphabetSigns.find((s) => s.keywords && s.keywords.includes(token));
-        if (directLetter) sequence.push(directLetter);
+        if (!addedFingerspell) {
+          const directLetter = alphabetSigns.find((s) => s.keywords && s.keywords.includes(token));
+          if (directLetter) sequence.push(directLetter);
+        }
       }
 
       i++;
@@ -3122,8 +3151,22 @@
       sequence.push(window.ISL_SIGNS[0]);
     }
 
-    state.translatedSequence = sequence;
+    // Filter duplicate consecutive signs for fluent signing
+    const dedupedSequence = [];
+    sequence.forEach((s) => {
+      if (!dedupedSequence.length || dedupedSequence[dedupedSequence.length - 1].id !== s.id) {
+        dedupedSequence.push(s);
+      }
+    });
+
+    state.translatedSequence = dedupedSequence;
     state.currentStageIndex = 0;
+
+    const matchBadge = document.getElementById("text-match-count");
+    if (matchBadge) {
+      const kwNames = dedupedSequence.map((s) => s.word.split("/")[0].trim()).join(" → ");
+      matchBadge.textContent = `🎯 ${dedupedSequence.length} Keyword${dedupedSequence.length > 1 ? "s" : ""}: ${kwNames}`;
+    }
 
     renderSequenceStrip();
     renderActiveStageSign({ speakTactile: false });
