@@ -1420,7 +1420,116 @@
           "Camera access was unavailable or denied. You can still test all signs with the Instant ISL Gesture Simulator buttons right below the camera box."
         );
       } catch (e) {}
+
+      if (placeholder) {
+        placeholder.style.display = "flex";
+        const isPermission = err.name === "NotAllowedError" || err.name === "PermissionDeniedError";
+        const isNotFound = err.name === "NotFoundError" || err.name === "DevicesNotFoundError";
+        const errTitle = isPermission ? "Camera Permission Blocked" : isNotFound ? "Camera Not Detected" : "Camera Access Unavailable";
+        const errMsg = isPermission
+          ? "Please allow camera access in your browser address bar or macOS System Settings (Privacy & Security → Camera)."
+          : isNotFound
+          ? "No physical webcam was detected on this device. You can test live hand tracking using the Live Simulated Hand Stream below."
+          : (err.message || "Browsers require a secure context (http://localhost or HTTPS) or user permission to access the webcam.");
+
+        placeholder.innerHTML = `
+          <div class="placeholder-icon" aria-hidden="true">⚠️📷</div>
+          <h3 style="color:#f87171; margin-bottom: 6px;">${errTitle}</h3>
+          <p style="color:#fca5a5; font-size:13px; max-width:440px; margin-bottom:14px; line-height: 1.4;">${errMsg}</p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+            <button type="button" id="btn-start-virtual-cam" class="btn-primary btn-sm" style="background:#e67828; border:none; padding:8px 16px; font-weight:600; border-radius:8px; cursor:pointer;">
+              ▶️ Test with Live Simulated Hand Stream
+            </button>
+            <button type="button" id="btn-retry-real-cam" class="btn-secondary btn-sm" style="padding:8px 16px; border-radius:8px; cursor:pointer;">
+              🔄 Retry Camera
+            </button>
+          </div>
+        `;
+        const retryBtn = document.getElementById("btn-retry-real-cam");
+        if (retryBtn) retryBtn.addEventListener("click", () => toggleWebcam());
+        const virtBtn = document.getElementById("btn-start-virtual-cam");
+        if (virtBtn) virtBtn.addEventListener("click", () => startVirtualWebcam());
+      }
     }
+  }
+
+  function startVirtualWebcam() {
+    stopWebcam();
+    const btnText = document.getElementById("camera-btn-text");
+    const placeholder = document.getElementById("camera-placeholder");
+    const videoEl = document.getElementById("webcam-video");
+    const canvasEl = document.getElementById("output-canvas");
+
+    const vCanvas = document.createElement("canvas");
+    vCanvas.width = 640;
+    vCanvas.height = 480;
+    const vCtx = vCanvas.getContext("2d");
+
+    let frame = 0;
+    const renderVirtualFrame = () => {
+      frame++;
+      vCtx.fillStyle = "#161b22";
+      vCtx.fillRect(0, 0, 640, 480);
+
+      // Body silhouette
+      vCtx.fillStyle = "#21262d";
+      vCtx.beginPath();
+      vCtx.arc(320, 160, 65, 0, Math.PI * 2);
+      vCtx.fill();
+      vCtx.beginPath();
+      vCtx.ellipse(320, 360, 140, 110, 0, 0, Math.PI * 2);
+      vCtx.fill();
+
+      // Animated hand
+      const wave = Math.sin(frame * 0.08) * 35;
+      const hx = 320 + wave;
+      const hy = 230 + Math.cos(frame * 0.05) * 15;
+
+      vCtx.fillStyle = "#e0ac69";
+      vCtx.beginPath();
+      vCtx.arc(hx, hy, 38, 0, Math.PI * 2);
+      vCtx.fill();
+
+      const fingerAngles = [-0.65, -0.32, 0, 0.32, 0.65];
+      fingerAngles.forEach((ang) => {
+        const fx = hx + Math.sin(ang) * 45;
+        const fy = hy - Math.cos(ang) * 45;
+        vCtx.strokeStyle = "#e0ac69";
+        vCtx.lineWidth = 14;
+        vCtx.lineCap = "round";
+        vCtx.beginPath();
+        vCtx.moveTo(hx, hy - 15);
+        vCtx.lineTo(fx, fy);
+        vCtx.stroke();
+      });
+
+      vCtx.fillStyle = "#58a6ff";
+      vCtx.font = "bold 15px sans-serif";
+      vCtx.fillText("[Simulated Hand Feed: 3D Gesture Test Stream]", 20, 32);
+    };
+
+    renderVirtualFrame();
+    state.virtualCamInterval = setInterval(renderVirtualFrame, 33);
+
+    const stream = vCanvas.captureStream ? vCanvas.captureStream(30) : null;
+    if (!stream) {
+      window.audioEngine.speak("Virtual stream unsupported on this browser.");
+      return;
+    }
+
+    state.videoStream = stream;
+    videoEl.srcObject = stream;
+    videoEl.muted = true;
+    videoEl.setAttribute("playsinline", "true");
+    videoEl.setAttribute("autoplay", "true");
+    videoEl.play().catch(() => {});
+
+    state.cameraActive = true;
+    if (btnText) btnText.textContent = "Stop Live Webcam";
+    if (placeholder) placeholder.style.display = "none";
+    window.audioEngine.speak("Simulated live hand stream active. 3D Hand Tracker initialized.");
+
+    initMediaPipeHands(videoEl, canvasEl);
   }
 
   function stopWebcam() {
@@ -1431,6 +1540,10 @@
     state.latestHandFeatures = null;
     state.candidateFrames = 0;
     state.candidateHistory = [];
+    if (state.virtualCamInterval) {
+      clearInterval(state.virtualCamInterval);
+      state.virtualCamInterval = null;
+    }
     if (state.videoStream) {
       state.videoStream.getTracks().forEach((t) => t.stop());
       state.videoStream = null;
@@ -1443,6 +1556,14 @@
     if (canvasEl) {
       const ctx = canvasEl.getContext("2d");
       if (ctx) ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+    }
+    const placeholder = document.getElementById("camera-placeholder");
+    if (placeholder) {
+      placeholder.innerHTML = `
+        <div class="placeholder-icon" aria-hidden="true">📷🤟</div>
+        <h3>Live 3D ISL Hand Tracker</h3>
+        <p>Click <strong>"Start Live Webcam"</strong> above for real-time 21-point hand tracking, or click any sign in the <strong>Instant Simulator</strong> below.</p>
+      `;
     }
     const badge = document.getElementById("hand-presence-badge");
     if (badge) {

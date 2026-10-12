@@ -6147,21 +6147,6 @@ window.getSignTranslation = function (signObj, langCode = "hi") {
       ttsLang: langMeta.ttsLang || "hi",
       voiceLang: langMeta.voiceLang,
       fallbackVoice: langMeta.fallbackVoice || "hi-IN"
-    return {
-      langCode,
-      langName: langMeta.name,
-      shortName: langMeta.shortName || langMeta.name,
-      nativeName: langMeta.nativeName,
-      stateRegion: langMeta.stateRegion || "",
-      localTouch: langMeta.localTouch || "",
-      flag: langMeta.flag,
-      word: lObj.w,
-      phrase: lObj.p,
-      phonetic: lObj.ph,
-      ttsText: lObj.p,
-      ttsLang: langMeta.ttsLang || "hi",
-      voiceLang: langMeta.voiceLang,
-      fallbackVoice: langMeta.fallbackVoice || "hi-IN"
     };
   }
 
