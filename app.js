@@ -300,9 +300,32 @@
     const selectRate = document.getElementById("speech-rate");
     const selectPitch = document.getElementById("speech-pitch");
 
-    if (selectSignLang) {
-      selectSignLang.addEventListener("change", (e) => {
+    // Wire ALL synced sign language dropdowns across top bar, main chooser banner, camera toolbar, and stage
+    document.querySelectorAll(".sync-sign-lang-select").forEach((sel) => {
+      sel.addEventListener("change", (e) => {
         setSignOutputLanguage(e.target.value, { speakSample: true });
+      });
+    });
+
+    // Wire One-Click Quick Language Pills in #global-language-bar
+    document.querySelectorAll(".lang-pill-btn[data-set-lang]").forEach((pill) => {
+      pill.addEventListener("click", () => {
+        const lang = pill.dataset.setLang;
+        setSignOutputLanguage(lang, { speakSample: true });
+      });
+    });
+
+    const btnTestHindi = document.getElementById("btn-test-hindi-now");
+    if (btnTestHindi) {
+      btnTestHindi.addEventListener("click", () => {
+        setSignOutputLanguage("hi", { speakSample: true });
+      });
+    }
+
+    const btnTestMaithili = document.getElementById("btn-test-maithili-now");
+    if (btnTestMaithili) {
+      btnTestMaithili.addEventListener("click", () => {
+        setSignOutputLanguage("mai", { speakSample: true });
       });
     }
 
@@ -374,10 +397,15 @@
 
   function setSignOutputLanguage(langSetting, { speakSample = true } = {}) {
     state.signOutputLang = langSetting || "en_hi";
-    const selectSignLang = document.getElementById("sign-output-lang");
-    if (selectSignLang && selectSignLang.value !== state.signOutputLang) {
-      selectSignLang.value = state.signOutputLang;
-    }
+    document.querySelectorAll(".sync-sign-lang-select").forEach((sel) => {
+      if (sel.value !== state.signOutputLang) {
+        sel.value = state.signOutputLang;
+      }
+    });
+
+    document.querySelectorAll(".lang-pill-btn[data-set-lang]").forEach((pill) => {
+      pill.classList.toggle("active", pill.dataset.setLang === state.signOutputLang);
+    });
 
     const activeSign =
       state.activeTab === "translator"
@@ -538,7 +566,7 @@
       const sign = state.currentDetectedSign || window.ISL_SIGNS[0];
       if (!sign) return;
       window.audioEngine.playEarcon("sign_detected");
-      window.audioEngine.speakSign(sign, { interrupt: true, assertive: true });
+      window.audioEngine.speakSignInLang(sign, state.signOutputLang, { interrupt: true, assertive: true });
     };
 
     const btnReadDetAvatar = document.getElementById("btn-read-detected-avatar");
@@ -556,9 +584,17 @@
       });
     }
 
-    // Speak Natural Sentence (English + Meaningful Hindi)
+    // Speak Natural Sentence in Chosen Language (Hindi, Maithili, Bilingual, etc.)
     document.getElementById("btn-speak-sentence").addEventListener("click", () => {
       if (!state.accumulatedSentence.length) {
+        if (state.currentDetectedSign) {
+          window.audioEngine.playEarcon("sign_detected");
+          window.audioEngine.speakSignInLang(state.currentDetectedSign, state.signOutputLang, {
+            interrupt: true,
+            assertive: true
+          });
+          return;
+        }
         window.audioEngine.speakBilingual(
           "Your signed sentence is currently empty. Detect or simulate a sign first.",
           "आपका वाक्य अभी खाली है। कृपया पहले कोई सांकेतिक चिन्ह चुनें या कैमरे पर दिखाएँ।",
@@ -570,7 +606,15 @@
         );
         return;
       }
-      const naturalText = window.naturalizeISLGloss(state.accumulatedSentence, state.signOutputLang);
+      if (state.accumulatedSentence.length === 1 && state.currentDetectedSign) {
+        window.audioEngine.playEarcon("sign_detected");
+        window.audioEngine.speakSignInLang(state.currentDetectedSign, state.signOutputLang, {
+          interrupt: true,
+          assertive: true
+        });
+        return;
+      }
+      const naturalText = window.naturalizeISLGloss(state.accumulatedSentence, "en");
       const hiData = window.naturalizeISLGlossHindi
         ? window.naturalizeISLGlossHindi(state.accumulatedSentence)
         : { hi: naturalText, hiPhonetic: naturalText };

@@ -424,49 +424,181 @@ class BlindAudioEngine {
   }
 
   /**
-   * Speaks any ISL Sign object aloud immediately with its corresponding meaning.
-   * Uses guaranteed pre-rendered Web Audio voice clips for all 67 built-in signs
-   * and Web Speech API + Audio fallback for custom signs.
+   * Looks up a pre-rendered base64 audio clip for a given language code and sign ID.
    */
-  speakSign(signObj, { interrupt = true, assertive = true, onComplete = null } = {}) {
-    if (!signObj) return;
-
-    const cleanWord = String(signObj.word || "")
-      .replace(/\s*\/\s*/g, ", ")
-      .trim();
-    const meaningText = String(signObj.spokenPhrase || cleanWord).trim();
-    const spokenSummary = meaningText.toLowerCase().startsWith(cleanWord.split(",")[0].toLowerCase())
-      ? meaningText
-      : `${cleanWord}. ${meaningText}`;
-
-    const hiText = signObj.hindiPhrase || signObj.hindiWord || "";
-    const ariaText = hiText ? `${spokenSummary} | हिंदी: ${hiText}` : spokenSummary;
-
-    const srEl = document.getElementById(assertive ? "sr-assertive" : "sr-polite");
-    if (srEl) {
-      srEl.textContent = "";
-      setTimeout(() => {
-        srEl.textContent = ariaText;
-      }, 20);
+  getRegionalClipBase64(langCode, clipKey) {
+    if (!clipKey) return null;
+    if (langCode === "en") {
+      return (window.SIGN_AUDIO_CLIPS && window.SIGN_AUDIO_CLIPS[clipKey]) || null;
     }
-
-    const statusText = document.getElementById("audio-status-text");
-    if (statusText) {
-      statusText.textContent = `Speaking Sign: "${signObj.word} — ${meaningText}"`;
+    if (
+      window.SIGN_AUDIO_CLIPS_LANG &&
+      window.SIGN_AUDIO_CLIPS_LANG[langCode] &&
+      window.SIGN_AUDIO_CLIPS_LANG[langCode][clipKey]
+    ) {
+      return window.SIGN_AUDIO_CLIPS_LANG[langCode][clipKey];
     }
+    if (langCode === "hi" && window.SIGN_AUDIO_CLIPS_HI && window.SIGN_AUDIO_CLIPS_HI[clipKey]) {
+      return window.SIGN_AUDIO_CLIPS_HI[clipKey];
+    }
+    if (langCode === "mai" && window.SIGN_AUDIO_CLIPS_MAI && window.SIGN_AUDIO_CLIPS_MAI[clipKey]) {
+      return window.SIGN_AUDIO_CLIPS_MAI[clipKey];
+    }
+    return null;
+  }
 
-    if (window.SIGN_AUDIO_CLIPS && window.SIGN_AUDIO_CLIPS[signObj.id]) {
-      this.playSignClip(signObj.id, spokenSummary, { onComplete });
+  /**
+   * Plays any base64-encoded AAC/M4A clip (English, Hindi, Maithili, or any of the 12 languages)
+   * via Web Audio API AudioContext with HTML5 <audio> and speechSynthesis fallbacks.
+   */
+  playBase64AudioClip(b64Data, cacheKey, fallbackSpokenText, { voice = null, lang = "hi-IN", onComplete = null } = {}) {
+    if (!b64Data) {
+      this._dispatchUtterance(fallbackSpokenText, {
+        voice: voice || this.selectedVoice,
+        lang,
+        rate: this.speechRate,
+        pitch: this.speechPitch,
+        interrupt: true,
+        skipClipLookup: true,
+        onComplete
+      });
       return;
     }
 
-    this._dispatchUtterance(spokenSummary, {
-      voice: this.selectedVoice,
-      rate: this.speechRate,
-      pitch: this.speechPitch,
-      interrupt,
-      onComplete
-    });
+    this._stopActiveClipAudio();
+    if ("speechSynthesis" in window && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
+    }
+
+    const statusDot = document.getElementById("audio-status-dot");
+    this.hasSpokenStartupWelcome = true;
+    if (statusDot) statusDot.classList.add("speaking");
+
+    const finishClip = () => {
+      if (statusDot) statusDot.classList.remove("speaking");
+      if (typeof onComplete === "function") onComplete();
+    };
+
+    const playViaHtmlAudio = () => {
+      try {
+        const audio = new Audio(`data:audio/mp4;base64,${b64Data}`);
+        audio.playbackRate = this.speechRate || 1.0;
+        audio.volume = 1.0;
+        this._activeHtmlAudio = audio;
+        audio.onended = () => {
+          if (this._activeHtmlAudio === audio) this._activeHtmlAudio = null;
+          finishClip();
+        };
+        audio.onerror = () => {
+          if (this._activeHtmlAudio === audio) this._activeHtmlAudio = null;
+          this._dispatchUtterance(fallbackSpokenText, {
+            voice: voice || this.selectedVoice,
+            lang,
+            rate: this.speechRate,
+            pitch: this.speechPitch,
+            interrupt: true,
+            skipClipLookup: true,
+            onComplete
+          });
+        };
+        const p = audio.play();
+        if (p && typeof p.catch === "function") {
+          p.catch(() => {
+            this._dispatchUtterance(fallbackSpokenText, {
+              voice: voice || this.selectedVoice,
+              lang,
+              rate: this.speechRate,
+              pitch: this.speechPitch,
+              interrupt: true,
+              skipClipLookup: true,
+              onComplete
+            });
+          });
+        }
+      } catch (e) {
+        this._dispatchUtterance(fallbackSpokenText, {
+          voice: voice || this.selectedVoice,
+          lang,
+          rate: this.speechRate,
+          pitch: this.speechPitch,
+          interrupt: true,
+          skipClipLookup: true,
+          onComplete
+        });
+      }
+    };
+
+    try {
+      this.ensureAudioContext();
+      if (!this.audioCtx) {
+        playViaHtmlAudio();
+        return;
+      }
+
+      const startBufferSource = (audioBuffer) => {
+        try {
+          this._stopActiveClipAudio();
+          const source = this.audioCtx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.playbackRate.value = this.speechRate || 1.0;
+          const gainNode = this.audioCtx.createGain();
+          gainNode.gain.value = 1.0;
+          source.connect(gainNode);
+          gainNode.connect(this.audioCtx.destination);
+          this._activeBufferSource = source;
+          source.onended = () => {
+            if (this._activeBufferSource === source) {
+              this._activeBufferSource = null;
+            }
+            finishClip();
+          };
+          source.start(0);
+        } catch (err) {
+          playViaHtmlAudio();
+        }
+      };
+
+      if (this._decodedClipCache[cacheKey]) {
+        startBufferSource(this._decodedClipCache[cacheKey]);
+        return;
+      }
+
+      const arrBuf = this._base64ToArrayBuffer(b64Data);
+      this.audioCtx.decodeAudioData(
+        arrBuf,
+        (decoded) => {
+          this._decodedClipCache[cacheKey] = decoded;
+          startBufferSource(decoded);
+        },
+        () => {
+          playViaHtmlAudio();
+        }
+      );
+    } catch (e) {
+      playViaHtmlAudio();
+    }
+  }
+
+  /**
+   * Returns currently active sign output language from the UI selector.
+   */
+  getActiveSignLangSetting() {
+    const el =
+      document.getElementById("main-sign-output-lang") ||
+      document.getElementById("sign-output-lang");
+    return (el && el.value) || "en_hi";
+  }
+
+  /**
+   * Speaks any ISL Sign object aloud immediately in the user's chosen language
+   * (Hindi, Maithili, Hindi+English, or any of the 12 languages).
+   */
+  speakSign(signObj, { interrupt = true, assertive = true, onComplete = null } = {}) {
+    if (!signObj) return;
+    const activeLang = this.getActiveSignLangSetting();
+    this.speakSignInLang(signObj, activeLang, { interrupt, assertive, onComplete });
   }
 
   /**
@@ -481,6 +613,7 @@ class BlindAudioEngine {
       rate = this.speechRate,
       pitch = this.speechPitch,
       interrupt = true,
+      skipClipLookup = false,
       onStart = null,
       onComplete = null
     } = {}
@@ -503,25 +636,10 @@ class BlindAudioEngine {
     const statusText = document.getElementById("audio-status-text");
     const statusDot = document.getElementById("audio-status-dot");
 
-    // Check if spokenText directly matches a sign word/phrase in window.ISL_SIGNS + SIGN_AUDIO_CLIPS
-    if (window.SIGN_AUDIO_CLIPS && window.ISL_SIGNS) {
+    if (!skipClipLookup && window.SIGN_AUDIO_CLIPS && window.ISL_SIGNS) {
       const normalized = spokenText.trim().toLowerCase();
       if (normalized.startsWith("camera active")) {
         this.playSignClip("_camera_active", spokenText, { onComplete });
-        return;
-      }
-      const matchedSign = window.ISL_SIGNS.find((s) => {
-        const w = s.word.toLowerCase().replace(/\s*\/\s*/g, ", ");
-        const p = (s.spokenPhrase || "").toLowerCase();
-        return (
-          normalized === w ||
-          normalized === p ||
-          normalized.startsWith(`${w}.`) ||
-          normalized.startsWith(`${s.word.toLowerCase()}.`)
-        );
-      });
-      if (matchedSign && window.SIGN_AUDIO_CLIPS[matchedSign.id]) {
-        this.playSignClip(matchedSign.id, spokenText, { onComplete });
         return;
       }
     }
@@ -535,7 +653,6 @@ class BlindAudioEngine {
       this.initVoices();
     }
 
-    // Only call cancel() if speechSynthesis is actually speaking or pending
     if (interrupt && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) {
       try {
         window.speechSynthesis.cancel();
@@ -575,7 +692,7 @@ class BlindAudioEngine {
       if (statusDot) statusDot.classList.remove("speaking");
       if (statusText) {
         statusText.innerHTML =
-          'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>W</strong> for Welcome EN/हिंदी, or <strong>S</strong> to Read Screen)';
+          'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>L</strong> to Cycle Language, or <strong>S</strong> to Read Screen)';
       }
       if (typeof onComplete === "function") onComplete();
     };
@@ -607,14 +724,14 @@ class BlindAudioEngine {
   }
 
   /**
-   * Speaks a bilingual statement in English AND Hindi aloud reliably across all browsers.
+   * Speaks a bilingual statement in Hindi AND English aloud reliably across all browsers.
    */
   speakBilingual(
     englishText,
     hindiText,
     { hindiPhonetic = "", signId = "", interrupt = true, assertive = true, onStart = null, onComplete = null } = {}
   ) {
-    const combinedAria = `${englishText} | हिंदी: ${hindiText}`;
+    const combinedAria = `हिंदी: ${hindiText} | ${englishText}`;
     const srEl = document.getElementById(assertive ? "sr-assertive" : "sr-polite");
     if (srEl) {
       srEl.textContent = "";
@@ -623,27 +740,81 @@ class BlindAudioEngine {
       }, 20);
     }
 
-    const statusText = document.getElementById("audio-status-text");
-    if (statusText) {
-      statusText.textContent = `Speaking: "${englishText.slice(0, 65)}"`;
+    // If a specific signId is passed, speak it in the user's selected regional language mode
+    if (signId && window.ISL_SIGNS) {
+      const matched = window.ISL_SIGNS.find((s) => s.id === signId);
+      if (matched) {
+        this.speakSignInLang(matched, this.getActiveSignLangSetting(), {
+          interrupt,
+          assertive,
+          onComplete
+        });
+        return;
+      }
     }
 
-    if (signId && window.SIGN_AUDIO_CLIPS && window.SIGN_AUDIO_CLIPS[signId]) {
-      this.playSignClip(signId, englishText, { onComplete });
+    const statusText = document.getElementById("audio-status-text");
+    if (statusText) {
+      statusText.textContent = `Speaking (हिन्दी + EN): "${(hindiText || englishText).slice(0, 65)}"`;
+    }
+
+    // If this is the Welcome statement and pre-rendered Hindi + English welcome clips exist, chain them!
+    const hiWelcomeClip = this.getRegionalClipBase64("hi", "_welcome");
+    const enWelcomeClip = this.getRegionalClipBase64("en", "_welcome");
+    if (
+      String(englishText || "").toLowerCase().startsWith("welcome to the website") &&
+      hiWelcomeClip &&
+      enWelcomeClip
+    ) {
+      this.playBase64AudioClip(hiWelcomeClip, "hi__welcome", hindiText, {
+        voice: this.hindiVoice,
+        lang: "hi-IN",
+        onComplete: () => {
+          this.playBase64AudioClip(enWelcomeClip, "en__welcome", englishText, {
+            voice: this.selectedVoice,
+            lang: "en-US",
+            onComplete
+          });
+        }
+      });
       return;
     }
 
     const cleanEnglish = String(englishText || "").replace(/\s*\/\s*/g, ", ");
-    const spokenHindi = String(hindiPhonetic || "").replace(/\s*\/\s*/g, ", ");
-    const fullBilingualSpeech = spokenHindi
-      ? `${cleanEnglish}. ${spokenHindi}`
-      : `${cleanEnglish}`;
+    const cleanHindi = this.hindiVoice
+      ? String(hindiText || hindiPhonetic || "")
+      : String(hindiPhonetic || hindiText || "");
 
-    this._dispatchUtterance(fullBilingualSpeech, {
+    if (cleanHindi) {
+      this._dispatchUtterance(cleanHindi, {
+        voice: this.hindiVoice || this.selectedVoice,
+        lang: this.hindiVoice ? "hi-IN" : "en-US",
+        rate: Math.max(0.85, this.speechRate * 0.95),
+        pitch: this.speechPitch,
+        interrupt,
+        skipClipLookup: true,
+        onStart,
+        onComplete: () => {
+          this._dispatchUtterance(cleanEnglish, {
+            voice: this.selectedVoice,
+            lang: "en-US",
+            rate: this.speechRate,
+            pitch: this.speechPitch,
+            interrupt: false,
+            skipClipLookup: true,
+            onComplete
+          });
+        }
+      });
+      return;
+    }
+
+    this._dispatchUtterance(cleanEnglish, {
       voice: this.selectedVoice,
       rate: this.speechRate,
       pitch: this.speechPitch,
       interrupt,
+      skipClipLookup: true,
       onStart,
       onComplete
     });
@@ -665,7 +836,8 @@ class BlindAudioEngine {
       lang: this.hindiVoice ? "hi-IN" : "en-US",
       rate: Math.max(0.85, this.speechRate * 0.95),
       pitch: this.speechPitch,
-      interrupt
+      interrupt,
+      skipClipLookup: true
     });
   }
 
@@ -699,22 +871,24 @@ class BlindAudioEngine {
 
   /**
    * Finds the best installed TTS voice for a given BCP-47 language code (e.g., "mai-IN", "ta-IN", "bn-IN")
-   * with fallback to Devanagari Hindi ("hi-IN") for Maithili/Bhojpuri/Marathi.
+   * while avoiding broken macOS stub voices like Aman/Rishi for English.
    */
   findRegionalVoice(voiceLang = "hi-IN", fallbackLang = "hi-IN") {
     if (!this.voices || !this.voices.length) {
       this.initVoices();
     }
     const prefix = (voiceLang || "hi-IN").split("-")[0].toLowerCase();
+    if (prefix === "en") {
+      return { voice: this.selectedVoice || null, isNativeScriptSupported: true };
+    }
+    if (["hi", "mai", "bho", "mr"].includes(prefix) && this.hindiVoice) {
+      return { voice: this.hindiVoice, isNativeScriptSupported: true };
+    }
+
     const direct =
       this.voices.find((v) => v.lang.toLowerCase() === (voiceLang || "").toLowerCase()) ||
       this.voices.find((v) => v.lang.toLowerCase().startsWith(prefix));
     if (direct) return { voice: direct, isNativeScriptSupported: true };
-
-    // Maithili (mai), Bhojpuri (bho), Marathi (mr) use Devanagari script -> hi-IN reads them natively
-    if (["mai", "bho", "mr", "hi"].includes(prefix) && this.hindiVoice) {
-      return { voice: this.hindiVoice, isNativeScriptSupported: true };
-    }
 
     if (fallbackLang && fallbackLang.startsWith("hi") && this.hindiVoice) {
       return { voice: this.hindiVoice, isNativeScriptSupported: false };
@@ -724,25 +898,29 @@ class BlindAudioEngine {
   }
 
   /**
-   * Speaks any ISL sign in the selected regional language mode:
-   *  - "en_hi" (English + Hindi)
-   *  - "en_mai" (English + Maithili)
-   *  - "multi_top" (English + Hindi + Maithili)
+   * Speaks any ISL sign in the selected regional language mode using guaranteed pre-rendered
+   * 12-language WebAudio voice clips (with Web Speech API fallback for custom user-trained signs):
+   *  - "hi" (Hindi Only — Lekha)
+   *  - "en_hi" (Hindi + English — speaks Hindi FIRST then English!)
+   *  - "mai" (Maithili Only — Lekha Devanagari)
+   *  - "en_mai" (Maithili + English — speaks Maithili FIRST then English!)
+   *  - "multi_top" (Hindi + Maithili + English)
    *  - "all" (All 12 Indian & English Languages sequentially)
-   *  - Individual language codes: "hi", "mai", "bho", "mr", "bn", "ta", "te", "gu", "pa", "kn", "ur", "en"
+   *  - Individual language codes: "bho", "mr", "bn", "ta", "te", "gu", "pa", "kn", "ur", "en"
    */
-  speakSignInLang(signObj, langSetting = "en_hi", { interrupt = true, assertive = true } = {}) {
+  speakSignInLang(signObj, langSetting = "en_hi", { interrupt = true, assertive = true, onComplete = null } = {}) {
     if (!signObj || !window.getSignTranslation) return;
 
     let codesToSpeak = [];
     if (langSetting === "en_hi") {
-      codesToSpeak = ["en", "hi"];
+      // Speak Hindi FIRST so the user hears Hindi output immediately, followed by English
+      codesToSpeak = ["hi", "en"];
     } else if (langSetting === "en_mai") {
-      codesToSpeak = ["en", "mai"];
+      codesToSpeak = ["mai", "en"];
     } else if (langSetting === "multi_top") {
-      codesToSpeak = ["en", "hi", "mai"];
+      codesToSpeak = ["hi", "mai", "en"];
     } else if (langSetting === "all") {
-      codesToSpeak = ["en", "hi", "mai", "bho", "mr", "bn", "ta", "te", "gu", "pa"];
+      codesToSpeak = ["hi", "mai", "bho", "mr", "bn", "ta", "te", "gu", "pa", "kn", "ur", "en"];
     } else {
       codesToSpeak = [langSetting];
     }
@@ -766,14 +944,9 @@ class BlindAudioEngine {
 
     const statusText = document.getElementById("audio-status-text");
     const statusDot = document.getElementById("audio-status-dot");
-    if (statusText) {
-      const first = translations[0];
-      statusText.textContent = `Speaking (${translations.map((t) => t.nativeName).join(" + ")}): "${first.word} — ${first.phrase}"`;
-    }
 
-    if (!("speechSynthesis" in window)) return;
     if (interrupt) {
-      window.speechSynthesis.cancel();
+      this.stopSpeaking();
     }
 
     const resetStatus = () => {
@@ -782,41 +955,49 @@ class BlindAudioEngine {
         statusText.innerHTML =
           'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>L</strong> to Cycle Language, or <strong>S</strong> to Read Screen)';
       }
+      if (typeof onComplete === "function") onComplete();
     };
 
-    translations.forEach((tr, idx) => {
+    const playAtIndex = (idx) => {
+      if (idx >= translations.length) {
+        resetStatus();
+        return;
+      }
+      const tr = translations[idx];
+      if (statusDot) statusDot.classList.add("speaking");
+      if (statusText) {
+        statusText.textContent = `Speaking ${tr.flag} ${tr.langName} (${tr.nativeName}): "${tr.word} — ${tr.phrase}"`;
+      }
+
+      const clipB64 = this.getRegionalClipBase64(tr.langCode, signObj.id);
       const { voice, isNativeScriptSupported } = this.findRegionalVoice(tr.voiceLang, tr.fallbackVoice);
-      const textToSpeak =
+      const fallbackText =
         tr.langCode === "en"
           ? `${signObj.word.replace(/\/.*/g, "")}. ${tr.phrase}`
           : isNativeScriptSupported
           ? `${tr.word.replace(/\/.*/g, "")}। ${tr.phrase}`
           : `${tr.langName}: ${tr.phonetic}`;
 
-      const u = new SpeechSynthesisUtterance(textToSpeak);
-      if (voice) {
-        u.voice = voice;
-        u.lang = voice.lang || tr.voiceLang || "hi-IN";
+      if (clipB64) {
+        this.playBase64AudioClip(clipB64, `${tr.langCode}_${signObj.id}`, fallbackText, {
+          voice,
+          lang: tr.voiceLang || "hi-IN",
+          onComplete: () => playAtIndex(idx + 1)
+        });
       } else {
-        u.lang = isNativeScriptSupported ? tr.voiceLang : "en-IN";
+        this._dispatchUtterance(fallbackText, {
+          voice,
+          lang: isNativeScriptSupported ? tr.voiceLang : "en-US",
+          rate: tr.langCode === "en" ? this.speechRate : Math.max(0.85, this.speechRate * 0.95),
+          pitch: this.speechPitch,
+          interrupt: idx === 0,
+          skipClipLookup: true,
+          onComplete: () => playAtIndex(idx + 1)
+        });
       }
-      u.rate = tr.langCode === "en" ? this.speechRate : Math.max(0.85, this.speechRate * 0.95);
-      u.pitch = this.speechPitch;
+    };
 
-      u.onstart = () => {
-        if (statusDot) statusDot.classList.add("speaking");
-        if (statusText) {
-          statusText.textContent = `Speaking ${tr.flag} ${tr.langName} (${tr.nativeName}): "${tr.word} — ${tr.phrase}"`;
-        }
-      };
-
-      if (idx === translations.length - 1) {
-        u.onend = resetStatus;
-        u.onerror = resetStatus;
-      }
-
-      window.speechSynthesis.speak(u);
-    });
+    playAtIndex(0);
   }
 
   stopSpeaking() {

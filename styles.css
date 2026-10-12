@@ -1947,6 +1947,97 @@ kbd {
   margin-bottom: 0.45rem;
 }
 
+.language-chooser-banner {
+  background: linear-gradient(135deg, rgba(18, 25, 41, 0.98) 0%, rgba(15, 23, 42, 0.98) 100%);
+  border: 2.5px solid var(--accent-secondary);
+  border-radius: 1rem;
+  padding: 1.15rem 1.35rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+.lang-chooser-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.lang-chooser-title {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.lang-globe-icon {
+  font-size: 2.1rem;
+  line-height: 1;
+}
+
+.lang-chooser-title h2 {
+  font-size: 1.25rem;
+  margin-bottom: 0.2rem;
+  color: var(--text-primary);
+}
+
+.lang-chooser-title p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.lang-chooser-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.lang-select-prominent {
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  padding: 0.55rem 0.95rem !important;
+  border: 2px solid var(--accent-secondary) !important;
+  background: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-radius: 0.65rem !important;
+}
+
+.lang-quick-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.lang-pill-btn {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 2px solid var(--border-color);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.lang-pill-btn:hover {
+  border-color: var(--accent-primary);
+  background: var(--bg-interactive);
+  transform: translateY(-1px);
+}
+
+.lang-pill-btn.active {
+  background: var(--accent-secondary);
+  color: #000000;
+  border-color: #ffffff;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.45);
+}
+
 .multilang-output-box {
   background: var(--bg-elevated);
   border: 2px solid var(--border-color);
