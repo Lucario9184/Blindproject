@@ -35,6 +35,7 @@ class BlindAudioEngine {
 
   setHumanVoiceStyle(style) {
     this.humanVoiceStyle = style || "warm_female";
+    this.pickDefaultVoices();
   }
 
   /**
@@ -48,36 +49,56 @@ class BlindAudioEngine {
     let chestGain = 1.6;
     let presenceFreq = 2800;
     let presenceGain = 1.4;
+    let shelfFreq = 175;
 
     if (this.humanVoiceStyle === "natural_male") {
-      rateMult = 0.98;
-      chestGain = 2.2;
-      presenceFreq = 2400;
-      presenceGain = 1.3;
+      rateMult = 0.96;
+      chestGain = 3.6;
+      shelfFreq = 140;
+      presenceFreq = 2200;
+      presenceGain = 1.25;
+      if (source.detune) {
+        try {
+          source.detune.value = -380; // Authentic male baritone pitch formants (~3.8 semitones lower)
+        } catch (e) {}
+      }
     } else if (this.humanVoiceStyle === "gentle_elder") {
-      rateMult = 0.92;
-      chestGain = 2.0;
-      presenceFreq = 2600;
-      presenceGain = 1.5;
+      rateMult = 0.90;
+      chestGain = 2.4;
+      shelfFreq = 160;
+      presenceFreq = 2500;
+      presenceGain = 1.4;
+      if (source.detune) {
+        try {
+          source.detune.value = -180;
+        } catch (e) {}
+      }
     } else if (this.humanVoiceStyle === "expressive_friend") {
-      rateMult = 1.02;
+      rateMult = 1.04;
       chestGain = 1.4;
+      shelfFreq = 185;
       presenceFreq = 3100;
       presenceGain = 1.6;
+      if (source.detune) {
+        try {
+          source.detune.value = 120;
+        } catch (e) {}
+      }
+    } else {
+      // warm_female
+      if (source.detune) {
+        try {
+          source.detune.value = 0;
+        } catch (e) {}
+      }
     }
 
-    // Preserve 100% authentic human vocal formants (zero artificial pitch detuning)
     source.playbackRate.value = Math.max(0.7, Math.min(1.5, baseRate * rateMult));
-    if (source.detune) {
-      try {
-        source.detune.value = 0;
-      } catch (e) {}
-    }
 
     try {
       const lowShelf = this.audioCtx.createBiquadFilter();
       lowShelf.type = "lowshelf";
-      lowShelf.frequency.value = 175;
+      lowShelf.frequency.value = shelfFreq;
       lowShelf.gain.value = chestGain;
 
       const presence = this.audioCtx.createBiquadFilter();
@@ -128,40 +149,142 @@ class BlindAudioEngine {
     });
   }
 
+  pickDefaultVoices() {
+    if (!this.voices || !this.voices.length) return;
+    const isMale = this.humanVoiceStyle === "natural_male";
+
+    if (!this.userSelectedVoice) {
+      if (isMale) {
+        this.selectedVoice =
+          this.voices.find((v) => v.name === "Alex" || v.name === "Daniel") ||
+          this.voices.find(
+            (v) =>
+              v.name.includes("Google UK English Male") ||
+              v.name.includes("Google US English Male")
+          ) ||
+          this.voices.find(
+            (v) =>
+              v.name.includes("Microsoft David") ||
+              v.name.includes("Microsoft Mark") ||
+              v.name.includes("Microsoft George")
+          ) ||
+          this.voices.find((v) => {
+            const n = v.name.toLowerCase();
+            return (
+              (n.includes("male") ||
+                n.includes("david") ||
+                n.includes("alex") ||
+                n.includes("daniel") ||
+                n.includes("george") ||
+                n.includes("mark") ||
+                n.includes("guy")) &&
+              !n.includes("female")
+            );
+          }) ||
+          this.voices.find(
+            (v) =>
+              v.lang.startsWith("en") &&
+              !v.name.toLowerCase().includes("female") &&
+              !v.name.toLowerCase().includes("samantha") &&
+              !v.name.toLowerCase().includes("zira") &&
+              !v.name.toLowerCase().includes("aria") &&
+              !v.name.toLowerCase().includes("victoria")
+          ) ||
+          this.voices.find((v) => v.lang.startsWith("en")) ||
+          this.voices[0];
+      } else {
+        this.selectedVoice =
+          this.voices.find((v) => v.name === "Samantha") ||
+          this.voices.find((v) => v.name.includes("Samantha")) ||
+          this.voices.find((v) => v.name.includes("Google US English")) ||
+          this.voices.find((v) => v.name.includes("Google UK English Female")) ||
+          this.voices.find(
+            (v) => v.name.includes("Microsoft Zira") || v.name.includes("Microsoft Aria")
+          ) ||
+          this.voices.find((v) => v.name === "Victoria" || v.name === "Karen") ||
+          this.voices.find((v) => v.default && v.lang.startsWith("en")) ||
+          this.voices.find((v) => v.lang === "en-US") ||
+          this.voices.find((v) => v.lang.startsWith("en")) ||
+          this.voices[0];
+      }
+    }
+
+    if (isMale) {
+      this.hindiVoice =
+        this.voices.find((v) => {
+          const l = (v.lang || "").toLowerCase();
+          const n = (v.name || "").toLowerCase();
+          return (
+            (l.startsWith("hi") || l.startsWith("mai")) &&
+            (n.includes("male") ||
+              n.includes("hemant") ||
+              n.includes("rishi") ||
+              n.includes("madhav") ||
+              (!n.includes("female") && !n.includes("lekha") && !n.includes("kalpana")))
+          );
+        }) ||
+        this.voices.find((v) => (v.lang || "").toLowerCase().startsWith("hi")) ||
+        null;
+    } else {
+      this.hindiVoice =
+        this.voices.find((v) => {
+          const l = (v.lang || "").toLowerCase();
+          const n = (v.name || "").toLowerCase();
+          return (
+            (l.startsWith("hi") || l.startsWith("mai")) &&
+            (n.includes("Google") ||
+              n.includes("Microsoft") ||
+              n.includes("Lekha") ||
+              n.includes("Kalpana"))
+          );
+        }) ||
+        this.voices.find((v) => (v.lang || "").toLowerCase().startsWith("hi")) ||
+        null;
+    }
+  }
+
+  getEffectiveVoice(lang = "en", preferredVoice = null) {
+    if (preferredVoice) {
+      if (this.humanVoiceStyle === "natural_male") {
+        const n = (preferredVoice.name || "").toLowerCase();
+        if (
+          (n.includes("female") ||
+            n.includes("samantha") ||
+            n.includes("lekha") ||
+            n.includes("zira") ||
+            n.includes("aria")) &&
+          !this.userSelectedVoice
+        ) {
+          // Fall through to choose real male voice
+        } else {
+          return preferredVoice;
+        }
+      } else {
+        return preferredVoice;
+      }
+    }
+
+    if (this.userSelectedVoice && this.selectedVoice) {
+      return this.selectedVoice;
+    }
+
+    if (!this.voices || !this.voices.length) {
+      return this.selectedVoice || null;
+    }
+
+    this.pickDefaultVoices();
+    const isHindi =
+      (lang || "").toLowerCase().startsWith("hi") || (lang || "").toLowerCase().startsWith("mai");
+    return isHindi ? this.hindiVoice || this.selectedVoice : this.selectedVoice;
+  }
+
   initVoices() {
     if (!("speechSynthesis" in window)) return;
     const pickVoice = () => {
       const voices = window.speechSynthesis.getVoices();
       if (!voices.length) return;
       this.voices = voices;
-
-      // Prioritize verified pre-installed voices (Samantha on macOS, Google US English on Chrome,
-      // Microsoft Aria/David/Zira on Windows) before falling back to system default, avoiding
-      // un-downloaded macOS stub voices (like Rishi/Aman) that can silently fail in Chrome.
-      if (!this.selectedVoice) {
-        this.selectedVoice =
-          voices.find((v) => v.name === "Samantha") ||
-          voices.find((v) => v.name.includes("Samantha")) ||
-          voices.find((v) => v.name.includes("Google US English")) ||
-          voices.find((v) => v.name.includes("Google UK English Female")) ||
-          voices.find((v) => v.name.includes("Microsoft Zira") || v.name.includes("Microsoft Aria")) ||
-          voices.find((v) => v.name === "Alex" || v.name === "Daniel" || v.name === "Karen") ||
-          voices.find((v) => v.default && v.lang.startsWith("en")) ||
-          voices.find((v) => v.lang === "en-US") ||
-          voices.find((v) => v.lang.startsWith("en")) ||
-          voices[0];
-      }
-
-      if (!this.hindiVoice) {
-        this.hindiVoice =
-          voices.find(
-            (v) =>
-              (v.lang === "hi-IN" || v.lang.toLowerCase().startsWith("hi")) &&
-              (v.name.includes("Google") || v.name.includes("Microsoft") || v.name.includes("Lekha"))
-          ) ||
-          voices.find((v) => v.lang === "hi-IN") ||
-          null;
-      }
+      this.pickDefaultVoices();
 
       const voiceSelect = document.getElementById("speech-voice-select");
       if (voiceSelect && voiceSelect.options.length <= 1) {
@@ -755,8 +878,28 @@ class BlindAudioEngine {
       }
     } catch (e) {}
 
+    const isMale = this.humanVoiceStyle === "natural_male";
+    const isElder = this.humanVoiceStyle === "gentle_elder";
+    const isFriend = this.humanVoiceStyle === "expressive_friend";
+
+    let effectivePitch = typeof pitch === "number" && pitch !== 1.0 ? pitch : this.speechPitch;
+    let effectiveRate = typeof rate === "number" ? rate : this.speechRate;
+
+    if (isMale) {
+      effectivePitch = 0.78; // Authentic deep masculine baritone pitch across all platforms
+      effectiveRate = Math.max(0.75, effectiveRate * 0.96);
+    } else if (isElder) {
+      effectivePitch = 0.88;
+      effectiveRate = Math.max(0.75, effectiveRate * 0.90);
+    } else if (isFriend) {
+      effectivePitch = 1.08;
+      effectiveRate = effectiveRate * 1.04;
+    } else {
+      if (effectivePitch === 1.0) effectivePitch = 1.02;
+    }
+
     const utterance = new SpeechSynthesisUtterance(spokenText);
-    const chosenVoice = voice || this.selectedVoice;
+    const chosenVoice = this.getEffectiveVoice(lang || "en", voice);
     if (chosenVoice) {
       utterance.voice = chosenVoice;
       utterance.lang = lang || chosenVoice.lang || "en-US";
@@ -764,8 +907,8 @@ class BlindAudioEngine {
       utterance.lang = lang || "en-US";
     }
 
-    utterance.rate = rate;
-    utterance.pitch = pitch;
+    utterance.rate = effectiveRate;
+    utterance.pitch = effectivePitch;
     utterance.volume = 1.0;
 
     this._activeUtterances.push(utterance);
@@ -967,27 +1110,38 @@ class BlindAudioEngine {
       this.initVoices();
     }
     const prefix = (voiceLang || "hi-IN").split("-")[0].toLowerCase();
+    const isMale = this.humanVoiceStyle === "natural_male";
+
     if (prefix === "en") {
-      return { voice: this.selectedVoice || null, isNativeScriptSupported: true };
+      return { voice: this.getEffectiveVoice("en"), isNativeScriptSupported: true };
     }
 
-    // 1. Prefer an exact installed OS/browser regional voice (e.g. mr-IN, ta-IN, te-IN, bn-IN, gu-IN, kn-IN, ml-IN, pa-IN)
+    // 1. Prefer an exact installed OS/browser regional voice
     const direct =
+      this.voices.find((v) => {
+        const l = (v.lang || "").toLowerCase();
+        const n = (v.name || "").toLowerCase();
+        const matches = l === (voiceLang || "").toLowerCase() || l.startsWith(prefix + "-");
+        if (!matches) return false;
+        if (isMale) return !n.includes("female") && !n.includes("lekha") && !n.includes("kalpana");
+        return true;
+      }) ||
       this.voices.find((v) => v.lang.toLowerCase() === (voiceLang || "").toLowerCase()) ||
       this.voices.find((v) => v.lang.toLowerCase().startsWith(prefix + "-"));
     if (direct) return { voice: direct, isNativeScriptSupported: true };
 
     // 2. For Devanagari-script regional languages, use native Hindi voice which reads Devanagari perfectly
     const devanagariPrefixes = ["hi", "mai", "bho", "mag", "raj", "bgc", "hne", "mr", "ne", "kok", "doi"];
-    if (devanagariPrefixes.includes(prefix) && this.hindiVoice) {
-      return { voice: this.hindiVoice, isNativeScriptSupported: true };
+    const effectiveHi = this.getEffectiveVoice("hi");
+    if (devanagariPrefixes.includes(prefix) && effectiveHi) {
+      return { voice: effectiveHi, isNativeScriptSupported: true };
     }
 
-    if (fallbackLang && fallbackLang.startsWith("hi") && this.hindiVoice) {
-      return { voice: this.hindiVoice, isNativeScriptSupported: devanagariPrefixes.includes(prefix) };
+    if (fallbackLang && fallbackLang.startsWith("hi") && effectiveHi) {
+      return { voice: effectiveHi, isNativeScriptSupported: devanagariPrefixes.includes(prefix) };
     }
 
-    return { voice: this.hindiVoice || this.selectedVoice || null, isNativeScriptSupported: false };
+    return { voice: effectiveHi || this.getEffectiveVoice("en") || null, isNativeScriptSupported: false };
   }
 
   /**

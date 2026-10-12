@@ -53,9 +53,9 @@
     cameraActive: false,
     videoStream: null,
     mpHands: null,
-    precisionMode: "high", // "strict" (0.68, 6f), "high" (0.56, 4f), "fast" (0.50, 2f)
-    minConfidence: 0.56,
-    requiredStableFrames: 4,
+    precisionMode: "high", // "strict" (0.60, 4f), "high" (0.50, 3f), "fast" (0.42, 2f)
+    minConfidence: 0.50,
+    requiredStableFrames: 3,
     recognitionScope: "all", // "all", "conversational", "numbers", "alphabet"
     targetSignId: "auto",
     smoothedHands: [],
@@ -333,6 +333,28 @@
         });
         window.audioEngine.setHumanVoiceStyle(persona);
         updateActiveLocalTouchBadge();
+
+        if (persona === "natural_male") {
+          window.audioEngine.speak("Natural male voice activated. नमस्ते भैया, मैं आपकी सहायता के लिए तैयार हूँ।", {
+            interrupt: true,
+            assertive: true
+          });
+        } else if (persona === "gentle_elder") {
+          window.audioEngine.speak("Gentle elder voice activated. नमस्ते, आपका स्वागत है।", {
+            interrupt: true,
+            assertive: true
+          });
+        } else if (persona === "expressive_friend") {
+          window.audioEngine.speak("Expressive friend voice activated. Hey buddy, ready to help!", {
+            interrupt: true,
+            assertive: true
+          });
+        } else {
+          window.audioEngine.speak("Warm female voice activated. नमस्ते, मैं आपकी सहायता के लिए तैयार हूँ।", {
+            interrupt: true,
+            assertive: true
+          });
+        }
       });
     });
 
@@ -726,7 +748,7 @@
         const convEl = document.getElementById("converter");
         if (convEl) convEl.scrollIntoView({ behavior: "smooth", block: "start" });
         const camBtn = document.getElementById("btn-toggle-camera");
-        if (camBtn && !state.cameraRunning) camBtn.click();
+        if (camBtn && !state.cameraActive) camBtn.click();
       });
     }
 
@@ -992,23 +1014,23 @@
       precisionSelect.addEventListener("change", (e) => {
         window.audioEngine.stopSpeaking();
         state.precisionMode = e.target.value;
-        let detConf = 0.65;
-        let trackConf = 0.65;
+        let detConf = 0.50;
+        let trackConf = 0.50;
         if (state.precisionMode === "strict") {
-          state.minConfidence = 0.72;
-          state.requiredStableFrames = 5;
-          detConf = 0.75;
-          trackConf = 0.75;
-        } else if (state.precisionMode === "fast") {
-          state.minConfidence = 0.50;
-          state.requiredStableFrames = 2;
-          detConf = 0.52;
-          trackConf = 0.52;
-        } else {
           state.minConfidence = 0.60;
+          state.requiredStableFrames = 4;
+          detConf = 0.60;
+          trackConf = 0.60;
+        } else if (state.precisionMode === "fast") {
+          state.minConfidence = 0.42;
+          state.requiredStableFrames = 2;
+          detConf = 0.45;
+          trackConf = 0.45;
+        } else {
+          state.minConfidence = 0.50;
           state.requiredStableFrames = 3;
-          detConf = 0.65;
-          trackConf = 0.65;
+          detConf = 0.50;
+          trackConf = 0.50;
         }
         if (state.mpHands) {
           try {
@@ -1328,29 +1350,46 @@
         window.audioEngine.speak("Camera active. Show your hand sign.", { interrupt: true });
       } catch (audioErr) {}
 
+      const requestStream = async (useIdealConstraints = true) => {
+        const constraints = useIdealConstraints
+          ? {
+              video: {
+                width: { ideal: 1280, min: 480 },
+                height: { ideal: 720, min: 360 },
+                facingMode: "user"
+              },
+              audio: false
+            }
+          : { video: true, audio: false };
+
+        if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function") {
+          return await navigator.mediaDevices.getUserMedia(constraints);
+        }
+        const legacyGUM =
+          navigator.getUserMedia ||
+          navigator.webkitGetUserMedia ||
+          navigator.mozGetUserMedia ||
+          navigator.msGetUserMedia;
+        if (legacyGUM) {
+          return await new Promise((resolve, reject) => {
+            legacyGUM.call(navigator, constraints, resolve, reject);
+          });
+        }
+        throw new Error("getUserMedia is not supported in this browser context");
+      };
+
       let stream;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280, min: 640 },
-            height: { ideal: 720, min: 480 },
-            frameRate: { ideal: 30 },
-            facingMode: "user"
-          },
-          audio: false
-        });
+        stream = await requestStream(true);
       } catch (constraintErr) {
-        // Fallback to any available camera if ideal constraints are rejected by a specific webcam
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false
-        });
+        stream = await requestStream(false);
       }
 
       state.videoStream = stream;
       videoEl.srcObject = stream;
       videoEl.muted = true;
       videoEl.setAttribute("playsinline", "true");
+      videoEl.setAttribute("autoplay", "true");
 
       try {
         await videoEl.play();
@@ -1359,7 +1398,7 @@
           videoEl.onloadedmetadata = () => {
             videoEl.play().catch(() => {}).finally(resolve);
           };
-          setTimeout(resolve, 400);
+          setTimeout(resolve, 350);
         });
       }
 
@@ -1374,6 +1413,7 @@
 
       initMediaPipeHands(videoEl, canvasEl);
     } catch (err) {
+      console.warn("Webcam activation error:", err);
       try {
         window.audioEngine.playEarcon("quiz_wrong");
         window.audioEngine.speak(
@@ -1389,13 +1429,26 @@
     state.smoothedHands = [];
     state.motionHistory = [];
     state.latestHandFeatures = null;
+    state.candidateFrames = 0;
+    state.candidateHistory = [];
     if (state.videoStream) {
       state.videoStream.getTracks().forEach((t) => t.stop());
       state.videoStream = null;
     }
+    const videoEl = document.getElementById("webcam-video");
+    if (videoEl) {
+      videoEl.srcObject = null;
+    }
+    const canvasEl = document.getElementById("output-canvas");
+    if (canvasEl) {
+      const ctx = canvasEl.getContext("2d");
+      if (ctx) ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+    }
     const badge = document.getElementById("hand-presence-badge");
-    badge.textContent = "No Hand in Frame";
-    badge.classList.remove("active");
+    if (badge) {
+      badge.textContent = "No Hand in Frame";
+      badge.classList.remove("active");
+    }
     resetTelemetryUI();
   }
 
@@ -1430,8 +1483,8 @@
       state.mpHands.setOptions({
         maxNumHands: 2,
         modelComplexity: 1,
-        minDetectionConfidence: 0.65,
-        minTrackingConfidence: 0.65
+        minDetectionConfidence: 0.50,
+        minTrackingConfidence: 0.50
       });
 
       state.mpHands.onResults((results) => {
@@ -1508,7 +1561,7 @@
       if (!state.cameraActive) return;
       if (
         !state.isSendingFrame &&
-        videoEl.readyState >= 2 &&
+        (videoEl.readyState >= 2 || videoEl.currentTime > 0) &&
         videoEl.videoWidth > 0 &&
         videoEl.videoHeight > 0
       ) {
