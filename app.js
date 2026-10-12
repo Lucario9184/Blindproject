@@ -2756,26 +2756,38 @@
   function initTranslatorModule() {
     const inputEl = document.getElementById("isl-text-input");
     const btnTranslate = document.getElementById("btn-translate-text");
+    const btnSpeakAudio = document.getElementById("btn-speak-text-audio");
 
-    btnTranslate.addEventListener("click", () => {
-      window.audioEngine.stopSpeaking();
-      translateTextToISL(inputEl.value, { speakConfirmation: false, addToChat: true, autoPlayAvatar: true });
-    });
-
-    inputEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
+    if (btnTranslate) {
+      btnTranslate.addEventListener("click", () => {
         window.audioEngine.stopSpeaking();
-        translateTextToISL(inputEl.value, { speakConfirmation: false, addToChat: true, autoPlayAvatar: true });
-      }
-    });
+        translateTextToISL(inputEl.value, { speakConfirmation: true, addToChat: true, autoPlayAvatar: true });
+      });
+    }
+
+    if (btnSpeakAudio) {
+      btnSpeakAudio.addEventListener("click", () => {
+        window.audioEngine.stopSpeaking();
+        translateTextToISL(inputEl.value, { speakConfirmation: true, addToChat: true, autoPlayAvatar: true });
+      });
+    }
+
+    if (inputEl) {
+      inputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          window.audioEngine.stopSpeaking();
+          translateTextToISL(inputEl.value, { speakConfirmation: true, addToChat: true, autoPlayAvatar: true });
+        }
+      });
+    }
 
     document.querySelectorAll(".chip-btn").forEach((chip) => {
       chip.addEventListener("click", () => {
         window.audioEngine.stopSpeaking();
         const sentence = chip.dataset.sentence;
-        inputEl.value = sentence;
-        translateTextToISL(sentence, { speakConfirmation: false, addToChat: true, autoPlayAvatar: true });
+        if (inputEl) inputEl.value = sentence;
+        translateTextToISL(sentence, { speakConfirmation: true, addToChat: true, autoPlayAvatar: true });
       });
     });
 
@@ -2854,6 +2866,29 @@
     return word;
   }
 
+  const DEVANAGARI_TO_LATIN_MAP = {
+    "अ":"a", "आ":"a", "इ":"i", "ई":"i", "उ":"u", "ऊ":"u", "ऋ":"r", "ए":"e", "ऐ":"ai", "ओ":"o", "औ":"au",
+    "क":"k", "ख":"kh", "ग":"g", "घ":"gh", "ङ":"n",
+    "च":"ch", "छ":"ch", "ज":"j", "झ":"jh", "ञ":"n",
+    "ट":"t", "ठ":"th", "ड":"d", "ढ":"dh", "ण":"n",
+    "त":"t", "थ":"th", "द":"d", "ध":"dh", "न":"n",
+    "प":"p", "फ":"ph", "ब":"b", "भ":"bh", "म":"m",
+    "य":"y", "र":"r", "ल":"l", "व":"v", "श":"sh", "ष":"sh", "स":"s", "ह":"h",
+    "ा":"a", "ि":"i", "ी":"i", "ु":"u", "ू":"u", "े":"e", "ै":"ai", "ो":"o", "ौ":"au", "्":""
+  };
+
+  function transliterateDevanagari(text) {
+    let res = "";
+    for (const char of text) {
+      if (DEVANAGARI_TO_LATIN_MAP[char] !== undefined) {
+        res += DEVANAGARI_TO_LATIN_MAP[char];
+      } else if (/[a-z0-9]/i.test(char)) {
+        res += char.toLowerCase();
+      }
+    }
+    return res;
+  }
+
   function translateTextToISL(rawText, { speakConfirmation = false, addToChat = false, autoPlayAvatar = false } = {}) {
     const cleaned = (rawText || "").trim();
     if (!cleaned) {
@@ -2862,16 +2897,19 @@
 
     state.lastTranslatedText = cleaned;
 
-    // Preserve English, Devanagari, and all 22 Indian regional scripts (Tamil, Telugu, Bengali, Punjabi, Gujarati, Odia, Kannada, Malayalam, Urdu, etc.)
+    // Preserve English, Devanagari, and all 22 Indian regional scripts
     let normalizedSentence = cleaned
       .toLowerCase()
       .replace(/[^\p{L}\p{N}\s]/gu, " ")
       .replace(/\s+/g, " ")
       .trim();
 
-    const conversationalSigns = window.ISL_SIGNS.filter(
+    const conversationalSigns = (window.ISL_SIGNS || []).filter(
       (s) => s.category !== "alphabet" && s.category !== "numbers"
     );
+
+    const alphabetSigns = (window.ISL_SIGNS || []).filter((s) => s.category === "alphabet");
+    const numberSigns = (window.ISL_SIGNS || []).filter((s) => s.category === "numbers");
 
     const idioms = window.ISL_PHRASE_IDIOMS || [];
     idioms.forEach((idiom, idx) => {
@@ -2888,7 +2926,47 @@
       "में", "का", "की", "के", "को", "से", "पर", "है", "हूँ", "हैं", "मुझे", "मेरा", "मेरी"
     ]);
 
-    tokens.forEach((token) => {
+    function matchSingleToken(tok) {
+      if (!tok) return null;
+      const cleanTok = tok.toLowerCase();
+      const stem = normalizeWordStem(cleanTok);
+
+      // 1. Direct keyword match
+      let match = conversationalSigns.find((s) => s.keywords && s.keywords.includes(cleanTok));
+      if (match) return match;
+
+      // 2. Stem match
+      if (stem !== cleanTok) {
+        match = conversationalSigns.find((s) => s.keywords && s.keywords.includes(stem));
+        if (match) return match;
+      }
+
+      // 3. Exact word match or word starts with token
+      match = conversationalSigns.find((s) => {
+        const sw = (s.word || "").toLowerCase();
+        return sw === cleanTok || sw.startsWith(cleanTok + " ") || sw.includes(" / " + cleanTok);
+      });
+      if (match) return match;
+
+      // 4. Hindi word match
+      match = conversationalSigns.find((s) => s.hindiWord && s.hindiWord.toLowerCase().includes(cleanTok));
+      if (match) return match;
+
+      // 5. Keyword substring match for tokens of length >= 4
+      if (cleanTok.length >= 4) {
+        match = conversationalSigns.find((s) =>
+          s.keywords && s.keywords.some((k) => k.length >= 4 && (k.includes(cleanTok) || cleanTok.includes(k)))
+        );
+        if (match) return match;
+      }
+
+      return null;
+    }
+
+    let i = 0;
+    while (i < tokens.length) {
+      const token = tokens[i];
+
       if (token.startsWith("__idiom_")) {
         const idx = parseInt(token.replace("__idiom_", "").replace("__", ""), 10);
         const idiom = idioms[idx];
@@ -2898,36 +2976,67 @@
             if (sign) sequence.push(sign);
           });
         }
-        return;
+        i++;
+        continue;
       }
 
-      const stem = normalizeWordStem(token);
-      const matchedSign = conversationalSigns.find(
-        (s) =>
-          s.keywords.includes(token) ||
-          s.keywords.includes(stem) ||
-          (s.hindiWord && s.hindiWord.includes(token))
-      );
-      if (matchedSign) {
-        sequence.push(matchedSign);
-        return;
-      }
-
-      if (tokens.length > 1 && stopWords.has(token)) {
-        return;
-      }
-
-      for (const ch of token) {
-        const letterSign = window.ISL_SIGNS.find(
-          (s) =>
-            (s.category === "alphabet" || s.category === "numbers") &&
-            s.keywords.includes(ch)
-        );
-        if (letterSign) {
-          sequence.push(letterSign);
+      // Try 3-word n-gram
+      if (i + 2 < tokens.length) {
+        const trigram = `${token} ${tokens[i + 1]} ${tokens[i + 2]}`;
+        const matchTri = matchSingleToken(trigram);
+        if (matchTri) {
+          sequence.push(matchTri);
+          i += 3;
+          continue;
         }
       }
-    });
+
+      // Try 2-word n-gram
+      if (i + 1 < tokens.length) {
+        const bigram = `${token} ${tokens[i + 1]}`;
+        const matchBi = matchSingleToken(bigram);
+        if (matchBi) {
+          sequence.push(matchBi);
+          i += 2;
+          continue;
+        }
+      }
+
+      // Single token match
+      const matchedSign = matchSingleToken(token);
+      if (matchedSign) {
+        sequence.push(matchedSign);
+        i++;
+        continue;
+      }
+
+      // Skip common conversational stopwords if multi-word sentence
+      if (tokens.length > 1 && stopWords.has(token)) {
+        i++;
+        continue;
+      }
+
+      // Fallback for names, novel words, numbers, and regional script characters: Fingerspell in ISL
+      const transliterated = transliterateDevanagari(token) || token;
+      let addedFingerspell = false;
+      for (const ch of transliterated) {
+        const letterSign =
+          alphabetSigns.find((s) => s.letterChar && s.letterChar.toLowerCase() === ch.toLowerCase()) ||
+          numberSigns.find((s) => s.letterChar === ch);
+        if (letterSign) {
+          sequence.push(letterSign);
+          addedFingerspell = true;
+        }
+      }
+
+      if (!addedFingerspell) {
+        // If single character or symbol
+        const directLetter = alphabetSigns.find((s) => s.keywords && s.keywords.includes(token));
+        if (directLetter) sequence.push(directLetter);
+      }
+
+      i++;
+    }
 
     if (!sequence.length) {
       sequence.push(window.ISL_SIGNS[0]);
@@ -2952,9 +3061,32 @@
 
     if (speakConfirmation) {
       window.audioEngine.playEarcon("sign_detected");
-      window.audioEngine.speakSignSequenceInLang(sequence, state.signOutputLang, {
-        interrupt: true
-      });
+
+      // Simultaneous spoken audio output across regional languages + 3D avatar animation
+      if (state.signOutputLang === "en_hi" || state.signOutputLang === "multi_top") {
+        const hiWords = sequence.map((s) => s.hindiWord || s.word).filter(Boolean).join(" ");
+        window.audioEngine.speakBilingual(cleaned, hiWords, {
+          interrupt: true,
+          assertive: true
+        });
+      } else if (state.signOutputLang === "hi") {
+        const hiText = sequence.map((s) => s.hindiPhrase || s.hindiWord || s.word).filter(Boolean).join(" ");
+        window.audioEngine.speakHindi(hiText || cleaned, "", {
+          interrupt: true,
+          assertive: true
+        });
+      } else if (state.signOutputLang === "en") {
+        window.audioEngine.speak(cleaned, {
+          interrupt: true,
+          assertive: true
+        });
+      } else {
+        window.audioEngine.speakSignSequenceInLang(sequence, state.signOutputLang, {
+          interrupt: true
+        });
+      }
+
+      // Play 3D avatar animation simultaneously with spoken audio
       playStageSequence();
     } else if (autoPlayAvatar) {
       playStageSequence();
@@ -3485,6 +3617,7 @@
     grid.innerHTML = "";
 
     window.QUICK_BOARD_ITEMS.forEach((item) => {
+      const signObj = window.ISL_SIGNS.find((s) => s.id === item.signId) || window.ISL_SIGNS[0];
       const card = document.createElement("button");
       card.type = "button";
       card.className = "quick-card qb-card";
@@ -3493,10 +3626,18 @@
         "aria-label",
         `${item.title}. Shortcut Key ${item.key}. Speaks message immediately in regional voice and displays ISL sign.`
       );
+
+      const miniSvg = (window.renderISLAvatarSVG && signObj)
+        ? window.renderISLAvatarSVG(signObj)
+        : "";
+
       card.innerHTML = `
         <div class="quick-card-header">
           <span class="quick-card-emoji" aria-hidden="true">${item.emoji}</span>
           <kbd class="qb-kbd">Key ${item.key}</kbd>
+        </div>
+        <div class="qb-card-mini-avatar" aria-hidden="true">
+          ${miniSvg}
         </div>
         <h3 class="qb-title">${item.title}</h3>
         <p class="qb-spoken">"${item.spoken}"</p>
@@ -3505,14 +3646,39 @@
         </div>
       `;
       card.addEventListener("click", () => {
-        activateQuickBoardItem(item);
+        activateQuickBoardItem(item, { speakAloud: true });
       });
       grid.appendChild(card);
     });
+
+    const btnQbSpeak = document.getElementById("btn-qb-speak-audio");
+    if (btnQbSpeak) {
+      btnQbSpeak.addEventListener("click", () => {
+        const item = state.currentQuickBoardItem || window.QUICK_BOARD_ITEMS[0];
+        activateQuickBoardItem(item, { speakAloud: true });
+      });
+    }
+
+    const btnQbReplay = document.getElementById("btn-qb-replay-avatar");
+    if (btnQbReplay) {
+      btnQbReplay.addEventListener("click", () => {
+        const item = state.currentQuickBoardItem || window.QUICK_BOARD_ITEMS[0];
+        activateQuickBoardItem(item, { speakAloud: true });
+      });
+    }
+
+    // Populate initial showcase with Key Q on load (without loud auto-speak)
+    if (window.QUICK_BOARD_ITEMS.length) {
+      activateQuickBoardItem(window.QUICK_BOARD_ITEMS[0], { speakAloud: false });
+    }
   }
 
-  function activateQuickBoardItem(item) {
-    window.audioEngine.playEarcon("sign_detected");
+  function activateQuickBoardItem(item, { speakAloud = true } = {}) {
+    state.currentQuickBoardItem = item;
+
+    if (speakAloud) {
+      window.audioEngine.playEarcon("sign_detected");
+    }
 
     // Dynamic visual feedback on card
     const card = document.getElementById(`qb-card-${item.key.toLowerCase()}`);
@@ -3539,6 +3705,46 @@
       renderSequenceStrip();
       renderActiveStageSign({ speakTactile: false });
 
+      // Update Panel 4 Showcase Stage
+      const qbTitle = document.getElementById("qb-showcase-title");
+      if (qbTitle) qbTitle.textContent = `${item.emoji} ${item.title}`;
+
+      const qbKeyPill = document.getElementById("qb-active-key-pill");
+      if (qbKeyPill) qbKeyPill.textContent = `Shortcut: Key ${item.key}`;
+
+      const qbSpoken = document.getElementById("qb-showcase-spoken");
+      if (qbSpoken) qbSpoken.textContent = `"${item.spoken}"`;
+
+      const qbHindi = document.getElementById("qb-showcase-hindi");
+      if (qbHindi) qbHindi.textContent = `"${item.hindiSpoken || item.spoken}"`;
+
+      const qbAvatar = document.getElementById("qb-avatar-container");
+      if (qbAvatar && window.renderISLAvatarSVG) {
+        qbAvatar.innerHTML = window.renderISLAvatarSVG(signObj);
+      }
+
+      const qbHand = document.getElementById("qb-hand-container");
+      if (qbHand && window.renderISLSignSVG) {
+        qbHand.innerHTML = window.renderISLSignSVG(signObj);
+      }
+
+      const qbDesc = document.getElementById("qb-avatar-desc");
+      if (qbDesc && window.getAvatarDescription) {
+        qbDesc.textContent = window.getAvatarDescription(signObj);
+      }
+
+      const qbTactile = document.getElementById("qb-hand-tactile");
+      if (qbTactile) {
+        qbTactile.textContent = signObj.tactileGuide || "";
+      }
+
+      const showcaseCard = document.getElementById("qb-avatar-showcase");
+      if (showcaseCard) {
+        showcaseCard.classList.add("qb-showcase-active-pulse");
+        setTimeout(() => showcaseCard.classList.remove("qb-showcase-active-pulse"), 1200);
+      }
+
+      // Also sync Camera panel visual if loaded
       const detVisual = document.getElementById("detected-visual");
       if (detVisual && window.renderISLAvatarSVG) {
         detVisual.innerHTML = window.renderISLAvatarSVG(signObj);
@@ -3548,6 +3754,8 @@
       const detSpoken = document.getElementById("detected-sign-spoken");
       if (detSpoken) detSpoken.textContent = `"${item.spoken}"`;
     }
+
+    if (!speakAloud) return;
 
     // Speak immediately in selected language (default Indian English to Hindi)
     if (state.signOutputLang === "en_hi" || state.signOutputLang === "multi_top") {

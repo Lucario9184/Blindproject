@@ -458,6 +458,7 @@
                   <div class="text-input-row">
                     <input type="text" id="isl-text-input" class="text-input" placeholder="e.g., Hello friend how are you please help me" value="Hello friend thank you" />
                     <button type="button" id="btn-translate-text" class="btn-primary">Sign on Avatar 🤟</button>
+                    <button type="button" id="btn-speak-text-audio" class="btn-secondary" title="Listen to written text spoken aloud">🔊 Listen Audio</button>
                   </div>
                 </div>
 
@@ -626,6 +627,43 @@
                 <p>One-tap cards for hospitals, railways, schools, and daily public services — speaks immediately in your selected regional language while showing the ISL sign.</p>
               </div>
             </div>
+
+            <!-- Active 3D ISL Signing Avatar & Regional Voice Showcase -->
+            <div class="card qb-avatar-showcase-card" id="qb-avatar-showcase">
+              <div class="qb-showcase-header">
+                <div class="qb-showcase-title-box">
+                  <div class="qb-showcase-badge-row">
+                    <span class="badge badge-primary">3D ISL Signing Avatar Live Stage</span>
+                    <span class="badge" style="background:var(--brand-surface, #e0f2fe); color:var(--brand-accent, #0284c7);" id="qb-active-key-pill">Shortcut: Key Q</span>
+                  </div>
+                  <h3 id="qb-showcase-title" class="qb-showcase-title">🦯 I am Blind — Please Speak or Tap</h3>
+                  <p id="qb-showcase-spoken" class="qb-showcase-spoken">"Excuse me, I am visually impaired. Please speak to me or use this screen to communicate in Indian Sign Language."</p>
+                  <p id="qb-showcase-hindi" class="qb-showcase-hindi">"माफ़ कीजिए, मैं दृष्टिबाधित हूँ। कृपया मुझसे बोलकर बात करें या इस स्क्रीन का उपयोग करें।"</p>
+                </div>
+                <div class="qb-showcase-actions">
+                  <button type="button" id="btn-qb-speak-audio" class="btn-primary" aria-label="Speak active quick sign message aloud">
+                    🔊 Speak Aloud
+                  </button>
+                  <button type="button" id="btn-qb-replay-avatar" class="btn-secondary" aria-label="Replay 3D Avatar Sign">
+                    🤟 Replay Sign
+                  </button>
+                </div>
+              </div>
+
+              <div class="qb-showcase-grid">
+                <div class="qb-avatar-wrapper">
+                  <div class="qb-stage-badge">3D Signer Avatar</div>
+                  <div id="qb-avatar-container" class="qb-avatar-box"></div>
+                  <div id="qb-avatar-desc" class="qb-avatar-narration" aria-live="polite"></div>
+                </div>
+                <div class="qb-hand-wrapper">
+                  <div class="qb-stage-badge">Articulated ISL Hand Anatomy</div>
+                  <div id="qb-hand-container" class="qb-hand-box"></div>
+                  <div id="qb-hand-tactile" class="qb-tactile-narration"></div>
+                </div>
+              </div>
+            </div>
+
             <div class="quickboard-grid" id="quickboard-grid" role="group"></div>
           </section>
         </div>

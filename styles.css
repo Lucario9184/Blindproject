@@ -2888,9 +2888,15 @@ footer {
 .text-input-row {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .text-input-row .text-input {
-  flex: 1;
+  flex: 1 1 240px;
+  min-width: 180px;
+}
+.text-input-row .btn-primary,
+.text-input-row .btn-secondary {
+  white-space: nowrap;
 }
 .chip-row {
   display: flex;
@@ -3246,6 +3252,187 @@ footer {
 [data-bs-theme="dark"] .qb-badge-active {
   color: #86efac;
   background: #14532d;
+}
+
+/* Deaf Quick-Communicator Live Avatar Showcase */
+.qb-avatar-showcase-card {
+  margin-top: 16px;
+  margin-bottom: 22px;
+  background: var(--surface, #ffffffcc);
+  border: 2px solid var(--line-2, #ded7c8);
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 8px 30px -8px #00000014;
+  transition: all 0.3s ease;
+}
+
+.qb-showcase-active-pulse {
+  border-color: var(--orange, #e67828) !important;
+  box-shadow: 0 0 0 4px #e6782833, 0 12px 36px -8px #e678282b !important;
+}
+
+.qb-showcase-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line-2, #ded7c8);
+  margin-bottom: 16px;
+}
+
+.qb-showcase-title-box {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qb-showcase-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qb-showcase-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text, #1a160f);
+}
+
+.qb-showcase-spoken {
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--text-2, #6b6455);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.qb-showcase-hindi {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #d97706;
+  line-height: 1.4;
+}
+
+.qb-showcase-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.qb-showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+.qb-avatar-wrapper,
+.qb-hand-wrapper {
+  background: var(--surface-2, #f3f0e8);
+  border: 1px solid var(--line-2, #ded7c8);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qb-stage-badge {
+  font-family: var(--font-jetbrains-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-3, #8a8373);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.qb-avatar-box,
+.qb-hand-box {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 14px;
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: inset 0 2px 8px #00000040;
+}
+
+.qb-avatar-box svg,
+.qb-hand-box svg {
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  height: 100%;
+}
+
+.qb-avatar-narration,
+.qb-tactile-narration {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-2, #6b6455);
+  background: #ffffffb3;
+  border: 1px solid var(--line-2, #ded7c8);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+/* Mini Avatar Thumbnail on Quick Cards */
+.qb-card-mini-avatar {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin: 4px 0;
+}
+
+.qb-card-mini-avatar svg {
+  width: 100%;
+  height: 100%;
+}
+
+[data-bs-theme="dark"] .qb-avatar-showcase-card {
+  background: #14120fcc;
+  border-color: #ffffff1f;
+}
+
+[data-bs-theme="dark"] .qb-avatar-wrapper,
+[data-bs-theme="dark"] .qb-hand-wrapper {
+  background: #1c1914cc;
+  border-color: #ffffff14;
+}
+
+[data-bs-theme="dark"] .qb-showcase-title {
+  color: #f2ede2;
+}
+
+[data-bs-theme="dark"] .qb-showcase-spoken {
+  color: #b5afa1;
+}
+
+[data-bs-theme="dark"] .qb-showcase-hindi {
+  color: #fbbf24;
+}
+
+[data-bs-theme="dark"] .qb-avatar-narration,
+[data-bs-theme="dark"] .qb-tactile-narration {
+  background: #1e1b16b3;
+  border-color: #ffffff14;
+  color: #cbd5e1;
 }
 
 /* Modals */

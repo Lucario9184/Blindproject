@@ -1028,15 +1028,16 @@ function renderArticulatedHandSVG(fingerStates, { x = 100, y = 105, scale = 1, m
  * Map a sign's poseType / fingerState to articulated finger arrays, avatar hand coordinates, facial expression & motion cues
  */
 function getPoseVisualSpec(signObj) {
-  if (signObj.fingerState && Array.isArray(signObj.fingerState)) {
+  if (!signObj) {
     return {
-      hands: [signObj.fingerState],
-      motion: "Hold Steady",
+      hands: [[1, 1, 1, 1, 1]],
+      motion: "Neutral Ready",
       avatarPos: [{ x: 142, y: 112 }],
       expression: "friendly",
-      avatarAction: `Avatar raises dominant hand at chest level showing ${signObj.word}.`
+      avatarAction: "Avatar stands ready in neutral signing pose."
     };
   }
+
   const p = signObj.poseType || "";
   switch (p) {
     case "namaste":
@@ -1149,16 +1150,22 @@ function getPoseVisualSpec(signObj) {
         avatarAction: "Avatar curves the right hand into a C-cup tumbler shape and tilts it toward the mouth as if drinking water."
       };
     case "eat_bunch":
-    case "money_rub":
+    case "food":
       return {
         hands: [[0.5, 0.5, 0.5, 0, 0]],
-        motion: p === "eat_bunch" ? "Bunched Tips to Mouth" : "Rub Thumb & Tips",
-        avatarPos: [{ x: p === "eat_bunch" ? 114 : 140, y: p === "eat_bunch" ? 86 : 114 }],
+        motion: "Bunched Tips to Mouth",
+        avatarPos: [{ x: 114, y: 86 }],
         expression: "friendly",
-        avatarAction:
-          p === "eat_bunch"
-            ? "Avatar brings bunched fingertips to the mouth to sign Food / Eat."
-            : "Avatar rubs the thumb across the index and middle fingertips at chest level to sign Money."
+        avatarAction: "Avatar brings bunched fingertips to the mouth repeatedly to sign Food / Eat."
+      };
+    case "money_rub":
+    case "money":
+      return {
+        hands: [[0.5, 0.5, 0.5, 0, 0]],
+        motion: "Rub Thumb & Tips",
+        avatarPos: [{ x: 140, y: 114 }],
+        expression: "friendly",
+        avatarAction: "Avatar rubs the thumb across the index and middle fingertips at chest level to sign Money."
       };
     case "palms_up_query":
     case "alarm_wave":
@@ -1201,13 +1208,14 @@ function getPoseVisualSpec(signObj) {
             : "Avatar extends a flat open palm forward to sign Stop / Wait."
       };
     case "pinky_up":
+    case "bathroom":
     case "num_6":
       return {
         hands: [[0, 0, 0, 0, 1]],
         motion: "Pinky Extended Up",
         avatarPos: [{ x: 142, y: 110 }],
         expression: "friendly",
-        avatarAction: "Avatar raises the pinky finger straight upward while curling the other fingers."
+        avatarAction: "Avatar raises the pinky finger straight upward while curling the other fingers to sign Restroom / Toilet."
       };
     case "phone_hand":
       return {
@@ -1218,37 +1226,96 @@ function getPoseVisualSpec(signObj) {
         avatarAction: "Avatar holds the thumb near the ear and pinky near the mouth like a telephone receiver."
       };
     case "wrist_pulse":
+    case "doctor":
+    case "hospital":
+      return {
+        hands: [[0, 1, 1, 0, 0], [0, 1, 1, 0, 0]],
+        motion: "Wrist Pulse Check",
+        avatarPos: [{ x: 82, y: 122 }, { x: 118, y: 118 }],
+        expression: "friendly",
+        avatarAction: "Avatar rests two fingertips of the dominant hand on the non-dominant wrist pulse to sign Doctor / Medical / Hospital."
+      };
     case "two_finger_cross":
       return {
         hands: [[0, 1, 1, 0, 0], [0, 1, 1, 0, 0]],
-        motion: "2-Finger Contact",
+        motion: "2-Finger Cross",
         avatarPos: [{ x: 82, y: 122 }, { x: 118, y: 118 }],
         expression: "friendly",
-        avatarAction:
-          p === "wrist_pulse"
-            ? "Avatar rests two fingertips of the right hand on the left wrist as if checking a patient's pulse for Doctor."
-            : "Avatar taps the extended index and middle fingers of both hands crosswise to sign Name."
+        avatarAction: "Avatar taps the extended index and middle fingers of both hands crosswise to sign Name."
       };
     case "index_pain":
+    case "pain":
+      return {
+        hands: [[0, 1, 0, 0, 0], [0, 1, 0, 0, 0]],
+        motion: "Index Points Inward",
+        avatarPos: [{ x: 80, y: 120 }, { x: 120, y: 120 }],
+        expression: "urgent",
+        avatarAction: "Avatar points both index fingers inward toward each other with a pained expression."
+      };
     case "wrist_watch":
       return {
         hands: [[0, 1, 0, 0, 0], [0, 1, 0, 0, 0]],
-        motion: "Index Point / Tap",
+        motion: "Tap Wrist Watch",
         avatarPos: [{ x: 80, y: 120 }, { x: 120, y: 120 }],
-        expression: p === "index_pain" ? "urgent" : "question",
-        avatarAction:
-          p === "index_pain"
-            ? "Avatar points both index fingers inward toward each other with a pained expression."
-            : "Avatar taps the back of the left wrist with the right index finger like pointing to a watch for Time."
+        expression: "question",
+        avatarAction: "Avatar taps the back of the left wrist with the right index finger like pointing to a watch for Time."
       };
-    default: {
+    case "repeat_arc":
+      return {
+        hands: [[0.5, 1, 1, 0, 0]],
+        motion: "Circular Arc ↻",
+        avatarPos: [{ x: 136, y: 110 }],
+        expression: "friendly",
+        avatarAction: "Avatar moves the dominant hand in a semicircular arc forward and back to sign Repeat / Again."
+      };
+    case "slow_stroke":
+      return {
+        hands: [[1, 1, 1, 1, 1], [1, 1, 1, 1, 1]],
+        motion: "Slow Stroke Down",
+        avatarPos: [{ x: 84, y: 122 }, { x: 116, y: 114 }],
+        expression: "friendly",
+        avatarAction: "Avatar slowly strokes the dominant open palm down the back of the non-dominant hand to sign Slow Down."
+      };
+    case "wheel_roll":
+    case "train":
+    case "transport":
+      return {
+        hands: [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
+        motion: "Rolling Wheels 🚂",
+        avatarPos: [{ x: 76, y: 118 }, { x: 124, y: 118 }],
+        expression: "friendly",
+        avatarAction: "Avatar holds both hands in loose fists and rolls them forward rhythmically to sign Train / Vehicle."
+      };
+    case "medicine":
+      return {
+        hands: [[0.5, 0.5, 0, 0, 0], [1, 1, 1, 1, 1]],
+        motion: "Twist in Palm / Pill",
+        avatarPos: [{ x: 84, y: 124 }, { x: 116, y: 116 }],
+        expression: "friendly",
+        avatarAction: "Avatar twists thumb and index finger into the center of the flat palm as if preparing Medicine."
+      };
+    case "letter": {
+      const f = signObj.fingerState || [0, 1, 0, 0, 0];
       const isTwo = (signObj.hands || "").includes("2");
       return {
-        hands: isTwo ? [[1, 1, 0, 0, 0], [1, 1, 1, 1, 1]] : [[1, 1, 1, 1, 1]],
-        motion: signObj.hands || "ISL Posture",
+        hands: isTwo ? [f, f] : [f],
+        motion: `Letter ${signObj.letterChar || ""}`,
+        avatarPos: isTwo ? [{ x: 82, y: 118 }, { x: 118, y: 118 }] : [{ x: 140, y: 110 }],
+        expression: "smile",
+        avatarAction: `Avatar fingerspells ISL letter ${signObj.letterChar || ""}: ${signObj.tactileGuide || ""}`
+      };
+    }
+    default: {
+      const isTwo = (signObj.hands || "").includes("2");
+      const f = (signObj.fingerState && Array.isArray(signObj.fingerState))
+        ? signObj.fingerState
+        : [1, 1, 1, 1, 1];
+      return {
+        hands: isTwo ? [f, f] : [f],
+        motion: signObj.hands || "ISL Formation",
         avatarPos: isTwo ? [{ x: 74, y: 118 }, { x: 126, y: 118 }] : [{ x: 138, y: 112 }],
-        expression: "friendly",
-        avatarAction: `Avatar performs ${signObj.word} (${signObj.hands}).`
+        expression: signObj.category === "emergency" ? "urgent" : (signObj.category === "questions" ? "question" : "friendly"),
+        avatarAction: `Avatar performs ${signObj.word} (${signObj.hands || "ISL Sign"}).`
       };
     }
   }
