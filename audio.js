@@ -697,6 +697,128 @@ class BlindAudioEngine {
     });
   }
 
+  /**
+   * Finds the best installed TTS voice for a given BCP-47 language code (e.g., "mai-IN", "ta-IN", "bn-IN")
+   * with fallback to Devanagari Hindi ("hi-IN") for Maithili/Bhojpuri/Marathi.
+   */
+  findRegionalVoice(voiceLang = "hi-IN", fallbackLang = "hi-IN") {
+    if (!this.voices || !this.voices.length) {
+      this.initVoices();
+    }
+    const prefix = (voiceLang || "hi-IN").split("-")[0].toLowerCase();
+    const direct =
+      this.voices.find((v) => v.lang.toLowerCase() === (voiceLang || "").toLowerCase()) ||
+      this.voices.find((v) => v.lang.toLowerCase().startsWith(prefix));
+    if (direct) return { voice: direct, isNativeScriptSupported: true };
+
+    // Maithili (mai), Bhojpuri (bho), Marathi (mr) use Devanagari script -> hi-IN reads them natively
+    if (["mai", "bho", "mr", "hi"].includes(prefix) && this.hindiVoice) {
+      return { voice: this.hindiVoice, isNativeScriptSupported: true };
+    }
+
+    if (fallbackLang && fallbackLang.startsWith("hi") && this.hindiVoice) {
+      return { voice: this.hindiVoice, isNativeScriptSupported: false };
+    }
+
+    return { voice: this.selectedVoice || null, isNativeScriptSupported: false };
+  }
+
+  /**
+   * Speaks any ISL sign in the selected regional language mode:
+   *  - "en_hi" (English + Hindi)
+   *  - "en_mai" (English + Maithili)
+   *  - "multi_top" (English + Hindi + Maithili)
+   *  - "all" (All 12 Indian & English Languages sequentially)
+   *  - Individual language codes: "hi", "mai", "bho", "mr", "bn", "ta", "te", "gu", "pa", "kn", "ur", "en"
+   */
+  speakSignInLang(signObj, langSetting = "en_hi", { interrupt = true, assertive = true } = {}) {
+    if (!signObj || !window.getSignTranslation) return;
+
+    let codesToSpeak = [];
+    if (langSetting === "en_hi") {
+      codesToSpeak = ["en", "hi"];
+    } else if (langSetting === "en_mai") {
+      codesToSpeak = ["en", "mai"];
+    } else if (langSetting === "multi_top") {
+      codesToSpeak = ["en", "hi", "mai"];
+    } else if (langSetting === "all") {
+      codesToSpeak = ["en", "hi", "mai", "bho", "mr", "bn", "ta", "te", "gu", "pa"];
+    } else {
+      codesToSpeak = [langSetting];
+    }
+
+    const translations = codesToSpeak
+      .map((code) => window.getSignTranslation(signObj, code))
+      .filter(Boolean);
+    if (!translations.length) return;
+
+    const summaryAria = translations
+      .map((t) => `${t.langName} (${t.nativeName}): ${t.word} — "${t.phrase}"`)
+      .join(" | ");
+
+    const srEl = document.getElementById(assertive ? "sr-assertive" : "sr-polite");
+    if (srEl) {
+      srEl.textContent = "";
+      setTimeout(() => {
+        srEl.textContent = summaryAria;
+      }, 20);
+    }
+
+    const statusText = document.getElementById("audio-status-text");
+    const statusDot = document.getElementById("audio-status-dot");
+    if (statusText) {
+      const first = translations[0];
+      statusText.textContent = `Speaking (${translations.map((t) => t.nativeName).join(" + ")}): "${first.word} — ${first.phrase}"`;
+    }
+
+    if (!("speechSynthesis" in window)) return;
+    if (interrupt) {
+      window.speechSynthesis.cancel();
+    }
+
+    const resetStatus = () => {
+      if (statusDot) statusDot.classList.remove("speaking");
+      if (statusText) {
+        statusText.innerHTML =
+          'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>L</strong> to Cycle Language, or <strong>S</strong> to Read Screen)';
+      }
+    };
+
+    translations.forEach((tr, idx) => {
+      const { voice, isNativeScriptSupported } = this.findRegionalVoice(tr.voiceLang, tr.fallbackVoice);
+      const textToSpeak =
+        tr.langCode === "en"
+          ? `${signObj.word.replace(/\/.*/g, "")}. ${tr.phrase}`
+          : isNativeScriptSupported
+          ? `${tr.word.replace(/\/.*/g, "")}। ${tr.phrase}`
+          : `${tr.langName}: ${tr.phonetic}`;
+
+      const u = new SpeechSynthesisUtterance(textToSpeak);
+      if (voice) {
+        u.voice = voice;
+        u.lang = voice.lang || tr.voiceLang || "hi-IN";
+      } else {
+        u.lang = isNativeScriptSupported ? tr.voiceLang : "en-IN";
+      }
+      u.rate = tr.langCode === "en" ? this.speechRate : Math.max(0.85, this.speechRate * 0.95);
+      u.pitch = this.speechPitch;
+
+      u.onstart = () => {
+        if (statusDot) statusDot.classList.add("speaking");
+        if (statusText) {
+          statusText.textContent = `Speaking ${tr.flag} ${tr.langName} (${tr.nativeName}): "${tr.word} — ${tr.phrase}"`;
+        }
+      };
+
+      if (idx === translations.length - 1) {
+        u.onend = resetStatus;
+        u.onerror = resetStatus;
+      }
+
+      window.speechSynthesis.speak(u);
+    });
+  }
+
   stopSpeaking() {
     if (this._speakTimer) {
       clearTimeout(this._speakTimer);
@@ -719,3 +841,4 @@ class BlindAudioEngine {
 }
 
 window.audioEngine = new BlindAudioEngine();
+

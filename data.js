@@ -1515,3 +1515,654 @@ window.renderISLSignSVG = function (signObj, { mode = "hand" } = {}) {
     </svg>
   `;
 };
+
+// ============================================================================
+// MULTI-LANGUAGE REGIONAL SIGN OUTPUT ENGINE
+// (Hindi, Maithili, Bhojpuri, Marathi, Bengali, Tamil, Telugu, Gujarati, Punjabi, Kannada, Urdu & English)
+// ============================================================================
+window.SIGN_LANGUAGES = [
+  { code: "hi", name: "Hindi", nativeName: "हिन्दी", flag: "🇮🇳", voiceLang: "hi-IN" },
+  { code: "mai", name: "Maithili", nativeName: "मैथिली", flag: "🇮🇳", voiceLang: "mai-IN", fallbackVoice: "hi-IN" },
+  { code: "bho", name: "Bhojpuri", nativeName: "भोजपुरी", flag: "🇮🇳", voiceLang: "bho-IN", fallbackVoice: "hi-IN" },
+  { code: "mr", name: "Marathi", nativeName: "मराठी", flag: "🇮🇳", voiceLang: "mr-IN", fallbackVoice: "hi-IN" },
+  { code: "bn", name: "Bengali", nativeName: "বাংলা", flag: "🇮🇳", voiceLang: "bn-IN" },
+  { code: "ta", name: "Tamil", nativeName: "தமிழ்", flag: "🇮🇳", voiceLang: "ta-IN" },
+  { code: "te", name: "Telugu", nativeName: "తెలుగు", flag: "🇮🇳", voiceLang: "te-IN" },
+  { code: "gu", name: "Gujarati", nativeName: "ગુજરાતી", flag: "🇮🇳", voiceLang: "gu-IN" },
+  { code: "pa", name: "Punjabi", nativeName: "ਪੰਜਾਬੀ", flag: "🇮🇳", voiceLang: "pa-IN" },
+  { code: "kn", name: "Kannada", nativeName: "ಕನ್ನಡ", flag: "🇮🇳", voiceLang: "kn-IN" },
+  { code: "ur", name: "Urdu", nativeName: "اردو", flag: "🇮🇳", voiceLang: "ur-IN", fallbackVoice: "hi-IN" },
+  { code: "en", name: "English", nativeName: "English", flag: "🇬🇧", voiceLang: "en-IN" }
+];
+
+window.SIGN_TRANSLATIONS = {
+  hello: {
+    hi: { word: "नमस्ते / हेलो", phrase: "नमस्ते! आपसे मिलकर बहुत खुशी हुई।", phonetic: "Namaste! Aapse milkar bahut khushi hui." },
+    mai: { word: "प्रणाम / नमस्कार", phrase: "प्रणाम! अहाँ सँ मिलिकय बहुत खुशी भेल।", phonetic: "Pranaam! Ahaan san milikai bahut khushi bhel." },
+    bho: { word: "प्रणाम / राउर स्वागत", phrase: "प्रणाम! रउआ से मिलके बहुत खुशी भइल।", phonetic: "Pranaam! Raua se milke bahut khushi bhail." },
+    mr: { word: "नमस्कार", phrase: "नमस्कार! तुम्हाला भेटून खूप आनंद झाला.", phonetic: "Namaskar! Tumhala bhetun khup anand jhala." },
+    bn: { word: "নমস্কার / হ্যালো", phrase: "নমস্কার! আপনার সাথে দেখা করে খুব ভালো লাগলো।", phonetic: "Nomoshkar! Apnar sathe dekha kore khub bhalo laglo." },
+    ta: { word: "வணக்கம்", phrase: "வணக்கம்! உங்களை சந்தித்ததில் மிக்க மகிழ்ச்சி.", phonetic: "Vanakkam! Ungalai santhithathil mikka magizhchi." },
+    te: { word: "నమస్కారం", phrase: "నమస్కారం! మిమ్మల్ని కలవడం చాలా సంతోషంగా ఉంది.", phonetic: "Namaskaram! Mimmalni kalavadam chala santhoshanga undi." },
+    gu: { word: "નમસ્તે", phrase: "નમસ્તે! તમને મળીને ખૂબ આનંદ થયો.", phonetic: "Namaste! Tamne maline khub anand thayo." },
+    pa: { word: "ਸਤ ਸ੍ਰੀ ਅਕਾਲ", phrase: "ਸਤ ਸ੍ਰੀ ਅਕਾਲ! ਤੁਹਾਨੂੰ ਮਿਲ ਕੇ ਬਹੁਤ ਖੁਸ਼ੀ ਹੋਈ।", phonetic: "Sat Sri Akaal! Tuhanu mil ke bahut khushi hoyi." },
+    kn: { word: "ನಮಸ್ಕಾರ", phrase: "ನಮಸ್ಕಾರ! ನಿಮ್ಮನ್ನು ಭೇಟಿಯಾಗಿದ್ದು ತುಂಬಾ ಸಂತೋಷ.", phonetic: "Namaskara! Nimmannu bhetiyagiddu tumba santhosha." },
+    ur: { word: "آداب / سلام", phrase: "آداب! آپ سے مل کر بہت خوشی ہوئی۔", phonetic: "Aadaab! Aap se mil kar bahut khushi hui." }
+  },
+  thankyou: {
+    hi: { word: "धन्यवाद / शुक्रिया", phrase: "आपका बहुत-बहुत धन्यवाद।", phonetic: "Aapka bahut-bahut dhanyavaad." },
+    mai: { word: "धन्यवाद", phrase: "अहाँक बहुत-बहुत धन्यवाद।", phonetic: "Ahaank bahut-bahut dhanyavaad." },
+    bho: { word: "धन्यवाद", phrase: "रउआ के बहुत-बहुत धन्यवाद।", phonetic: "Raua ke bahut-bahut dhanyavaad." },
+    mr: { word: "धन्यवाद / आभार", phrase: "तुमचे मनापासून खूप खूप आभार.", phonetic: "Tumche manapasun khup khup aabhar." },
+    bn: { word: "ধন্যবাদ", phrase: "আপনাকে অনেক অনেক ধন্যবাদ।", phonetic: "Apnake onek onek dhonyobad." },
+    ta: { word: "நன்றி", phrase: "உங்களுக்கு மிக்க நன்றி.", phonetic: "Ungalukku mikka nandri." },
+    te: { word: "ధన్యవాదాలు", phrase: "మీకు చాలా ధన్యవాదాలు.", phonetic: "Meeku chala dhanyavadalu." },
+    gu: { word: "આભાર / ધન્યવાદ", phrase: "તમારો ખૂબ ખૂબ આભાર.", phonetic: "Tamaro khub khub aabhar." },
+    pa: { word: "ਧੰਨਵਾਦ / ਸ਼ੁਕਰੀਆ", phrase: "ਤੁਹਾਡਾ ਬਹੁਤ-ਬਹੁਤ ਧੰਨਵਾਦ।", phonetic: "Tuhada bahut-bahut dhanvaad." },
+    kn: { word: "ಧನ್ಯವಾದಗಳು", phrase: "ನಿಮಗೆ ತುಂಬಾ ಧನ್ಯವಾದಗಳು.", phonetic: "Nimage tumba dhanyavadagalu." },
+    ur: { word: "شکریہ", phrase: "آپ کا بہت بہت شکریہ۔", phonetic: "Aap ka bahut bahut shukriya." }
+  },
+  yes: {
+    hi: { word: "हाँ / जी हाँ", phrase: "हाँ, मैं सहमत हूँ।", phonetic: "Haan, main sahmat hoon." },
+    mai: { word: "हँ", phrase: "हँ, हम सहमत छी।", phonetic: "Han, ham sahmat chhi." },
+    bho: { word: "हँ / ठीक बा", phrase: "हँ, हम सहमत बानी।", phonetic: "Han, ham sahmat baani." },
+    mr: { word: "हो / नक्कीच", phrase: "हो, मी सहमत आहे.", phonetic: "Ho, mi sahmat aahe." },
+    bn: { word: "হ্যাঁ", phrase: "হ্যাঁ, আমি একমত।", phonetic: "Hyan, ami ekmot." },
+    ta: { word: "ஆம்", phrase: "ஆம், நான் ஒப்புக்கொள்கிறேன்.", phonetic: "Aam, naan oppukkolgiren." },
+    te: { word: "అవును", phrase: "అవును, నేను అంగీకరిస్తున్నాను.", phonetic: "Avunu, nenu angeekaristhunnanu." },
+    gu: { word: "હા", phrase: "હા, હું સંમત છું.", phonetic: "Haa, hu sanmat chhu." },
+    pa: { word: "ਹਾਂ ਜੀ", phrase: "ਹਾਂ ਜੀ, ਮੈਂ ਸਹਿਮਤ ਹਾਂ।", phonetic: "Haan ji, main sahmat haan." },
+    kn: { word: "ಹೌದು", phrase: "ಹೌದು, ನಾನು ಒಪ್ಪುತ್ತೇನೆ.", phonetic: "Haudu, naanu opputtene." },
+    ur: { word: "جی ہاں", phrase: "جی ہاں، میں متفق ہوں۔", phonetic: "Jee haan, main muttafiq hoon." }
+  },
+  no: {
+    hi: { word: "नहीं", phrase: "नहीं, मैं सहमत नहीं हूँ।", phonetic: "Nahi, main sahmat nahi hoon." },
+    mai: { word: "नहि", phrase: "नहि, हम सहमत नहि छी।", phonetic: "Nahi, ham sahmat nahi chhi." },
+    bho: { word: "ना / नइखे", phrase: "ना, ई ठीक नइखे।", phonetic: "Na, ee theek naikhe." },
+    mr: { word: "नाही", phrase: "नाही, मला हे मान्य नाही.", phonetic: "Nahi, mala he manya nahi." },
+    bn: { word: "না", phrase: "না, আমি একমত নই।", phonetic: "Na, ami ekmot noi." },
+    ta: { word: "இல்லை", phrase: "இல்லை, நான் ஒப்புக்கொள்ளவில்லை.", phonetic: "Illai, naan oppukkollavillai." },
+    te: { word: "కాదు / వద్దు", phrase: "కాదు, నేను అంగీకరించను.", phonetic: "Kaadu, nenu angeekarinchanu." },
+    gu: { word: "ના", phrase: "ના, હું સંમત નથી.", phonetic: "Naa, hu sanmat nathi." },
+    pa: { word: "ਨਹੀਂ", phrase: "ਨਹੀਂ, ਮੈਂ ਸਹਿਮਤ ਨਹੀਂ ਹਾਂ।", phonetic: "Nahi, main sahmat nahi haan." },
+    kn: { word: "ಇಲ್ಲ", phrase: "ಇಲ್ಲ, ನಾನು ಒಪ್ಪುವುದಿಲ್ಲ.", phonetic: "Illa, naanu oppuvudilla." },
+    ur: { word: "نہیں", phrase: "نہیں، میں متفق نہیں ہوں۔", phonetic: "Nahi, main muttafiq nahi hoon." }
+  },
+  please: {
+    hi: { word: "कृपया", phrase: "कृपया मेरी बात सुनिए।", phonetic: "Kripaya meri baat suniye." },
+    mai: { word: "कृपया", phrase: "कृपया हमर बात सुनू।", phonetic: "Kripaya hamar baat sunu." },
+    bho: { word: "कृपया / निहोरा", phrase: "कृपया हमार बात सुनीं।", phonetic: "Kripaya hamaar baat sunin." },
+    mr: { word: "कृपया", phrase: "कृपया मला सहकार्य करा.", phonetic: "Kripaya mala sahakarya kara." },
+    bn: { word: "দয়া করে", phrase: "দয়া করে আমার কথা শুনুন।", phonetic: "Doya kore amar kotha shunun." },
+    ta: { word: "தயவுசெய்து", phrase: "தயவுசெய்து எனக்கு உதவுங்கள்.", phonetic: "Thayavuseithu enakku uthavungal." },
+    te: { word: "దయచేసి", phrase: "దయచేసి నా మాట వినండి.", phonetic: "Dayachesi naa maata vinandi." },
+    gu: { word: "કૃપા કરીને", phrase: "કૃપા કરીને મારી વાત સાંભળો.", phonetic: "Krupa karine mari vaat sambhalo." },
+    pa: { word: "ਕਿਰਪਾ ਕਰਕੇ", phrase: "ਕਿਰਪਾ ਕਰਕੇ ਮੇਰੀ ਗੱਲ ਸੁਣੋ।", phonetic: "Kirpa karke meri gal suno." },
+    kn: { word: "ದಯವಿಟ್ಟು", phrase: "ದಯವಿಟ್ಟು ನನ್ನ ಮಾತು ಕೇಳಿ.", phonetic: "Dayavittu nanna maathu keli." },
+    ur: { word: "براہ کرم", phrase: "براہ کرم میری بات سنیے۔", phonetic: "Bara-e-karam meri baat suniye." }
+  },
+  sorry: {
+    hi: { word: "क्षमा करें / माफ़ कीजिए", phrase: "मुझे माफ़ कीजिए, क्षमा करें।", phonetic: "Mujhe maaf kijiye, kshama karein." },
+    mai: { word: "क्षमा करू / माफ करू", phrase: "हमरा क्षमा करू।", phonetic: "Hamra kshama karu." },
+    bho: { word: "माफ करीं", phrase: "हमरा के माफ करीं।", phonetic: "Hamra ke maaf karin." },
+    mr: { word: "क्षमस्व / माफ करा", phrase: "मला माफ करा.", phonetic: "Mala maaf kara." },
+    bn: { word: "দুঃখিত / ক্ষমা করবেন", phrase: "আমি দুঃখিত, আমায় ক্ষমা করবেন।", phonetic: "Ami dukkhito, amay khoma korben." },
+    ta: { word: "மன்னிக்கவும்", phrase: "என்னை மன்னிக்கவும்.", phonetic: "Ennai mannikkavum." },
+    te: { word: "క్షమించండి", phrase: "నన్ను క్షమించండి.", phonetic: "Nannu kshaminchandi." },
+    gu: { word: "માફ કરશો", phrase: "મને માફ કરશો.", phonetic: "Mane maaf karsho." },
+    pa: { word: "ਮਾਫ਼ ਕਰਨਾ", phrase: "ਮੈਨੂੰ ਮਾਫ਼ ਕਰਨਾ ਜੀ।", phonetic: "Mainu maaf karna ji." },
+    kn: { word: "ಕ್ಷಮಿಸಿ", phrase: "ದಯವಿಟ್ಟು ನನ್ನನ್ನು ಕ್ಷಮಿಸಿ.", phonetic: "Dayavittu nannannu kshamisi." },
+    ur: { word: "معاف کیجیے", phrase: "مجھے معاف کیجیے۔", phonetic: "Mujhe maaf kijiye." }
+  },
+  friend: {
+    hi: { word: "दोस्त / मित्र", phrase: "आप मेरे अच्छे दोस्त हैं।", phonetic: "Aap mere achhe dost hain." },
+    mai: { word: "मित्र / संगी", phrase: "अहाँ हमर नीक मित्र छी।", phonetic: "Ahaan hamar neek mitra chhi." },
+    bho: { word: "दोस्त / संघाती", phrase: "रउआ हमार बढ़िया दोस्त बानी।", phonetic: "Raua hamaar badhiya dost baani." },
+    mr: { word: "मित्र / मैत्रीण", phrase: "तू माझा चांगला मित्र आहेस.", phonetic: "Tu majha changla mitra aahes." },
+    bn: { word: "বন্ধু", phrase: "আপনি আমার ভালো বন্ধু।", phonetic: "Apni amar bhalo bondhu." },
+    ta: { word: "நண்பர்", phrase: "நீங்கள் என் நல்ல நண்பர்.", phonetic: "Neengal en nalla nanbar." },
+    te: { word: "స్నేహితుడు", phrase: "మీరు నా మంచి స్నేహితులు.", phonetic: "Meeru naa manchi snehithulu." },
+    gu: { word: "મિત્ર / દોસ્ત", phrase: "તમે મારા સારા મિત્ર છો.", phonetic: "Tame mara sara mitra chho." },
+    pa: { word: "ਦੋਸਤ / ਮਿੱਤਰ", phrase: "ਤੁਸੀਂ ਮੇਰੇ ਚੰਗੇ ਦੋਸਤ ਹੋ।", phonetic: "Tusi mere change dost ho." },
+    kn: { word: "ಸ್ನೇಹಿತ", phrase: "ನೀವು ನನ್ನ ಒಳ್ಳೆಯ ಸ್ನೇಹಿತ.", phonetic: "Neevu nanna olleya snehitha." },
+    ur: { word: "دوست", phrase: "آپ میرے اچھے دوست ہیں۔", phonetic: "Aap mere achhe dost hain." }
+  },
+  good: {
+    hi: { word: "अच्छा / बढ़िया", phrase: "अच्छा! सब कुछ ठीक है।", phonetic: "Achha! Sab kuch theek hai." },
+    mai: { word: "नीक / बढ़िया", phrase: "नीक! सब किछु ठीक अछि।", phonetic: "Neek! Sab kichhu theek achhi." },
+    bho: { word: "बढ़िया / नीमन", phrase: "बढ़िया! सब कुछ ठीक बा।", phonetic: "Badhiya! Sab kuch theek ba." },
+    mr: { word: "छान / उत्तम", phrase: "छान! सर्व काही ठीक आहे.", phonetic: "Chhan! Sarva kahi theek aahe." },
+    bn: { word: "ভালো", phrase: "ভালো! সবকিছু ঠিক আছে।", phonetic: "Bhalo! Shobkichu thik ache." },
+    ta: { word: "நல்லது", phrase: "நல்லது! எல்லாம் சரியாக உள்ளது.", phonetic: "Nallathu! Ellam sariyaga ullathu." },
+    te: { word: "మంచిది / బాగుంది", phrase: "బాగుంది! అంతా బాగానే ఉంది.", phonetic: "Bagundi! Antha bagane undi." },
+    gu: { word: "સારું / સરસ", phrase: "સરસ! બધું બરાબર છે.", phonetic: "Saras! Badhu barabar chhe." },
+    pa: { word: "ਵਧੀਆ / ਚੰਗਾ", phrase: "ਵਧੀਆ! ਸਭ ਕੁਝ ਠੀਕ ਹੈ।", phonetic: "Vadhiya! Sabh kujh theek hai." },
+    kn: { word: "ಒಳ್ಳೆಯದು / ಚೆನ್ನಾಗಿದೆ", phrase: "ಚೆನ್ನಾಗಿದೆ! ಎಲ್ಲವೂ ಸರಿಯಾಗಿದೆ.", phonetic: "Chennagide! Ellavu sariyagide." },
+    ur: { word: "اچھا / بہتر", phrase: "اچھا! سب کچھ ٹھیک ہے۔", phonetic: "Achha! Sab kuch theek hai." }
+  },
+  bad: {
+    hi: { word: "बुरा / ठीक नहीं", phrase: "ठीक नहीं है। कुछ गड़बड़ है।", phonetic: "Theek nahi hai. Kuch gadbad hai." },
+    mai: { word: "खराब / ठीक नहि", phrase: "ठीक नहि अछि। किछु गड़बड़ अछि।", phonetic: "Theek nahi achhi. Kichhu gadbad achhi." },
+    bho: { word: "खराब / ठीक नइखे", phrase: "ठीक नइखे। कुछ गड़बड़ बा।", phonetic: "Theek naikhe. Kuch gadbad ba." },
+    mr: { word: "वाईट / बरे नाही", phrase: "बरे नाही. काहीतरी चूक आहे.", phonetic: "Bare nahi. Kahitari chuk aahe." },
+    bn: { word: "খারাপ / ভালো নয়", phrase: "ভালো নয়, কিছু সমস্যা হয়েছে।", phonetic: "Bhalo noy, kichu shomossha hoyeche." },
+    ta: { word: "சரியில்லை", phrase: "சரியில்லை, ஏதோ தவறு நடந்துள்ளது.", phonetic: "Sariyillai, etho thavaru nadanthullathu." },
+    te: { word: "బాగోలేదు", phrase: "బాగోలేదు, ఏదో సమస్య ఉంది.", phonetic: "Bagoledhu, edho samasya undi." },
+    gu: { word: "બરાબર નથી", phrase: "બરાબર નથી, કંઈક તકલીફ છે.", phonetic: "Barabar nathi, kaik takleef chhe." },
+    pa: { word: "ਠੀਕ ਨਹੀਂ", phrase: "ਠੀਕ ਨਹੀਂ ਹੈ, ਕੋਈ ਮੁਸ਼ਕਿਲ ਹੈ।", phonetic: "Theek nahi hai, koi mushkil hai." },
+    kn: { word: "ಸರಿಯಿಲ್ಲ", phrase: "ಸರಿಯಿಲ್ಲ, ಏನೋ ತೊಂದರೆ ಇದೆ.", phonetic: "Sariyilla, eno tondare ide." },
+    ur: { word: "ٹھیک نہیں", phrase: "ٹھیک نہیں ہے، کچھ مسئلہ ہے۔", phonetic: "Theek nahi hai, kuch masla hai." }
+  },
+  iloveyou: {
+    hi: { word: "स्नेह / अपनापन", phrase: "मुझे आपकी परवाह है।", phonetic: "Mujhe aapki parvah hai." },
+    mai: { word: "स्नेह / दुलार", phrase: "हमरा अहाँक चिन्ता अछि।", phonetic: "Hamra ahaank chinta achhi." },
+    bho: { word: "दुलार / नेह", phrase: "हमरा रउआ के फिकिर बा।", phonetic: "Hamra raua ke fikir ba." },
+    mr: { word: "प्रेम / काळजी", phrase: "मला तुमची काळजी आहे.", phonetic: "Mala tumchi kalji aahe." },
+    bn: { word: "ভালোবাসা / যত্ন", phrase: "আমি আপনার প্রতি যত্নশীল।", phonetic: "Ami apnar proti jotnoshil." },
+    ta: { word: "அன்பு / அக்கறை", phrase: "நான் உங்கள் மீது அக்கறை கொண்டுள்ளேன்.", phonetic: "Naan ungal meethu akkarai kondullen." },
+    te: { word: "ప్రేమ / అభిమానం", phrase: "నాకు మీ పట్ల అభిమానం ఉంది.", phonetic: "Naaku mee patla abhimanam undi." },
+    gu: { word: "પ્રેમ / કાળજી", phrase: "મને તમારી કાળજી છે.", phonetic: "Mane tamari kalji chhe." },
+    pa: { word: "ਪਿਆਰ / ਸਤਿਕਾਰ", phrase: "ਮੈਨੂੰ ਤੁਹਾਡੀ ਪਰਵਾਹ ਹੈ।", phonetic: "Mainu tuhadi parvah hai." },
+    kn: { word: "ಪ್ರೀತಿ / ಕಾಳಜಿ", phrase: "ನನಗೆ ನಿಮ್ಮ ಬಗ್ಗೆ ಕಾಳಜಿ ಇದೆ.", phonetic: "Nanage nimma bagge kalaji ide." },
+    ur: { word: "محبت / خیال", phrase: "مجھے آپ کا خیال ہے۔", phonetic: "Mujhe aap ka khayal hai." }
+  },
+  name: {
+    hi: { word: "नाम", phrase: "आपका नाम क्या है? मेरा नाम...", phonetic: "Aapka naam kya hai? Mera naam..." },
+    mai: { word: "नाम", phrase: "अहाँक नाम की अछि?", phonetic: "Ahaank naam ki achhi?" },
+    bho: { word: "नाँव", phrase: "राउर नाँव का हटे?", phonetic: "Raur naav ka hate?" },
+    mr: { word: "नाव", phrase: "तुमचे नाव काय आहे?", phonetic: "Tumche naav kay aahe?" },
+    bn: { word: "নাম", phrase: "আপনার নাম কী?", phonetic: "Apnar naam ki?" },
+    ta: { word: "பெயர்", phrase: "உங்கள் பெயர் என்ன?", phonetic: "Ungal peyar enna?" },
+    te: { word: "పేరు", phrase: "మీ పేరు ఏమిటి?", phonetic: "Mee peru emiti?" },
+    gu: { word: "નામ", phrase: "તમારું નામ શું છે?", phonetic: "Tamaru naam shu chhe?" },
+    pa: { word: "ਨਾਮ", phrase: "ਤੁਹਾਡਾ ਨਾਮ ਕੀ ਹੈ?", phonetic: "Tuhada naam ki hai?" },
+    kn: { word: "ಹೆಸರು", phrase: "ನಿಮ್ಮ ಹೆಸರೇನು?", phonetic: "Nimma hesarenu?" },
+    ur: { word: "نام", phrase: "آپ کا نام کیا ہے؟", phonetic: "Aap ka naam kya hai?" }
+  },
+  understand: {
+    hi: { word: "समझ गया", phrase: "मैं अच्छी तरह समझ गया।", phonetic: "Main achhi tarah samajh gaya." },
+    mai: { word: "बुझि गेलहुँ", phrase: "हम नीक जकाँ बुझि गेलहुँ।", phonetic: "Ham neek jakaan bujhi gelahun." },
+    bho: { word: "बुझा गइल", phrase: "हम बढ़िया से समझ गइनी।", phonetic: "Ham badhiya se samajh gaini." },
+    mr: { word: "समजले", phrase: "मला स्पष्टपणे समजले.", phonetic: "Mala spashtapane samajle." },
+    bn: { word: "বুঝতে পেরেছি", phrase: "আমি পরিষ্কার বুঝতে পেরেছি।", phonetic: "Ami porishkar bujhte perechi." },
+    ta: { word: "புரிந்தது", phrase: "எனக்குத் தெளிவாகப் புரிந்தது.", phonetic: "Enakkuth thelivagap purinthathu." },
+    te: { word: "అర్థమైంది", phrase: "నాకు స్పష్టంగా అర్థమైంది.", phonetic: "Naaku spashtanga arthamaimdi." },
+    gu: { word: "સમજાઈ ગયું", phrase: "મને બરાબર સમજાઈ ગયું.", phonetic: "Mane barabar samjai gayu." },
+    pa: { word: "ਸਮਝ ਗਿਆ", phrase: "ਮੈਂ ਚੰਗੀ ਤਰ੍ਹਾਂ ਸਮਝ ਗਿਆ ਹਾਂ।", phonetic: "Main changi tarhan samajh gaya haan." },
+    kn: { word: "ಅರ್ಥವಾಯಿತು", phrase: "ನನಗೆ ಸ್ಪಷ್ಟವಾಗಿ ಅರ್ಥವಾಯಿತು.", phonetic: "Nanage spashtavagi arthavayitu." },
+    ur: { word: "سمجھ گیا", phrase: "میں اچھی طرح سمجھ گیا۔", phonetic: "Main achhi tarah samajh gaya." }
+  },
+  mother: {
+    hi: { word: "माँ / माता", phrase: "मेरी माँ।", phonetic: "Meri Maa." },
+    mai: { word: "माय / माता", phrase: "हमर माय।", phonetic: "Hamar Maay." },
+    bho: { word: "माई", phrase: "हमार माई।", phonetic: "Hamaar Maai." },
+    mr: { word: "आई", phrase: "माझी आई.", phonetic: "Majhi Aai." },
+    bn: { word: "মা", phrase: "আমার মা।", phonetic: "Amar Maa." },
+    ta: { word: "அம்மா", phrase: "என் அம்மா.", phonetic: "En Amma." },
+    te: { word: "అమ్మ", phrase: "మా అమ్మ.", phonetic: "Maa Amma." },
+    gu: { word: "માતા / બા", phrase: "મારી માતા.", phonetic: "Mari Mata." },
+    pa: { word: "ਮਾਂ / ਮਾਤਾ", phrase: "ਮੇਰੀ ਮਾਂ।", phonetic: "Meri Maa." },
+    kn: { word: "ಅಮ್ಮ / ತಾಯಿ", phrase: "ನನ್ನ ತಾಯಿ.", phonetic: "Nanna Thaayi." },
+    ur: { word: "امی / والدہ", phrase: "میری امی۔", phonetic: "Meri Ammi." }
+  },
+  father: {
+    hi: { word: "पिता / पापा", phrase: "मेरे पिताजी।", phonetic: "Mere Pitaji." },
+    mai: { word: "बाबूजी / पिता", phrase: "हमर बाबूजी।", phonetic: "Hamar Babuji." },
+    bho: { word: "बाबूजी", phrase: "हमार बाबूजी।", phonetic: "Hamaar Babuji." },
+    mr: { word: "वडील / बाबा", phrase: "माझे बाबा.", phonetic: "Majhe Baba." },
+    bn: { word: "বাবা", phrase: "আমার বাবা।", phonetic: "Amar Baba." },
+    ta: { word: "அப்பா", phrase: "என் அப்பா.", phonetic: "En Appa." },
+    te: { word: "నాన్న", phrase: "మా నాన్న.", phonetic: "Maa Nanna." },
+    gu: { word: "પિતા / પપ્પા", phrase: "મારા પિતાજી.", phonetic: "Mara Pitaji." },
+    pa: { word: "ਪਿਤਾ / ਪਾਪਾ", phrase: "ਮੇਰੇ ਪਿਤਾ ਜੀ।", phonetic: "Mere Pita ji." },
+    kn: { word: "ಅಪ್ಪ / ತಂದೆ", phrase: "ನನ್ನ ತಂದೆ.", phonetic: "Nanna Thande." },
+    ur: { word: "ابو / والد", phrase: "میرے والد۔", phonetic: "Mere Walid." }
+  },
+  help: {
+    hi: { word: "मदद / सहायता", phrase: "कृपया मेरी मदद करें।", phonetic: "Kripaya meri madad karein." },
+    mai: { word: "मददि / सहायता", phrase: "कृपया हमर मददि करू।", phonetic: "Kripaya hamar madadi karu." },
+    bho: { word: "मदद / सहारा", phrase: "कृपया हमार मदद करीं।", phonetic: "Kripaya hamaar madad karin." },
+    mr: { word: "मदत", phrase: "कृपया मला मदत करा.", phonetic: "Kripaya mala madat kara." },
+    bn: { word: "সাহায্য", phrase: "দয়া করে আমাকে সাহায্য করুন।", phonetic: "Doya kore amake shahajjo korun." },
+    ta: { word: "உதவி", phrase: "தயவுசெய்து எனக்கு உதவுங்கள்.", phonetic: "Thayavuseithu enakku uthavungal." },
+    te: { word: "సహాయం", phrase: "దయచేసి నాకు సహాయం చేయండి.", phonetic: "Dayachesi naaku sahayam cheyandi." },
+    gu: { word: "મદદ", phrase: "કૃપા કરીને મને મદદ કરો.", phonetic: "Krupa karine mane madad karo." },
+    pa: { word: "ਮਦਦ", phrase: "ਕਿਰਪਾ ਕਰਕੇ ਮੇਰੀ ਮਦਦ ਕਰੋ।", phonetic: "Kirpa karke meri madad karo." },
+    kn: { word: "ಸಹಾಯ", phrase: "ದಯವಿಟ್ಟು ನನಗೆ ಸಹಾಯ ಮಾಡಿ.", phonetic: "Dayavittu nanage sahaya maadi." },
+    ur: { word: "مدد", phrase: "براہ کرم میری مدد کریں۔", phonetic: "Bara-e-karam meri madad karein." }
+  },
+  blind: {
+    hi: { word: "नेत्रहीन / दृष्टिबाधित", phrase: "मैं नेत्रहीन हूँ / देख नहीं सकता।", phonetic: "Main netraheen hoon, dekh nahi sakta." },
+    mai: { word: "नेत्रहीन / देख नहि सकैत", phrase: "हम नेत्रहीन छी, देख नहि सकैत छी।", phonetic: "Ham netraheen chhi, dekh nahi sakait chhi." },
+    bho: { word: "नेत्रहीन", phrase: "हम देख नइखीं सकत, हमरा राह दिखाईं।", phonetic: "Ham dekh naikhin sakat, hamra raah dikhain." },
+    mr: { word: "अंध / दृष्टीहीन", phrase: "मी अंध आहे, कृपया मला मार्गदर्शन करा.", phonetic: "Mi andha aahe, kripaya mala margadarshan kara." },
+    bn: { word: "দৃষ্টিহীন", phrase: "আমি দৃষ্টিহীন, আমাকে পথ দেখাতে সাহায্য করুন।", phonetic: "Ami drishtihin, amake poth dekhate shahajjo korun." },
+    ta: { word: "பார்வையற்றவர்", phrase: "நான் பார்வையற்றவன், தயவுசெய்து வழிகாட்டுங்கள்.", phonetic: "Naan paarvaiyatravan, thayavuseithu vazhikaattungal." },
+    te: { word: "దృష్టి లోపం", phrase: "నాకు కళ్ళు కనిపించవు, దయచేసి సహాయం చేయండి.", phonetic: "Naaku kallu kanipinchavu, dayachesi sahayam cheyandi." },
+    gu: { word: "પ્રજ્ઞાચક્ષુ / અંધ", phrase: "હું જોઈ શકતો નથી, કૃપા કરીને મને રસ્તો બતાવો.", phonetic: "Hu joi shakto nathi, krupa karine mane rasto batavo." },
+    pa: { word: "ਨੇਤਰਹੀਣ", phrase: "ਮੈਂ ਦੇਖ ਨਹੀਂ ਸਕਦਾ, ਕਿਰਪਾ ਕਰਕੇ ਮੇਰੀ ਮਦਦ ਕਰੋ।", phonetic: "Main dekh nahi sakda, kirpa karke meri madad karo." },
+    kn: { word: "ದೃಷ್ಟಿಹೀನ", phrase: "ನನಗೆ ಕಣ್ಣು ಕಾಣಿಸುವುದಿಲ್ಲ, ದಯವಿಟ್ಟು ಸಹಾಯ ಮಾಡಿ.", phonetic: "Nanage kannu kanisuvudilla, dayavittu sahaya maadi." },
+    ur: { word: "نابینا", phrase: "میں نابینا ہوں، براہ کرم میری رہنمائی کریں۔", phonetic: "Main nabeena hoon, bara-e-karam meri rehnumai karein." }
+  },
+  deaf: {
+    hi: { word: "बधिर / सांकेतिक भाषा", phrase: "मैं सुन नहीं सकता और सांकेतिक भाषा में बात करता हूँ।", phonetic: "Main sun nahi sakta aur Sign Language mein baat karta hoon." },
+    mai: { word: "बधिर / सांकेतिक भाषा", phrase: "हम सुनु नहि सकैत छी, सांकेतिक भाषामे बात करैत छी।", phonetic: "Ham sunu nahi sakait chhi, Sign Language mein baat karait chhi." },
+    bho: { word: "बधिर / इशारा भाषा", phrase: "हम सुन नइखीं सकत, इशारा में बात करीं।", phonetic: "Ham sun naikhin sakat, ishara mein baat karin." },
+    mr: { word: "कर्णबधिर", phrase: "मी कर्णबधिर आहे आणि सांकेतिक भाषेत बोलतो.", phonetic: "Mi karnabadhir aahe aani sanketik bhashet bolto." },
+    bn: { word: "বধির / ইশারা ভাষা", phrase: "আমি শুনতে পাই না, ইশারা ভাষায় কথা বলি।", phonetic: "Ami shunte pai na, ishara bhashay kotha boli." },
+    ta: { word: "காது கேளாதவர்", phrase: "எனக்கு காது கேட்காது, சைகை மொழியில் பேசுகிறேன்.", phonetic: "Enakku kaathu ketkaathu, saigai mozhiyil pesugiren." },
+    te: { word: "বധിరులు / సైగ భాష", phrase: "నాకు వినిపించదు, సైగ భాషలో మాట్లాడతాను.", phonetic: "Naaku vinipinchadu, saiga bhashalo matladathanu." },
+    gu: { word: "મૂક-બધિર", phrase: "હું સાંભળી શકતો નથી, સાંકેતિક ભાષામાં વાત કરું છું.", phonetic: "Hu sambhali shakto nathi, sanketik bhashama vaat karu chhu." },
+    pa: { word: "ਬਧਿਰ / ਇਸ਼ਾਰਿਆਂ ਦੀ ਭਾਸ਼ਾ", phrase: "ਮੈਂ ਸੁਣ ਨਹੀਂ ਸਕਦਾ, ਇਸ਼ਾਰਿਆਂ ਦੀ ਭਾਸ਼ਾ ਵਰਤਦਾ ਹਾਂ।", phonetic: "Main sun nahi sakda, ishareyan di bhasha vartda haan." },
+    kn: { word: "ಶ್ರವಣದೋಷವುಳ್ಳವರು", phrase: "ನನಗೆ ಕಿವಿ ಕೇಳಿಸುವುದಿಲ್ಲ, ಸಂಜ್ಞೆ ಭಾಷೆಯಲ್ಲಿ ಮಾತನಾಡುತ್ತೇನೆ.", phonetic: "Nanage kivi kelisuvudilla, sanjne bhasheyalli ಮಾತನಾಡುತ್ತೇನೆ." },
+    ur: { word: "سماعت سے محروم", phrase: "میں سن نہیں سکتا اور اشاروں کی زبان میں بات کرتا ہوں۔", phonetic: "Main sun nahi sakta aur isharon ki zaban mein baat karta hoon." }
+  },
+  water: {
+    hi: { word: "पानी / जल", phrase: "मुझे पीने के लिए पानी चाहिए।", phonetic: "Mujhe peene ke liye paani chahiye." },
+    mai: { word: "पानि / जल", phrase: "हमरा पीबाक लेल पानि चाही।", phonetic: "Hamra peebaak lel paani chahi." },
+    bho: { word: "पानी", phrase: "हमरा पीये खातिर पानी चाहीं।", phonetic: "Hamra peeye khatir paani chahin." },
+    mr: { word: "पाणी", phrase: "मला पिण्यासाठी पाणी हवे आहे.", phonetic: "Mala pinyasathi paani have aahe." },
+    bn: { word: "জল / পানি", phrase: "আমার খাবার জল চাই।", phonetic: "Amar khabar jol chai." },
+    ta: { word: "தண்ணீர்", phrase: "எனக்கு குடிக்க தண்ணீர் வேண்டும்.", phonetic: "Enakku kudikka thanneer vendum." },
+    te: { word: "నీళ్ళు / మంచినీరు", phrase: "నాకు తాగడానికి మంచినీళ్ళు కావాలి.", phonetic: "Naaku thagadaniki manchineellu kavali." },
+    gu: { word: "પાણી", phrase: "મારે પીવા માટે પાણી જોઈએ છે.", phonetic: "Mare peeva mate paani joiye chhe." },
+    pa: { word: "ਪਾਣੀ", phrase: "ਮੈਨੂੰ ਪੀਣ ਲਈ ਪਾਣੀ ਚਾਹੀਦਾ ਹੈ।", phonetic: "Mainu peen layi paani chahida hai." },
+    kn: { word: "ನೀರು", phrase: "ನನಗೆ ಕುಡಿಯಲು ನೀರು ಬೇಕು.", phonetic: "Nanage kudiyalu neeru beku." },
+    ur: { word: "پانی", phrase: "مجھے پینے کے لیے پانی چاہیے۔", phonetic: "Mujhe peene ke liye paani chahiye." }
+  },
+  food: {
+    hi: { word: "भोजन / खाना", phrase: "मुझे खाने के लिए भोजन चाहिए।", phonetic: "Mujhe khaane ke liye bhojan chahiye." },
+    mai: { word: "भोजन / खाना", phrase: "हमरा खाय लेल भोजन चाही।", phonetic: "Hamra khaay lel bhojan chahi." },
+    bho: { word: "खाना / भोजन", phrase: "हमरा खाये खातिर खाना चाहीं।", phonetic: "Hamra khaye khatir khana chahin." },
+    mr: { word: "जेवण / अन्न", phrase: "मला खाण्यासाठी जेवण हवे आहे.", phonetic: "Mala khanyasathi jevan have aahe." },
+    bn: { word: "খাবার", phrase: "আমি কিছু খাবার খেতে চাই।", phonetic: "Ami kichu khabar khete chai." },
+    ta: { word: "உணவு / சாப்பாடு", phrase: "எனக்கு சாப்பிட உணவு வேண்டும்.", phonetic: "Enakku saappida unavu vendum." },
+    te: { word: "ఆహారం / భోజనం", phrase: "నాకు తినడానికి ఆహారం కావాలి.", phonetic: "Naaku thinadaniki aaharam kavali." },
+    gu: { word: "ભોજન / જમવાનું", phrase: "મારે જમવા માટે ખોરાક જોઈએ છે.", phonetic: "Mare jamva mate khorak joiye chhe." },
+    pa: { word: "ਖਾਣਾ / ਭੋਜਨ", phrase: "ਮੈਨੂੰ ਖਾਣ ਲਈ ਭੋਜਨ ਚਾਹੀਦਾ ਹੈ।", phonetic: "Mainu khaan layi bhojan chahida hai." },
+    kn: { word: "ಊಟ / ಆಹಾರ", phrase: "ನನಗೆ ತಿನ್ನಲು ಆಹಾರ ಬೇಕು.", phonetic: "Nanage thinnalu aahara beku." },
+    ur: { word: "کھانا", phrase: "مجھے کھانے کے لیے کھانا چاہیے۔", phonetic: "Mujhe khaane ke liye khana chahiye." }
+  },
+  where: {
+    hi: { word: "कहाँ / किधर", phrase: "यह कहाँ है? क्या आप रास्ता बता सकते हैं?", phonetic: "Yah kahan hai? Kya aap raasta bata sakte hain?" },
+    mai: { word: "कतय / केम्हर", phrase: "ई कतय अछि? की अहाँ बाट बता सकैत छी?", phonetic: "Ee katay achhi? Ki ahaan baat bata sakait chhi?" },
+    bho: { word: "कहाँ / केने", phrase: "ई कहाँ बा? रउआ रास्ता बता सकीलें?", phonetic: "Ee kahan ba? Raua raasta bata sakilen?" },
+    mr: { word: "कुठे", phrase: "हे कुठे आहे? तुम्ही मला मार्ग दाखवाल का?", phonetic: "He kuthe aahe? Tumhi mala marga dakhaval ka?" },
+    bn: { word: "কোথায়", phrase: "এটি কোথায়? আপনি কি পথ দেখাতে পারবেন?", phonetic: "Eti kothay? Apni ki poth dekhate parben?" },
+    ta: { word: "எங்கே", phrase: "இது எங்கே உள்ளது? வழி சொல்ல முடியுமா?", phonetic: "Ithu enge ullathu? Vazhi solla mudiyuma?" },
+    te: { word: "ఎక్కడ", phrase: "ఇది ఎక్కడ ఉంది? దయచేసి దారి చెబుతారా?", phonetic: "Idi ekkada undi? Dayachesi daari chebuthara?" },
+    gu: { word: "ક્યાં", phrase: "આ ક્યાં છે? શું તમે મને રસ્તો બતાવશો?", phonetic: "Aa kya chhe? Shu tame mane rasto batavsho?" },
+    pa: { word: "ਕਿੱਥੇ", phrase: "ਇਹ ਕਿੱਥੇ ਹੈ? ਕੀ ਤੁਸੀਂ ਮੈਨੂੰ ਰਸਤਾ ਦੱਸੋਗੇ?", phonetic: "Eh kitthe hai? Ki tusi mainu rasta dassoge?" },
+    kn: { word: "ಎಲ್ಲಿ", phrase: "ಇದು ಎಲ್ಲಿದೆ? ದಯವಿಟ್ಟು ದಾರಿ ತೋರಿಸುತ್ತೀರಾ?", phonetic: "Idu ellide? Dayavittu daari thorisuttira?" },
+    ur: { word: "کہاں", phrase: "یہ کہاں ہے؟ کیا آپ راستہ بتا سکتے ہیں؟", phonetic: "Yeh kahan hai? Kya aap raasta bata sakte hain?" }
+  },
+  wait: {
+    hi: { word: "रुकिए / प्रतीक्षा करें", phrase: "कृपया थोड़ा रुकिए और प्रतीक्षा करें।", phonetic: "Kripaya thoda rukiye aur pratiksha karein." },
+    mai: { word: "रुकू / ठहरू", phrase: "कृपया कनी रुकू आ प्रतीक्षा करू।", phonetic: "Kripaya kani ruku aa pratiksha karu." },
+    bho: { word: "रुकीं / ठहरीं", phrase: "कृपया तनी रुकीं।", phonetic: "Kripaya tani rukin." },
+    mr: { word: "थांबा", phrase: "कृपया थोडा वेळ थांबा.", phonetic: "Kripaya thoda vel thamba." },
+    bn: { word: "থামুন / অপেক্ষা করুন", phrase: "দয়া করে একটু দাঁড়ান এবং অপেক্ষা করুন।", phonetic: "Doya kore ektu daran ebong opekha korun." },
+    ta: { word: "நில்லுங்கள் / காத்திருங்கள்", phrase: "தயவுசெய்து சற்று நின்று காத்திருங்கள்.", phonetic: "Thayavuseithu satru nindru kaathirungal." },
+    te: { word: "ఆగండి / వేచి ఉండండి", phrase: "దయచేసి కాసేపు ఆగండి.", phonetic: "Dayachesi kasepu aagandi." },
+    gu: { word: "થોભો / રાહ જુઓ", phrase: "કૃપા કરીને થોડીવાર થોભો.", phonetic: "Krupa karine thodivaar thobho." },
+    pa: { word: "ਰੁਕੋ / ਉਡੀਕ ਕਰੋ", phrase: "ਕਿਰਪਾ ਕਰਕੇ ਥੋੜ੍ਹਾ ਰੁਕੋ ਅਤੇ ਉਡੀਕ ਕਰੋ।", phonetic: "Kirpa karke thoda ruko ate udeek karo." },
+    kn: { word: "ನಿಲ್ಲಿರಿ / ಕಾಯಿರಿ", phrase: "ದಯವಿಟ್ಟು ಸ್ವಲ್ಪ ನಿಲ್ಲಿರಿ.", phonetic: "Dayavittu svalpa nilliri." },
+    ur: { word: "رکیے / انتظار کریں", phrase: "براہ کرم تھوڑا رکیے اور انتظار کریں۔", phonetic: "Bara-e-karam thoda rukiye aur intezar karein." }
+  },
+  repeat: {
+    hi: { word: "दोहराएँ / फिर से कहें", phrase: "कृपया उसे एक बार फिर से दोहराएँ।", phonetic: "Kripaya use ek baar phir se dohorayein." },
+    mai: { word: "फेर सँ कहू", phrase: "कृपया एक बेर फेर सँ कहू।", phonetic: "Kripaya ek ber pher san kahu." },
+    bho: { word: "फेर से कहीं", phrase: "कृपया एक बेर अउरी कहीं।", phonetic: "Kripaya ek ber auri kahin." },
+    mr: { word: "पुन्हा सांगा", phrase: "कृपया ते पुन्हा एकदा सांगा.", phonetic: "Kripaya te punha ekda sanga." },
+    bn: { word: "আবার বলুন", phrase: "দয়া করে আরেকবার বলুন।", phonetic: "Doya kore arekbar bolun." },
+    ta: { word: "மீண்டும் சொல்லுங்கள்", phrase: "தயவுசெய்து அதை மீண்டும் ஒருமுறை சொல்லுங்கள்.", phonetic: "Thayavuseithu athai meendum orumurai sollungal." },
+    te: { word: "మళ్ళీ చెప్పండి", phrase: "దయచేసి మళ్ళీ ఒకసారి చెప్పండి.", phonetic: "Dayachesi malli okasari cheppandi." },
+    gu: { word: "ફરીથી કહો", phrase: "કૃપા કરીને તે ફરીથી કહો.", phonetic: "Krupa karine te farithi kaho." },
+    pa: { word: "ਦੁਬਾਰਾ ਕਹੋ", phrase: "ਕਿਰਪਾ ਕਰਕੇ ਇੱਕ ਵਾਰ ਫਿਰ ਦੱਸੋ।", phonetic: "Kirpa karke ik vaar phir dasso." },
+    kn: { word: "ಮತ್ತೆ ಹೇಳಿ", phrase: "ದಯವಿಟ್ಟು ಅದನ್ನು ಮತ್ತೊಮ್ಮೆ ಹೇಳಿ.", phonetic: "Dayavittu adannu mattomme heli." },
+    ur: { word: "دوبارہ کہیں", phrase: "براہ کرم ایک بار پھر دہرائیں۔", phonetic: "Bara-e-karam ek baar phir dohrayein." }
+  },
+  slow: {
+    hi: { word: "धीरे बोलें / संकेत करें", phrase: "कृपया थोड़ा धीरे बोलें या संकेत करें।", phonetic: "Kripaya thoda dheere bolein ya sanket karein." },
+    mai: { word: "धीरे बाजू", phrase: "कृपया कनी धीरे बाजू वा संकेत करू।", phonetic: "Kripaya kani dheere baaju va sanket karu." },
+    bho: { word: "धीरे बोलीं", phrase: "कृपया तनी धीरे-धीरे बोलीं।", phonetic: "Kripaya tani dheere-dheere bolin." },
+    mr: { word: "हळू बोला", phrase: "कृपया थोडे हळू बोला किंवा खाणाखुणा करा.", phonetic: "Kripaya thode halu bola kinva khana-khuna kara." },
+    bn: { word: "ধীরে বলুন", phrase: "দয়া করে একটু ধীরে কথা বলুন বা ইশারা করুন।", phonetic: "Doya kore ektu dhire kotha bolun ba ishara korun." },
+    ta: { word: "மெதுவாகப் பேசுங்கள்", phrase: "தயவுசெய்து சற்று மெதுவாகப் பேசுங்கள்.", phonetic: "Thayavuseithu satru methuvagap pesungal." },
+    te: { word: "నెమ్మదిగా మాట్లాడండి", phrase: "దయచేసి కొంచెం నెమ్మదిగా మాట్లాడండి.", phonetic: "Dayachesi konchem nemmadiga matladandi." },
+    gu: { word: "ધીમે બોલો", phrase: "કૃપા કરીને થોડું ધીમે બોલો.", phonetic: "Krupa karine thodu dhime bolo." },
+    pa: { word: "ਹੌਲੀ ਬੋਲੋ", phrase: "ਕਿਰਪਾ ਕਰਕੇ ਥੋੜ੍ਹਾ ਹੌਲੀ ਬੋਲੋ।", phonetic: "Kirpa karke thoda hauli bolo." },
+    kn: { word: "ನಿಧಾನವಾಗಿ ಮಾತನಾಡಿ", phrase: "ದಯವಿಟ್ಟು ಸ್ವಲ್ಪ ನಿಧಾನವಾಗಿ ಮಾತನಾಡಿ.", phonetic: "Dayavittu svalpa nidhanavagi matanadi." },
+    ur: { word: "آہستہ بولیں", phrase: "براہ کرم تھوڑا آہستہ بولیں۔", phonetic: "Bara-e-karam thoda aahista bolein." }
+  },
+  bathroom: {
+    hi: { word: "शौचालय / वॉशरूम", phrase: "शौचालय या वॉशरूम कहाँ है?", phonetic: "Shauchalay ya washroom kahan hai?" },
+    mai: { word: "शौचालय", phrase: "शौचालय कतय अछि?", phonetic: "Shauchalay katay achhi?" },
+    bho: { word: "शौचालय / बाथरूम", phrase: "बाथरूम कहाँ बा?", phonetic: "Bathroom kahan ba?" },
+    mr: { word: "स्वच्छतागृह / शौचालय", phrase: "स्वच्छतागृह कुठे आहे?", phonetic: "Swachhatagriha kuthe aahe?" },
+    bn: { word: "শৌচালয় / বাথরুম", phrase: "বাথরুম বা শৌচালয় কোথায়?", phonetic: "Bathroom ba shouchaloy kothay?" },
+    ta: { word: "கழிப்பறை", phrase: "கழிப்பறை எங்கே உள்ளது?", phonetic: "Kazhipparai enge ullathu?" },
+    te: { word: "బాత్రూమ్ / শৌచాలయం", phrase: "బాత్రూమ్ ఎక్కడ ఉంది?", phonetic: "Bathroom ekkada undi?" },
+    gu: { word: "શૌચાલય / બાથરૂમ", phrase: "શૌચાલય ક્યાં છે?", phonetic: "Shauchalay kya chhe?" },
+    pa: { word: "ਪਖਾਨਾ / ਵਾਸ਼ਰੂਮ", phrase: "ਵਾਸ਼ਰੂਮ ਕਿੱਥੇ ਹੈ?", phonetic: "Washroom kitthe hai?" },
+    kn: { word: "ಶೌಚಾಲಯ", phrase: "ಶೌಚಾಲಯ ಎಲ್ಲಿದೆ?", phonetic: "Shauchalaya ellide?" },
+    ur: { word: "بیت الخلا / واش روم", phrase: "واش روم کہاں ہے؟", phonetic: "Washroom kahan hai?" }
+  },
+  home: {
+    hi: { word: "घर / मकान", phrase: "कृपया मुझे घर पहुँचने में मदद करें।", phonetic: "Kripaya mujhe ghar pahunchne mein madad karein." },
+    mai: { word: "घर / डेरा", phrase: "कृपया हमरा घर पहुँचबामे मददि करू।", phonetic: "Kripaya hamra ghar pahunchba mein madadi karu." },
+    bho: { word: "घर", phrase: "हमरा घरे पहुँचे में मदद करीं।", phonetic: "Hamra ghare pahunche mein madad karin." },
+    mr: { word: "घर", phrase: "कृपया मला घरी पोहोचण्यास मदत करा.", phonetic: "Kripaya mala ghari pohochnyas madat kara." },
+    bn: { word: "বাড়ি / ঘর", phrase: "আমাকে বাড়ি পৌঁছাতে সাহায্য করুন।", phonetic: "Amake bari pouchate shahajjo korun." },
+    ta: { word: "வீடு", phrase: "நான் வீட்டிற்குச் செல்ல உதவுங்கள்.", phonetic: "Naan veettirkuch sella uthavungal." },
+    te: { word: "ఇల్లు", phrase: "నేను ఇంటికి వెళ్ళడానికి సహాయం చేయండి.", phonetic: "Nenu intiki velladaniki sahayam cheyandi." },
+    gu: { word: "ઘર", phrase: "મને ઘરે પહોંચવામાં મદદ કરો.", phonetic: "Mane ghare pahonchvama madad karo." },
+    pa: { word: "ਘਰ", phrase: "ਮੈਨੂੰ ਘਰ ਪਹੁੰਚਣ ਵਿੱਚ ਮਦਦ ਕਰੋ।", phonetic: "Mainu ghar pahunchan vich madad karo." },
+    kn: { word: "ಮನೆ", phrase: "ನಾನು ಮನೆಗೆ ತಲುಪಲು ಸಹಾಯ ಮಾಡಿ.", phonetic: "Naanu manege thalupalu sahaya maadi." },
+    ur: { word: "گھر", phrase: "براہ کرم مجھے گھر پہنچنے میں مدد کریں۔", phonetic: "Bara-e-karam mujhe ghar pahunchne mein madad karein." }
+  },
+  money: {
+    hi: { word: "पैसे / कीमत", phrase: "इसकी कीमत कितने रुपये है?", phonetic: "Iski keemat kitne rupaye hai?" },
+    mai: { word: "टाका / पाइ", phrase: "एकर दाम कतेक टाका अछि?", phonetic: "Ekar daam katek taaka achhi?" },
+    bho: { word: "पइसा / दाम", phrase: "एकर दाम केतना रुपया बा?", phonetic: "Ekar daam ketna rupya ba?" },
+    mr: { word: "पैसे / किंमत", phrase: "याची किंमत किती रुपये आहे?", phonetic: "Yachi kimmat kiti rupaye aahe?" },
+    bn: { word: "টাকা / দাম", phrase: "এটার দাম কত টাকা?", phonetic: "Etar daam koto taka?" },
+    ta: { word: "பணம் / விலை", phrase: "இதன் விலை எவ்வளவு?", phonetic: "Ithan vilai evvalavu?" },
+    te: { word: "డబ్బు / ధర", phrase: "దీని ధర ఎంత?", phonetic: "Deeni dhara entha?" },
+    gu: { word: "પૈસા / કિંમત", phrase: "આની કિંમત કેટલા રૂપિયા છે?", phonetic: "Aani kimmat ketla rupiya chhe?" },
+    pa: { word: "ਪੈਸੇ / ਕੀਮਤ", phrase: "ਇਸ ਦੀ ਕੀਮਤ ਕਿੰਨੇ ਰੁਪਏ ਹੈ?", phonetic: "Is di keemat kinne rupaye hai?" },
+    kn: { word: "ಹಣ / ಬೆಲೆ", phrase: "ಇದರ ಬೆಲೆ ಎಷ್ಟು?", phonetic: "Idara bele eshtu?" },
+    ur: { word: "پیسے / قیمت", phrase: "اس کی قیمت کتنے روپے ہے؟", phonetic: "Is ki qeemat kitne rupaye hai?" }
+  },
+  time: {
+    hi: { word: "समय / कब", phrase: "अभी क्या समय हुआ है?", phonetic: "Abhi kya samay hua hai?" },
+    mai: { word: "समय / कखन", phrase: "अखन कतेक समय भेल अछि?", phonetic: "Akhan katek samay bhel achhi?" },
+    bho: { word: "समय / केतना बजल", phrase: "अभी केतना समय भइल बा?", phonetic: "Abhi ketna samay bhail ba?" },
+    mr: { word: "वेळ / किती वाजले", phrase: "आता किती वाजले आहेत?", phonetic: "Aata kiti vajle aahet?" },
+    bn: { word: "সময় / কটা বাজে", phrase: "এখন কটা বাজে?", phonetic: "Ekhon kota baje?" },
+    ta: { word: "நேரம் / எப்போது", phrase: "இப்போது மணி என்ன?", phonetic: "Ippothu mani enna?" },
+    te: { word: "సమయం / ఎప్పుడు", phrase: "ఇప్పుడు సమయం ఎంత అయింది?", phonetic: "Ippudu samayam entha ayindi?" },
+    gu: { word: "સમય / ક્યારે", phrase: "અત્યારે કેટલા વાગ્યા છે?", phonetic: "Atyare ketla vagya chhe?" },
+    pa: { word: "ਸਮਾਂ / ਕਦੋਂ", phrase: "ਹੁਣ ਕੀ ਸਮਾਂ ਹੋਇਆ ਹੈ?", phonetic: "Hun ki samaa hoya hai?" },
+    kn: { word: "ಸಮಯ / ಯಾವಾಗ", phrase: "ಈಗ ಸಮಯ ಎಷ್ಟು?", phonetic: "Eega samaya eshtu?" },
+    ur: { word: "وقت / کب", phrase: "ابھی کیا وقت ہوا ہے؟", phonetic: "Abhi kya waqt hua hai?" }
+  },
+  transport: {
+    hi: { word: "बस / ट्रेन / यात्रा", phrase: "मुझे बस या ट्रेन पकड़नी है।", phonetic: "Mujhe bus ya train pakadni hai." },
+    mai: { word: "बस / रेलगाड़ी", phrase: "हमरा बस वा ट्रेन पकड़बाक अछि।", phonetic: "Hamra bus va train pakadbaak achhi." },
+    bho: { word: "बस / रेलगाड़ी", phrase: "हमरा बस चाहे ट्रेन पकड़े के बा।", phonetic: "Hamra bus chahe train pakde ke ba." },
+    mr: { word: "बस / रेल्वे", phrase: "मला बस किंवा ट्रेन पकडायची आहे.", phonetic: "Mala bus kinva train pakdaychi aahe." },
+    bn: { word: "বাস / ট্রেন", phrase: "আমাকে বাস বা ট্রেন ধরতে হবে।", phonetic: "Amake bus ba train dhorte hobe." },
+    ta: { word: "பேருந்து / ரயில்", phrase: "நான் பேருந்து அல்லது ரயிலைப் பிடிக்க வேண்டும்.", phonetic: "Naan perunthu allathu rayilaip pidikka vendum." },
+    te: { word: "బస్సు / రైలు", phrase: "నేను బస్సు లేదా రైలు ఎక్కాలి.", phonetic: "Nenu bassu leda railu ekkali." },
+    gu: { word: "બસ / ટ્રેન", phrase: "મારે બસ કે ટ્રેન પકડવી છે.", phonetic: "Mare bus ke train pakadvi chhe." },
+    pa: { word: "ਬੱਸ / ਟ੍ਰੇਨ", phrase: "ਮੈਂ ਬੱਸ ਜਾਂ ਟ੍ਰੇਨ ਫੜਨੀ ਹੈ।", phonetic: "Main bus jaan train phadni hai." },
+    kn: { word: "ಬಸ್ / ರೈಲು", phrase: "ನಾನು ಬಸ್ ಅಥವಾ ರೈಲು ಹಿಡಿಯಬೇಕು.", phonetic: "Naanu bus athava railu hidiyabeku." },
+    ur: { word: "بس / ٹرین", phrase: "مجھے بس یا ٹرین پکڑنی ہے۔", phonetic: "Mujhe bus ya train pakadni hai." }
+  },
+  emergency: {
+    hi: { word: "आपातकाल / खतरा", phrase: "आपातकाल! मुझे तुरंत मदद की ज़रूरत है!", phonetic: "Aapaatkaal! Mujhe turant madad ki zaroorat hai!" },
+    mai: { word: "आपातकाल / संकट", phrase: "आपातकाल! हमरा तुरन्त मददिक आवश्यकता अछि!", phonetic: "Aapaatkaal! Hamra turant madadik aavashyakta achhi!" },
+    bho: { word: "इमरजेंसी / खतरा", phrase: "इमरजेंसी! हमरा तुरंत मदद चाहीं!", phonetic: "Emergency! Hamra turant madad chahin!" },
+    mr: { word: "आणीबाणी / संकट", phrase: "आणीबाणी! मला ताबडतोब मदतीची गरज आहे!", phonetic: "Aanibani! Mala tabadtob madatichi garaj aahe!" },
+    bn: { word: "জরুরি অবস্থা / বিপদ", phrase: "জরুরি অবস্থা! আমার এখনই সাহায্য দরকার!", phonetic: "Joruri obostha! Amar ekhoni shahajjo dorkar!" },
+    ta: { word: "அவசரம் / ஆபத்து", phrase: "அவசரம்! எனக்கு உடனடியாக உதவி தேவை!", phonetic: "Avasaram! Enakku udanadiyaga uthavi thevai!" },
+    te: { word: "అత్యవసరం / ప్రమాదం", phrase: "అత్యవసరం! నాకు వెంటనే సహాయం కావాలి!", phonetic: "Athyavasaram! Naaku ventane sahayam kavali!" },
+    gu: { word: "કટોકટી / તાત્કાલિક મદદ", phrase: "કટોકટી! મને તાત્કાલિક મદદની જરૂર છે!", phonetic: "Katokati! Mane tatkalik madadni jarur chhe!" },
+    pa: { word: "ਐਮਰਜੈਂਸੀ / ਖ਼ਤਰਾ", phrase: "ਐਮਰਜੈਂਸੀ! ਮੈਨੂੰ ਤੁਰੰਤ ਮਦਦ ਦੀ ਲੋੜ ਹੈ!", phonetic: "Emergency! Mainu turant madad di lod hai!" },
+    kn: { word: "ತುರ್ತು ಪರಿಸ್ಥಿತಿ", phrase: "ತುರ್ತು ಪರಿಸ್ಥಿತಿ! ನನಗೆ ತಕ್ಷಣ ಸಹಾಯ ಬೇಕು!", phonetic: "Thurtu paristhithi! Nanage thakshana sahaya beku!" },
+    ur: { word: "ہنگامی صورتحال", phrase: "ہنگامی صورتحال! مجھے فوری مدد کی ضرورت ہے!", phonetic: "Hangami soorathal! Mujhe fori madad ki zaroorat hai!" }
+  },
+  doctor: {
+    hi: { word: "डॉक्टर / अस्पताल", phrase: "कृपया डॉक्टर को बुलाएँ या मुझे अस्पताल ले चलें।", phonetic: "Kripaya doctor ko bulayein ya mujhe aspataal le chalein." },
+    mai: { word: "डॉक्टर / अस्पताल", phrase: "कृपया डॉक्टर केँ बोलाउ वा हमरा अस्पताल लऽ चलू।", phonetic: "Kripaya doctor ken bolau va hamra aspataal la chalu." },
+    bho: { word: "डॉक्टर / अस्पताल", phrase: "कृपया डॉक्टर के बोलाईं चाहे अस्पताल ले चलीं।", phonetic: "Kripaya doctor ke bolain chahe aspataal le chalin." },
+    mr: { word: "डॉक्टर / रुग्णालय", phrase: "कृपया डॉक्टरांना बोलवा किंवा मला रुग्णालयात न्या.", phonetic: "Kripaya doctoranna bolva kinva mala rugnalayat nya." },
+    bn: { word: "ডাক্তার / হাসপাতাল", phrase: "দয়া করে ডাক্তার ডাকুন বা আমাকে হাসপাতালে নিয়ে চলুন।", phonetic: "Doya kore daktar dakun ba amake haspatale niye cholun." },
+    ta: { word: "மருத்துவர் / மருத்துவமனை", phrase: "தயவுசெய்து மருத்துவரை அழையுங்கள்.", phonetic: "Thayavuseithu maruthuvarai azhaiyungal." },
+    te: { word: "డాక్టర్ / ఆసుపత్రి", phrase: "దయచేసి డాక్టర్‌ని పిలవండి లేదా ఆసుపత్రికి తీసుకెళ్ళండి.", phonetic: "Dayachesi doctor ni pilavandi leda aasupathriki theesukellandi." },
+    gu: { word: "ડૉક્ટર / હોસ્પિટલ", phrase: "કૃપા કરીને ડૉક્ટરને બોલાવો અથવા હોસ્પિટલ લઈ જાઓ.", phonetic: "Krupa karine doctor ne bolavo athava hospital lai jao." },
+    pa: { word: "ਡਾਕਟਰ / ਹਸਪਤਾਲ", phrase: "ਕਿਰਪਾ ਕਰਕੇ ਡਾਕਟਰ ਨੂੰ ਬੁਲਾਓ ਜਾਂ ਹਸਪਤਾਲ ਲੈ ਚੱਲੋ।", phonetic: "Kirpa karke doctor nu bulao jaan haspatal lai challo." },
+    kn: { word: "ವೈದ್ಯರು / ಆಸ್ಪತ್ರೆ", phrase: "ದಯವಿಟ್ಟು ವೈದ್ಯರನ್ನು ಕರೆಯಿರಿ ಅಥವಾ ಆಸ್ಪತ್ರೆಗೆ ಕರೆದೊಯ್ಯಿರಿ.", phonetic: "Dayavittu vaidyarannu kareyiri athava aaspathrege karedoyyiri." },
+    ur: { word: "ڈاکٹر / ہسپتال", phrase: "براہ کرم ڈاکٹر کو بلائیں یا مجھے ہسپتال لے چلیں۔", phonetic: "Bara-e-karam doctor ko bulayein ya mujhe haspatal le chalein." }
+  },
+  pain: {
+    hi: { word: "दर्द / चोट", phrase: "मुझे दर्द हो रहा है और चिकित्सा सहायता चाहिए।", phonetic: "Mujhe dard ho raha hai aur chikitsa sahayata chahiye." },
+    mai: { word: "दर्द / पीड़ा", phrase: "हमरा बहुत दर्द भऽ रहल अछि।", phonetic: "Hamra bahut dard bha rahal achhi." },
+    bho: { word: "दरद / चोट", phrase: "हमरा बहुत दरद हो रहल बा।", phonetic: "Hamra bahut darad ho rahal ba." },
+    mr: { word: "वेदना / दुखापत", phrase: "मला खूप वेदना होत आहेत, वैद्यकीय मदत हवी आहे.", phonetic: "Mala khup vedana hot aahet, vaidyakiy madat havi aahe." },
+    bn: { word: "ব্যথা / যন্ত্রণা", phrase: "আমার খুব ব্যথা হচ্ছে, চিকিৎসা সাহায্য দরকার।", phonetic: "Amar khub byatha hocche, chikitsha shahajjo dorkar." },
+    ta: { word: "வலி / காயம்", phrase: "எனக்கு வலி ஏற்படுகிறது, மருத்துவ உதவி தேவை.", phonetic: "Enakku vali erpadugirathu, maruthuva uthavi thevai." },
+    te: { word: "నొప్పి / గాయం", phrase: "నాకు చాలా నొప్పిగా ఉంది, వైద్య సహాయం కావాలి.", phonetic: "Naaku chala noppiga undi, vaidya sahayam kavali." },
+    gu: { word: "દુખાવો / ઈજા", phrase: "મને દુખાવો થાય છે, સારવારની જરૂર છે.", phonetic: "Mane dukhavo thay chhe, sarvarni jarur chhe." },
+    pa: { word: "ਦਰਦ / ਸੱਟ", phrase: "ਮੈਨੂੰ ਬਹੁਤ ਦਰਦ ਹੋ ਰਿਹਾ ਹੈ।", phonetic: "Mainu bahut dard ho riha hai." },
+    kn: { word: "ನೋವು / ಗಾಯ", phrase: "ನನಗೆ ತುಂಬಾ ನೋವಾಗುತ್ತಿದೆ, ಚಿಕಿತ್ಸೆ ಬೇಕು.", phonetic: "Nanage tumba novaguttide, chikithse beku." },
+    ur: { word: "درد / تکلیف", phrase: "مجھے شدید درد ہو رہا ہے اور طبی امداد چاہیے۔", phonetic: "Mujhe shadeed dard ho raha hai aur tibbi imdaad chahiye." }
+  },
+  call: {
+    hi: { word: "फ़ोन / कॉल", phrase: "कृपया मेरे लिए एक फ़ोन कॉल कर दीजिए।", phonetic: "Kripaya mere liye ek phone call kar dijiye." },
+    mai: { word: "फोन / कॉल", phrase: "कृपया हमरा लेल एकटा फोन कॉल कऽ दियौ।", phonetic: "Kripaya hamra lel ekta phone call ka diyau." },
+    bho: { word: "फोन कॉल", phrase: "कृपया हमरा खातिर एगो फोन लगा दीं।", phonetic: "Kripaya hamra khatir ego phone laga din." },
+    mr: { word: "फोन कॉल", phrase: "कृपया माझ्यासाठी एक फोन कॉल करा.", phonetic: "Kripaya majhyasathi ek phone call kara." },
+    bn: { word: "ফোন কল", phrase: "দয়া করে আমার জন্য একটি ফোন কল করুন।", phonetic: "Doya kore amar jonno ekti phone call korun." },
+    ta: { word: "தொலைபேசி அழைப்பு", phrase: "தயவுசெய்து எனக்காக ஒரு தொலைபேசி அழைப்பு செய்யுங்கள்.", phonetic: "Thayavuseithu enakkaga oru tholaipesi azhaippu seyyungal." },
+    te: { word: "ఫోన్ కాల్", phrase: "దయచేసి నా కోసం ఒక ఫోన్ కాల్ చేయండి.", phonetic: "Dayachesi naa kosam oka phone call cheyandi." },
+    gu: { word: "ફોન કૉલ", phrase: "કૃપા કરીને મારા માટે એક ફોન કૉલ કરો.", phonetic: "Krupa karine mara mate ek phone call karo." },
+    pa: { word: "ਫ਼ੋਨ ਕਾਲ", phrase: "ਕਿਰਪਾ ਕਰਕੇ ਮੇਰੇ ਲਈ ਇੱਕ ਫ਼ੋਨ ਕਾਲ ਕਰੋ।", phonetic: "Kirpa karke mere layi ik phone call karo." },
+    kn: { word: "ಫೋನ್ ಕರೆ", phrase: "ದಯವಿಟ್ಟು ನನಗಾಗಿ ಒಂದು ಫೋನ್ ಕರೆ ಮಾಡಿ.", phonetic: "Dayavittu nanagagi ondu phone kare maadi." },
+    ur: { word: "فون کال", phrase: "براہ کرم میرے لیے ایک فون کال کر دیں۔", phonetic: "Bara-e-karam mere liye ek phone call kar dein." }
+  }
+};
+
+// Number translations (1-9) across all regional languages
+const REGIONAL_NUMBERS = {
+  "1": { hi: "एक (१)", mai: "एक (१)", bho: "एक (१)", mr: "एक (१)", bn: "এক (১)", ta: "ஒன்று (1)", te: "ఒకటి (1)", gu: "એક (૧)", pa: "ਇੱਕ (੧)", kn: "ಒಂದು (1)", ur: "ایک (1)", phonetic: "Ek" },
+  "2": { hi: "दो (२)", mai: "दू (२)", bho: "दू (२)", mr: "दोन (२)", bn: "দুই (২)", ta: "இரண்டு (2)", te: "రెండు (2)", gu: "બે (૨)", pa: "ਦੋ (੨)", kn: "ಎರಡು (2)", ur: "دو (2)", phonetic: "Do" },
+  "3": { hi: "तीन (३)", mai: "तीन (३)", bho: "तीन (३)", mr: "तीन (३)", bn: "তিন (৩)", ta: "மூன்று (3)", te: "మూడు (3)", gu: "ત્રણ (૩)", pa: "ਤਿੰਨ (੩)", kn: "ಮೂರು (3)", ur: "تین (3)", phonetic: "Teen" },
+  "4": { hi: "चार (४)", mai: "चारि (४)", bho: "चार (४)", mr: "चार (४)", bn: "চার (৪)", ta: "நான்கு (4)", te: "నాలుగు (4)", gu: "ચાર (૪)", pa: "ਚਾਰ (੪)", kn: "ನಾಲ್ಕು (4)", ur: "چار (4)", phonetic: "Chaar" },
+  "5": { hi: "पाँच (५)", mai: "पाँच (५)", bho: "पाँच (५)", mr: "पाच (५)", bn: "পাঁচ (৫)", ta: "ஐந்து (5)", te: "ఐదు (5)", gu: "પાંચ (૫)", pa: "ਪੰਜ (੫)", kn: "ಐದು (5)", ur: "پانچ (5)", phonetic: "Paanch" },
+  "6": { hi: "छह (६)", mai: "छओ (६)", bho: "छव (६)", mr: "सहा (६)", bn: "ছয় (৬)", ta: "ஆறு (6)", te: "ఆరు (6)", gu: "છ (૬)", pa: "ਛੇ (੬)", kn: "ಆರು (6)", ur: "چھ (6)", phonetic: "Chhah" },
+  "7": { hi: "सात (७)", mai: "सात (७)", bho: "सात (७)", mr: "सात (७)", bn: "সাত (৭)", ta: "ஏழு (7)", te: "ఏడు (7)", gu: "સાત (૭)", pa: "ਸੱਤ (੭)", kn: "ಏಳು (7)", ur: "سات (7)", phonetic: "Saat" },
+  "8": { hi: "आठ (८)", mai: "आठ (८)", bho: "आठ (८)", mr: "आठ (८)", bn: "আট (৮)", ta: "எட்டு (8)", te: "ఎనిమిది (8)", gu: "આઠ (૮)", pa: "ਅੱਠ (੮)", kn: "ಎಂಟು (8)", ur: "آٹھ (8)", phonetic: "Aath" },
+  "9": { hi: "नौ (९)", mai: "नओ (९)", bho: "नौ (९)", mr: "नऊ (९)", bn: "নয় (৯)", ta: "ஒன்பது (9)", te: "తొమ్మిది (9)", gu: "નવ (૯)", pa: "ਨੌਂ (੯)", kn: "ಒಂಬತ್ತು (9)", ur: "نو (9)", phonetic: "Nau" }
+};
+
+// Enrich ISL_SIGNS keywords with Hindi, Maithili & phonetic words so users can search or speak in regional languages
+window.ISL_SIGNS.forEach((sign) => {
+  const tr = window.SIGN_TRANSLATIONS[sign.id];
+  if (tr) {
+    Object.values(tr).forEach((entry) => {
+      const words = (entry.word + " " + entry.phonetic)
+        .toLowerCase()
+        .replace(/[\/!,?.]/g, " ")
+        .split(/\s+/)
+        .filter((w) => w.length >= 2);
+      words.forEach((w) => {
+        if (!sign.keywords.includes(w)) sign.keywords.push(w);
+      });
+    });
+  }
+});
+
+/**
+ * Returns localized translation { langCode, langName, nativeName, flag, word, phrase, phonetic, voiceLang, fallbackVoice }
+ * for any ISL sign (conversational, alphabet letter, number, or custom sign).
+ */
+window.getSignTranslation = function (signObj, langCode = "hi") {
+  if (!signObj) return null;
+  const langMeta =
+    window.SIGN_LANGUAGES.find((l) => l.code === langCode) ||
+    window.SIGN_LANGUAGES[0];
+
+  if (langCode === "en") {
+    return {
+      langCode: "en",
+      langName: "English",
+      nativeName: "English",
+      flag: "🇬🇧",
+      word: signObj.word,
+      phrase: signObj.spokenPhrase,
+      phonetic: signObj.spokenPhrase,
+      voiceLang: "en-IN",
+      fallbackVoice: "en-IN"
+    };
+  }
+
+  // 1. Direct match in SIGN_TRANSLATIONS
+  const direct = window.SIGN_TRANSLATIONS[signObj.id];
+  if (direct && direct[langCode]) {
+    return {
+      langCode,
+      langName: langMeta.name,
+      nativeName: langMeta.nativeName,
+      flag: langMeta.flag,
+      word: direct[langCode].word,
+      phrase: direct[langCode].phrase,
+      phonetic: direct[langCode].phonetic,
+      voiceLang: langMeta.voiceLang,
+      fallbackVoice: langMeta.fallbackVoice || "hi-IN"
+    };
+  }
+
+  // 2. ISL Numbers (1-9)
+  if (signObj.category === "numbers" && signObj.letterChar) {
+    const numEntry = REGIONAL_NUMBERS[signObj.letterChar];
+    if (numEntry && numEntry[langCode]) {
+      const numWord = numEntry[langCode];
+      return {
+        langCode,
+        langName: langMeta.name,
+        nativeName: langMeta.nativeName,
+        flag: langMeta.flag,
+        word: `${numWord}`,
+        phrase: `${numWord} (${signObj.spokenPhrase})`,
+        phonetic: `Number ${signObj.letterChar}, ${numEntry.phonetic}`,
+        voiceLang: langMeta.voiceLang,
+        fallbackVoice: langMeta.fallbackVoice || "hi-IN"
+      };
+    }
+  }
+
+  // 3. ISL Alphabet Letters (A-Z)
+  if (signObj.category === "alphabet" && signObj.letterChar) {
+    const ch = signObj.letterChar;
+    const letterLabels = {
+      hi: { w: `अक्षर ${ch}`, p: `सांकेतिक अक्षर ${ch}`, ph: `Akshar ${ch}` },
+      mai: { w: `अक्षर ${ch}`, p: `सांकेतिक अक्षर ${ch}`, ph: `Akshar ${ch}` },
+      bho: { w: `अक्षर ${ch}`, p: `इशारा अक्षर ${ch}`, ph: `Akshar ${ch}` },
+      mr: { w: `अक्षर ${ch}`, p: `सांकेतिक अक्षर ${ch}`, ph: `Akshar ${ch}` },
+      bn: { w: `অক্ষর ${ch}`, p: `ইশারা অক্ষর ${ch}`, ph: `Okkhor ${ch}` },
+      ta: { w: `எழுத்து ${ch}`, p: `சைகை எழுத்து ${ch}`, ph: `Ezhuthu ${ch}` },
+      te: { w: `అక్షరం ${ch}`, p: `సైగ అక్షరం ${ch}`, ph: `Aksharam ${ch}` },
+      gu: { w: `અક્ષર ${ch}`, p: `સાંકેતિક અક્ષર ${ch}`, ph: `Akshar ${ch}` },
+      pa: { w: `ਅੱਖਰ ${ch}`, p: `ਇਸ਼ਾਰਾ ਅੱਖਰ ${ch}`, ph: `Akkhar ${ch}` },
+      kn: { w: `ಅಕ್ಷರ ${ch}`, p: `ಸಂಜ್ಞೆ ಅಕ್ಷರ ${ch}`, ph: `Akshara ${ch}` },
+      ur: { w: `حرف ${ch}`, p: `اشارتی حرف ${ch}`, ph: `Harf ${ch}` }
+    };
+    const lObj = letterLabels[langCode] || { w: signObj.word, p: signObj.spokenPhrase, ph: signObj.spokenPhrase };
+    return {
+      langCode,
+      langName: langMeta.name,
+      nativeName: langMeta.nativeName,
+      flag: langMeta.flag,
+      word: lObj.w,
+      phrase: lObj.p,
+      phonetic: lObj.ph,
+      voiceLang: langMeta.voiceLang,
+      fallbackVoice: langMeta.fallbackVoice || "hi-IN"
+    };
+  }
+
+  // 4. Custom Signs
+  return {
+    langCode,
+    langName: langMeta.name,
+    nativeName: langMeta.nativeName,
+    flag: langMeta.flag,
+    word: signObj.word,
+    phrase: signObj.spokenPhrase,
+    phonetic: signObj.spokenPhrase,
+    voiceLang: langMeta.voiceLang,
+    fallbackVoice: langMeta.fallbackVoice || "hi-IN"
+  };
+};
+
+/**
+ * Returns an array of translations for a sign across all 12 supported languages.
+ */
+window.getSignAllTranslations = function (signObj) {
+  if (!signObj) return [];
+  return window.SIGN_LANGUAGES.map((l) => window.getSignTranslation(signObj, l.code));
+};
+
+/**
+ * Renders interactive Multi-Language Translation Cards HTML for any detected or selected sign.
+ */
+window.renderMultiLangCardsHTML = function (signObj, activeLangSetting = "en_hi") {
+  if (!signObj) return "";
+  const all = window.getSignAllTranslations(signObj);
+  return all
+    .map((tr) => {
+      const isHighlighted =
+        activeLangSetting === tr.langCode ||
+        (activeLangSetting === "en_hi" && (tr.langCode === "hi" || tr.langCode === "en")) ||
+        (activeLangSetting === "en_mai" && (tr.langCode === "mai" || tr.langCode === "en")) ||
+        (activeLangSetting === "multi_top" && ["hi", "mai", "en"].includes(tr.langCode));
+      return `
+        <button type="button" class="multilang-chip ${isHighlighted ? "active-lang" : ""}" data-lang="${tr.langCode}" aria-label="Listen to ${signObj.word} in ${tr.langName} (${tr.nativeName}): ${tr.phrase}">
+          <div class="multilang-chip-top">
+            <span class="multilang-name">${tr.flag} <strong>${tr.langName}</strong> <small>(${tr.nativeName})</small></span>
+            <span class="multilang-play-icon" aria-hidden="true">🔊</span>
+          </div>
+          <div class="multilang-word">${tr.word}</div>
+          <div class="multilang-phrase">"${tr.phrase}"</div>
+        </button>
+      `;
+    })
+    .join("");
+};
+
+/**
+ * Converts a sequence of ISL Sign Glosses into a natural sentence in any supported regional language.
+ */
+const _originalNaturalizeEnglish = window.naturalizeISLGloss;
+window.naturalizeISLGloss = function (signWordsArray, langCode = "en") {
+  if (!signWordsArray || !signWordsArray.length) return "";
+  if (!langCode || langCode === "en") {
+    return _originalNaturalizeEnglish(signWordsArray);
+  }
+  if (langCode === "en_hi") {
+    return `${_originalNaturalizeEnglish(signWordsArray)} | ${window.naturalizeISLGloss(signWordsArray, "hi")}`;
+  }
+  if (langCode === "en_mai") {
+    return `${_originalNaturalizeEnglish(signWordsArray)} | ${window.naturalizeISLGloss(signWordsArray, "mai")}`;
+  }
+  if (langCode === "multi_top") {
+    return `${_originalNaturalizeEnglish(signWordsArray)} | ${window.naturalizeISLGloss(signWordsArray, "hi")} | ${window.naturalizeISLGloss(signWordsArray, "mai")}`;
+  }
+
+  // Match each word in signWordsArray back to its ISL_SIGNS object and extract regional phrase/word
+  const matchedSigns = signWordsArray.map((w) => {
+    const clean = w.replace(/\/.*/g, "").trim().toLowerCase();
+    return window.ISL_SIGNS.find(
+      (s) => s.word.toLowerCase() === w.toLowerCase() || s.word.toLowerCase().startsWith(clean)
+    );
+  });
+
+  if (matchedSigns.length === 1 && matchedSigns[0]) {
+    const tr = window.getSignTranslation(matchedSigns[0], langCode);
+    return tr ? tr.phrase : _originalNaturalizeEnglish(signWordsArray);
+  }
+
+  const parts = signWordsArray.map((w, idx) => {
+    const sign = matchedSigns[idx];
+    if (sign) {
+      const tr = window.getSignTranslation(sign, langCode);
+      return tr ? tr.word.replace(/\/.*/g, "").trim() : w;
+    }
+    return w;
+  });
+
+  return parts.join(" • ");
+};
+

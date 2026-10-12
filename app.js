@@ -48,6 +48,7 @@
     activeTab: "camera",
     highContrastYellow: false,
     fontScale: 1.0,
+    signOutputLang: "en_hi", // "en_hi", "hi", "mai", "en_mai", "multi_top", "bho", "mr", "bn", "ta", "te", "gu", "pa", "kn", "ur", "en", "all"
     // Camera & Precision Gesture State
     cameraActive: false,
     videoStream: null,
@@ -111,11 +112,12 @@
     initKeyboardShortcuts();
     initFocusNarration();
 
-    // Initialize default detected sign preview & Braille in Panel 1
+    // Initialize default detected sign preview, Multi-Language Grid & Braille in Panel 1
     const helloSign = window.ISL_SIGNS[0];
     if (helloSign) {
       state.currentDetectedSign = helloSign;
       document.getElementById("detected-visual").innerHTML = window.renderISLAvatarSVG(helloSign);
+      updateCameraMultiLangDisplay(helloSign);
       updateCameraBrailleDisplay("Hello");
     }
 
@@ -293,9 +295,16 @@
     const btnContrast = document.getElementById("btn-contrast");
     const btnFontDec = document.getElementById("btn-font-dec");
     const btnFontInc = document.getElementById("btn-font-inc");
+    const selectSignLang = document.getElementById("sign-output-lang");
     const selectVoice = document.getElementById("speech-voice-select");
     const selectRate = document.getElementById("speech-rate");
     const selectPitch = document.getElementById("speech-pitch");
+
+    if (selectSignLang) {
+      selectSignLang.addEventListener("change", (e) => {
+        setSignOutputLanguage(e.target.value, { speakSample: true });
+      });
+    }
 
     btnWelcome.addEventListener("click", () => {
       speakOrientationGuide();
@@ -361,6 +370,43 @@
         window.audioEngine.speak(`Speech pitch set to ${window.audioEngine.speechPitch}.`);
       });
     }
+  }
+
+  function setSignOutputLanguage(langSetting, { speakSample = true } = {}) {
+    state.signOutputLang = langSetting || "en_hi";
+    const selectSignLang = document.getElementById("sign-output-lang");
+    if (selectSignLang && selectSignLang.value !== state.signOutputLang) {
+      selectSignLang.value = state.signOutputLang;
+    }
+
+    const activeSign =
+      state.activeTab === "translator"
+        ? state.translatedSequence[state.currentStageIndex] || state.currentDetectedSign || window.ISL_SIGNS[0]
+        : state.currentDetectedSign || window.ISL_SIGNS[0];
+
+    if (state.currentDetectedSign) {
+      updateCameraMultiLangDisplay(state.currentDetectedSign);
+    }
+    const stageSign = state.translatedSequence[state.currentStageIndex];
+    if (stageSign) {
+      updateStageMultiLangDisplay(stageSign);
+    }
+    renderSentenceDisplay();
+
+    if (speakSample && activeSign) {
+      window.audioEngine.playEarcon("sign_detected");
+      window.audioEngine.speakSignInLang(activeSign, state.signOutputLang, {
+        interrupt: true,
+        assertive: true
+      });
+    }
+  }
+
+  function cycleSignOutputLanguage() {
+    const order = ["en_hi", "hi", "mai", "en_mai", "multi_top", "bho", "mr", "bn", "ta", "te", "gu", "pa", "kn", "ur", "en"];
+    const idx = order.indexOf(state.signOutputLang);
+    const next = order[(idx + 1) % order.length];
+    setSignOutputLanguage(next, { speakSample: true });
   }
 
   function toggleUltraContrast() {
@@ -524,7 +570,7 @@
         );
         return;
       }
-      const naturalText = window.naturalizeISLGloss(state.accumulatedSentence);
+      const naturalText = window.naturalizeISLGloss(state.accumulatedSentence, state.signOutputLang);
       const hiData = window.naturalizeISLGlossHindi
         ? window.naturalizeISLGlossHindi(state.accumulatedSentence)
         : { hi: naturalText, hiPhonetic: naturalText };
@@ -536,6 +582,25 @@
       });
     });
 
+    // Camera Multi-Language Speak Buttons
+    const btnSpeakActiveCam = document.getElementById("btn-speak-active-lang-cam");
+    if (btnSpeakActiveCam) {
+      btnSpeakActiveCam.addEventListener("click", () => {
+        const sign = state.currentDetectedSign || window.ISL_SIGNS[0];
+        window.audioEngine.playEarcon("sign_detected");
+        window.audioEngine.speakSignInLang(sign, state.signOutputLang, { interrupt: true, assertive: true });
+      });
+    }
+
+    const btnSpeakAllCam = document.getElementById("btn-speak-all-langs-cam");
+    if (btnSpeakAllCam) {
+      btnSpeakAllCam.addEventListener("click", () => {
+        const sign = state.currentDetectedSign || window.ISL_SIGNS[0];
+        window.audioEngine.playEarcon("sign_detected");
+        window.audioEngine.speakSignInLang(sign, "all", { interrupt: true, assertive: true });
+      });
+    }
+
     // Send Signed Sentence to Two-Way Chat Hub
     const btnSendBridge = document.getElementById("btn-send-cam-to-bridge");
     if (btnSendBridge) {
@@ -545,7 +610,7 @@
           : state.currentDetectedSign
           ? [state.currentDetectedSign.word]
           : ["Hello / Namaste"];
-        const naturalText = window.naturalizeISLGloss(words);
+        const naturalText = window.naturalizeISLGloss(words, state.signOutputLang);
         const primarySign = state.currentDetectedSign || window.ISL_SIGNS[0];
         addTwoWayChatMessage({
           role: "deaf",
@@ -581,6 +646,31 @@
       btnPulseBrailleCam.addEventListener("click", () => {
         const targetText = getActiveCameraBrailleText();
         window.audioEngine.playBraillePulses(targetText, { speakAfter: true });
+      });
+    }
+  }
+
+  function updateCameraMultiLangDisplay(signObj) {
+    if (!signObj || !window.renderMultiLangCardsHTML) return;
+    const badgeEl = document.getElementById("cam-multilang-sign-badge");
+    if (badgeEl) badgeEl.textContent = `${signObj.emoji} ${signObj.word}`;
+
+    const regLineEl = document.getElementById("detected-sign-regional");
+    if (regLineEl) {
+      const hiTr = window.getSignTranslation(signObj, "hi");
+      const maiTr = window.getSignTranslation(signObj, "mai");
+      regLineEl.textContent = `🇮🇳 हिन्दी: ${hiTr.word} ("${hiTr.phrase}") • मैथिली: ${maiTr.word} ("${maiTr.phrase}")`;
+    }
+
+    const gridEl = document.getElementById("camera-multilang-grid");
+    if (gridEl) {
+      gridEl.innerHTML = window.renderMultiLangCardsHTML(signObj, state.signOutputLang);
+      gridEl.querySelectorAll(".multilang-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          const langCode = chip.dataset.lang;
+          window.audioEngine.playEarcon("sign_detected");
+          window.audioEngine.speakSignInLang(signObj, langCode, { interrupt: true, assertive: true });
+        });
       });
     }
   }
@@ -1470,11 +1560,14 @@
       precisionSelect.value = signObj.id;
     }
 
+    // Update Live Multi-Language Output Grid (Hindi, Maithili, Bhojpuri, Marathi, Bengali, Tamil, Telugu, Gujarati, Punjabi, Kannada, Urdu, English)
+    updateCameraMultiLangDisplay(signObj);
+
     window.audioEngine.playEarcon("sign_detected");
     const autoSpeakEl = document.getElementById("chk-auto-speak-sign");
     const autoSpeak = !autoSpeakEl || autoSpeakEl.checked;
     if (autoSpeak) {
-      window.audioEngine.speakSign(signObj, {
+      window.audioEngine.speakSignInLang(signObj, state.signOutputLang, {
         interrupt: true,
         assertive: true
       });
@@ -1485,9 +1578,13 @@
     renderSentenceDisplay();
     updateCameraBrailleDisplay(getActiveCameraBrailleText());
 
+    const hiTr = window.getSignTranslation ? window.getSignTranslation(signObj, "hi") : null;
+    const maiTr = window.getSignTranslation ? window.getSignTranslation(signObj, "mai") : null;
+    const regionalSub = hiTr && maiTr ? ` | 🇮🇳 ${hiTr.word} • ${maiTr.word}` : hiWordLabel;
+
     const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     state.signHistory.unshift({
-      word: `${signObj.word}${hiWordLabel}`,
+      word: `${signObj.word}${regionalSub}`,
       emoji: signObj.emoji,
       phrase: `${signObj.spokenPhrase}${hiPhraseLabel}`,
       time: timeStr,
@@ -1517,13 +1614,7 @@
       })
       .join(" ");
     if (naturalEl) {
-      const enText = window.naturalizeISLGloss(state.accumulatedSentence);
-      const hiData = window.naturalizeISLGlossHindi
-        ? window.naturalizeISLGlossHindi(state.accumulatedSentence)
-        : { hi: "" };
-      naturalEl.textContent = hiData.hi
-        ? `"${enText}"  |  हिंदी: "${hiData.hi}"`
-        : `"${enText}"`;
+      naturalEl.textContent = `"${window.naturalizeISLGloss(state.accumulatedSentence, state.signOutputLang)}"`;
     }
   }
 
@@ -1782,6 +1873,25 @@
     if (btnReadAllStage) {
       btnReadAllStage.addEventListener("click", () => {
         speakCurrentContextSummary();
+      });
+    }
+
+    // Stage Multi-Language Speak Buttons
+    const btnSpeakActiveStage = document.getElementById("btn-speak-active-lang-stage");
+    if (btnSpeakActiveStage) {
+      btnSpeakActiveStage.addEventListener("click", () => {
+        const sign = state.translatedSequence[state.currentStageIndex] || window.ISL_SIGNS[0];
+        window.audioEngine.playEarcon("sign_detected");
+        window.audioEngine.speakSignInLang(sign, state.signOutputLang, { interrupt: true, assertive: true });
+      });
+    }
+
+    const btnSpeakAllStage = document.getElementById("btn-speak-all-langs-stage");
+    if (btnSpeakAllStage) {
+      btnSpeakAllStage.addEventListener("click", () => {
+        const sign = state.translatedSequence[state.currentStageIndex] || window.ISL_SIGNS[0];
+        window.audioEngine.playEarcon("sign_detected");
+        window.audioEngine.speakSignInLang(sign, "all", { interrupt: true, assertive: true });
       });
     }
 
@@ -2082,6 +2192,9 @@
     document.getElementById("stage-sign-title").textContent = `${signObj.word}${hiWordLabel}`;
     document.getElementById("stage-sign-meaning").textContent = `English: "${signObj.spokenPhrase}"${hiPhraseLabel}`;
 
+    // Update Stage Multi-Language Output Grid
+    updateStageMultiLangDisplay(signObj);
+
     const avatarNarrEl = document.getElementById("stage-avatar-narration");
     if (avatarNarrEl) {
       avatarNarrEl.textContent = window.getAvatarDescription(signObj);
@@ -2095,9 +2208,31 @@
 
     if (speakTactile) {
       window.audioEngine.playEarcon("avatar_read");
-      window.audioEngine.speakSign(signObj, {
-        interrupt: true,
-        assertive: true
+      window.audioEngine.speakSignInLang(signObj, state.signOutputLang, { interrupt: true, assertive: true });
+    }
+  }
+
+  function updateStageMultiLangDisplay(signObj) {
+    if (!signObj || !window.renderMultiLangCardsHTML) return;
+    const badgeEl = document.getElementById("stage-multilang-sign-badge");
+    if (badgeEl) badgeEl.textContent = `${signObj.emoji} ${signObj.word}`;
+
+    const regLineEl = document.getElementById("stage-sign-regional");
+    if (regLineEl) {
+      const hiTr = window.getSignTranslation(signObj, "hi");
+      const maiTr = window.getSignTranslation(signObj, "mai");
+      regLineEl.textContent = `🇮🇳 हिन्दी: ${hiTr.word} ("${hiTr.phrase}") • मैथिली: ${maiTr.word} ("${maiTr.phrase}")`;
+    }
+
+    const gridEl = document.getElementById("stage-multilang-grid");
+    if (gridEl) {
+      gridEl.innerHTML = window.renderMultiLangCardsHTML(signObj, state.signOutputLang);
+      gridEl.querySelectorAll(".multilang-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          const langCode = chip.dataset.lang;
+          window.audioEngine.playEarcon("sign_detected");
+          window.audioEngine.speakSignInLang(signObj, langCode, { interrupt: true, assertive: true });
+        });
       });
     }
   }
@@ -2369,6 +2504,8 @@
     grid.innerHTML = "";
     filtered.forEach((sign) => {
       const bWord = window.BrailleEngine.translate(sign.word);
+      const hiTr = window.getSignTranslation ? window.getSignTranslation(sign, "hi") : { word: sign.word };
+      const maiTr = window.getSignTranslation ? window.getSignTranslation(sign, "mai") : { word: sign.word };
       const card = document.createElement("article");
       card.className = "dict-card";
       card.setAttribute("role", "listitem");
@@ -2380,23 +2517,33 @@
               <span class="badge-hands">${sign.isCustom ? "✨ Custom • " : ""}${sign.hands}</span>
               <h3 class="dict-card-title">${sign.emoji} ${sign.word}</h3>
               <p class="stage-meaning">"${sign.spokenPhrase}"</p>
+              <p class="regional-phrase-highlight" style="font-size:0.82rem; margin:0.25rem 0;">🇮🇳 हिन्दी: ${hiTr.word} • मैथिली: ${maiTr.word}</p>
               <p class="chat-braille-line">⠿ Braille: ${bWord.unicode}</p>
             </div>
           </div>
           <p class="dict-tactile-text"><strong>✋ Tactile Guide:</strong> ${sign.tactileGuide}</p>
         </div>
         <div class="dict-card-actions">
-          <button type="button" class="btn-primary btn-sm btn-hear-guide" aria-label="Listen to tactile hand guide and Avatar description for ${sign.word}">
-            🔊 Hear Avatar &amp; Guide
+          <button type="button" class="btn-primary btn-sm btn-hear-regional" aria-label="Listen to ${sign.word} in Hindi, Maithili and selected language">
+            🇮🇳 हिन्दी / मैथिली
           </button>
-          <button type="button" class="btn-secondary btn-sm btn-hear-braille" aria-label="Listen to 6-dot Braille for ${sign.word}">
-            ⠿ Braille Dots
+          <button type="button" class="btn-secondary btn-sm btn-hear-guide" aria-label="Listen to tactile hand guide and Avatar description for ${sign.word}">
+            🔊 Guide
+          </button>
+          <button type="button" class="btn-outline btn-sm btn-hear-braille" aria-label="Listen to 6-dot Braille for ${sign.word}">
+            ⠿ Braille
           </button>
           <button type="button" class="btn-outline btn-sm btn-open-stage" aria-label="Show ${sign.word} on large Avatar stage">
             🧑‍🦯 Stage
           </button>
         </div>
       `;
+
+      card.querySelector(".btn-hear-regional").addEventListener("click", () => {
+        window.audioEngine.playEarcon("sign_detected");
+        const mode = state.signOutputLang === "en" ? "multi_top" : state.signOutputLang;
+        window.audioEngine.speakSignInLang(sign, mode, { interrupt: true, assertive: true });
+      });
 
       card.querySelector(".btn-hear-guide").addEventListener("click", () => {
         window.audioEngine.playEarcon("avatar_read");
@@ -2724,11 +2871,58 @@
       activateCommunicationMode("blind-language");
       return;
     }
+    if (cmd.includes("maithili") || cmd.includes("मैथिली") || cmd.includes("mithila")) {
+      setSignOutputLanguage("mai", { speakSample: true });
+      return;
+    }
+    if (cmd.includes("bhojpuri") || cmd.includes("भोजपुरी")) {
+      setSignOutputLanguage("bho", { speakSample: true });
+      return;
+    }
+    if (cmd.includes("marathi") || cmd.includes("मराठी")) {
+      setSignOutputLanguage("mr", { speakSample: true });
+      return;
+    }
+    if (cmd.includes("bengali") || cmd.includes("bangla") || cmd.includes("বাংলা")) {
+      setSignOutputLanguage("bn", { speakSample: true });
+      return;
+    }
+    if (cmd.includes("tamil") || cmd.includes("தமிழ்")) {
+      setSignOutputLanguage("ta", { speakSample: true });
+      return;
+    }
+    if (cmd.includes("telugu") || cmd.includes("తెలుగు")) {
+      setSignOutputLanguage("te", { speakSample: true });
+      return;
+    }
+    if (cmd.includes("gujarati") || cmd.includes("ગુજરાતી")) {
+      setSignOutputLanguage("gu", { speakSample: true });
+      return;
+    }
+    if (cmd.includes("punjabi") || cmd.includes("ਪੰਜਾਬੀ")) {
+      setSignOutputLanguage("pa", { speakSample: true });
+      return;
+    }
+    if (cmd.includes("kannada") || cmd.includes("ಕನ್ನಡ")) {
+      setSignOutputLanguage("kn", { speakSample: true });
+      return;
+    }
+    if (cmd.includes("urdu") || cmd.includes("اردو")) {
+      setSignOutputLanguage("ur", { speakSample: true });
+      return;
+    }
+    if (cmd.includes("all language") || cmd.includes("every language") || cmd.includes("sabhi bhasha")) {
+      setSignOutputLanguage("all", { speakSample: true });
+      return;
+    }
+    if (cmd.includes("hindi") || cmd.includes("हिन्दी") || cmd.includes("हिंदी")) {
+      setSignOutputLanguage("hi", { speakSample: true });
+      return;
+    }
     if (
       cmd.includes("welcome") ||
       cmd.includes("swagat") ||
       cmd.includes("namaste") ||
-      cmd.includes("hindi") ||
       cmd.includes("स्वागत")
     ) {
       speakBilingualWelcome("default");
@@ -2853,6 +3047,11 @@
         case "W":
           e.preventDefault();
           speakBilingualWelcome("default");
+          break;
+        case "l":
+        case "L":
+          e.preventDefault();
+          cycleSignOutputLanguage();
           break;
         case "h":
         case "H":

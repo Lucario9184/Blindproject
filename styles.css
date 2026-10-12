@@ -1933,6 +1933,109 @@ kbd {
   color: var(--accent-secondary);
 }
 
+/* =====================================================
+   MULTI-LANGUAGE SIGN OUTPUT GRID (HINDI, MAITHILI & 12 LANGUAGES)
+   ===================================================== */
+.regional-phrase-highlight {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  background: rgba(56, 189, 248, 0.1);
+  border-left: 3px solid var(--accent-primary);
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.4rem;
+  margin-bottom: 0.45rem;
+}
+
+.multilang-output-box {
+  background: var(--bg-elevated);
+  border: 2px solid var(--border-color);
+  border-radius: 0.85rem;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.multilang-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.multilang-header h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 1rem;
+}
+
+.multilang-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.multilang-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 0.55rem;
+  max-height: 290px;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.multilang-chip {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 2px solid var(--border-color);
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  transition: all 0.15s ease;
+}
+
+.multilang-chip:hover {
+  border-color: var(--accent-primary);
+  background: var(--bg-interactive);
+  transform: translateY(-1px);
+}
+
+.multilang-chip.active-lang {
+  border-color: var(--accent-secondary);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.multilang-chip-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.multilang-word {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--accent-primary);
+}
+
+.multilang-chip.active-lang .multilang-word {
+  color: var(--accent-secondary);
+}
+
+.multilang-phrase {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .camera-grid,
@@ -1965,5 +2068,6 @@ kbd {
     text-align: center;
   }
 }
+
 
 
