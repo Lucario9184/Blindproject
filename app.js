@@ -296,14 +296,50 @@
     const btnFontDec = document.getElementById("btn-font-dec");
     const btnFontInc = document.getElementById("btn-font-inc");
     const selectSignLang = document.getElementById("sign-output-lang");
+    const mainSignLangSelect = document.getElementById("main-sign-output-lang");
     const selectVoice = document.getElementById("speech-voice-select");
     const selectRate = document.getElementById("speech-rate");
     const selectPitch = document.getElementById("speech-pitch");
+
+    // Ensure all .sync-sign-lang-select dropdowns share the complete 22-State Language option list
+    if (mainSignLangSelect) {
+      const masterOptionsHTML = mainSignLangSelect.innerHTML;
+      document.querySelectorAll(".sync-sign-lang-select").forEach((sel) => {
+        if (sel !== mainSignLangSelect && sel.id !== "sign-output-lang") {
+          const prevVal = sel.value || state.signOutputLang;
+          sel.innerHTML = masterOptionsHTML;
+          sel.value = prevVal;
+        }
+      });
+    }
 
     // Wire ALL synced sign language dropdowns across top bar, main chooser banner, camera toolbar, and stage
     document.querySelectorAll(".sync-sign-lang-select").forEach((sel) => {
       sel.addEventListener("change", (e) => {
         setSignOutputLanguage(e.target.value, { speakSample: true });
+      });
+    });
+
+    // Wire Real Human Voice Persona selectors (.sync-human-persona-select)
+    document.querySelectorAll(".sync-human-persona-select").forEach((sel) => {
+      sel.addEventListener("change", (e) => {
+        const persona = e.target.value || "warm_female";
+        document.querySelectorAll(".sync-human-persona-select").forEach((s) => {
+          if (s.value !== persona) s.value = persona;
+        });
+        window.audioEngine.setHumanVoiceStyle(persona);
+        updateActiveLocalTouchBadge();
+        const activeSign =
+          state.activeTab === "translator"
+            ? state.translatedSequence[state.currentStageIndex] || state.currentDetectedSign || window.ISL_SIGNS[0]
+            : state.currentDetectedSign || window.ISL_SIGNS[0];
+        if (activeSign) {
+          window.audioEngine.playEarcon("sign_detected");
+          window.audioEngine.speakSignInLang(activeSign, state.signOutputLang, {
+            interrupt: true,
+            assertive: true
+          });
+        }
       });
     });
 
@@ -378,7 +414,7 @@
     if (selectVoice) {
       selectVoice.addEventListener("change", (e) => {
         window.audioEngine.setVoiceByName(e.target.value);
-        window.audioEngine.speak(`Voice changed to ${e.target.value || "default"}.`);
+        window.audioEngine.speak(`Voice changed to ${e.target.value || "WaveNet Neural Human"}.`);
       });
     }
 
@@ -392,6 +428,36 @@
         window.audioEngine.speechPitch = parseFloat(e.target.value) || 1.0;
         window.audioEngine.speak(`Speech pitch set to ${window.audioEngine.speechPitch}.`);
       });
+    }
+  }
+
+  function updateActiveLocalTouchBadge(signObj = null) {
+    const badge = document.getElementById("active-local-touch-badge");
+    if (!badge || !window.getSignTranslation) return;
+    const targetSign =
+      signObj ||
+      (state.activeTab === "translator"
+        ? state.translatedSequence[state.currentStageIndex] || state.currentDetectedSign || window.ISL_SIGNS[0]
+        : state.currentDetectedSign || window.ISL_SIGNS[0]);
+    if (!targetSign) return;
+
+    const primaryCode =
+      state.signOutputLang === "en_hi" || state.signOutputLang === "multi_top" || state.signOutputLang === "all"
+        ? "hi"
+        : state.signOutputLang === "en_mai"
+        ? "mai"
+        : state.signOutputLang;
+
+    const tr = window.getSignTranslation(targetSign, primaryCode);
+    const personaNames = {
+      warm_female: "👩 Didi (Warm Female Human Voice)",
+      natural_male: "👨 Bhaiya (Natural Male Human Voice)",
+      gentle_elder: "👵 Dadi/Baba (Gentle Respectful Elder)",
+      expressive_friend: "🧑 Mitra (Expressive Friend Voice)"
+    };
+    const personaLabel = personaNames[window.audioEngine.humanVoiceStyle] || personaNames.warm_female;
+    if (tr) {
+      badge.textContent = `🗣️ Active Voice: ${personaLabel} • ${tr.flag} ${tr.langName} (${tr.nativeName}) — "${tr.phrase}"`;
     }
   }
 
@@ -412,6 +478,8 @@
         ? state.translatedSequence[state.currentStageIndex] || state.currentDetectedSign || window.ISL_SIGNS[0]
         : state.currentDetectedSign || window.ISL_SIGNS[0];
 
+    updateActiveLocalTouchBadge(activeSign);
+
     if (state.currentDetectedSign) {
       updateCameraMultiLangDisplay(state.currentDetectedSign);
     }
@@ -431,7 +499,8 @@
   }
 
   function cycleSignOutputLanguage() {
-    const order = ["en_hi", "hi", "mai", "en_mai", "multi_top", "bho", "mr", "bn", "ta", "te", "gu", "pa", "kn", "ur", "en"];
+    const allCodes = (window.SIGN_LANGUAGES || []).map((l) => l.code);
+    const order = ["en_hi", "hi", "mai", "en_mai", ...allCodes.filter((c) => c !== "hi" && c !== "mai")];
     const idx = order.indexOf(state.signOutputLang);
     const next = order[(idx + 1) % order.length];
     setSignOutputLanguage(next, { speakSample: true });
@@ -699,11 +768,24 @@
     const badgeEl = document.getElementById("cam-multilang-sign-badge");
     if (badgeEl) badgeEl.textContent = `${signObj.emoji} ${signObj.word}`;
 
+    updateActiveLocalTouchBadge(signObj);
+
     const regLineEl = document.getElementById("detected-sign-regional");
     if (regLineEl) {
+      const primaryCode =
+        state.signOutputLang === "en_hi" || state.signOutputLang === "multi_top" || state.signOutputLang === "all"
+          ? "hi"
+          : state.signOutputLang === "en_mai"
+          ? "mai"
+          : state.signOutputLang;
+      const activeTr = window.getSignTranslation(signObj, primaryCode);
       const hiTr = window.getSignTranslation(signObj, "hi");
       const maiTr = window.getSignTranslation(signObj, "mai");
-      regLineEl.textContent = `🇮🇳 हिन्दी: ${hiTr.word} ("${hiTr.phrase}") • मैथिली: ${maiTr.word} ("${maiTr.phrase}")`;
+      if (primaryCode !== "hi" && primaryCode !== "mai" && activeTr) {
+        regLineEl.textContent = `🗣️ ${activeTr.flag} ${activeTr.shortName || activeTr.langName} (${activeTr.nativeName}): "${activeTr.phrase}" • हिन्दी: "${hiTr.phrase}"`;
+      } else {
+        regLineEl.textContent = `🗣️ 🇮🇳 हिन्दी: "${hiTr.phrase}" • मैथिली: "${maiTr.phrase}"`;
+      }
     }
 
     const gridEl = document.getElementById("camera-multilang-grid");

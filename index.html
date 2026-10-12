@@ -50,36 +50,53 @@
           <button type="button" id="btn-font-dec" class="a11y-btn-icon" aria-label="Decrease text size">A-</button>
           <button type="button" id="btn-font-inc" class="a11y-btn-icon" aria-label="Increase text size">A+</button>
         </div>
-        <div class="a11y-group" role="group" aria-label="Sign Language Output Language, Voice, Speed and Pitch">
-          <label for="sign-output-lang" class="sr-only">Sign Output Language</label>
-          <select id="sign-output-lang" class="a11y-select sync-sign-lang-select" aria-label="Select spoken output language for detected Indian Sign Language gestures (Shortcut: L)">
-            <option value="hi">🇮🇳 Sign Output: हिन्दी (Hindi)</option>
-            <option value="en_hi" selected>🌐 Sign Output: हिन्दी + English</option>
-            <option value="mai">🇮🇳 Sign Output: मैथिली (Maithili)</option>
-            <option value="en_mai">🌐 Sign Output: मैथिली + English</option>
-            <option value="multi_top">🌐 Sign Output: हिन्दी + मैथिली + EN</option>
-            <option value="bho">🇮🇳 Sign Output: भोजपुरी (Bhojpuri)</option>
-            <option value="mr">🇮🇳 Sign Output: मराठी (Marathi)</option>
-            <option value="bn">🇮🇳 Sign Output: বাংলা (Bengali)</option>
-            <option value="ta">🇮🇳 Sign Output: தமிழ் (Tamil)</option>
-            <option value="te">🇮🇳 Sign Output: తెలుగు (Telugu)</option>
-            <option value="gu">🇮🇳 Sign Output: ગુજરાતી (Gujarati)</option>
-            <option value="pa">🇮🇳 Sign Output: ਪੰਜਾਬੀ (Punjabi)</option>
-            <option value="kn">🇮🇳 Sign Output: ಕನ್ನಡ (Kannada)</option>
-            <option value="ur">🇮🇳 Sign Output: اردو (Urdu)</option>
-            <option value="en">🇬🇧 Sign Output: English Only</option>
-            <option value="all">🌍 Sign Output: Speak All 12 Languages</option>
+        <div class="a11y-group" role="group" aria-label="Sign Language Output Language, Human Voice Persona, Speed and Pitch">
+          <label for="sign-output-lang" class="sr-only">Sign Output State Language</label>
+          <select id="sign-output-lang" class="a11y-select sync-sign-lang-select" aria-label="Select spoken output state language for detected Indian Sign Language gestures (Shortcut: L)">
+            <option value="hi">🇮🇳 हिन्दी (UP / MP / Delhi)</option>
+            <option value="en_hi" selected>🌐 हिन्दी + English (Both)</option>
+            <option value="mai">🇮🇳 मैथिली — Maithili (Mithila, Bihar)</option>
+            <option value="en_mai">🌐 मैथिली + English</option>
+            <option value="multi_top">🌐 हिन्दी + मैथिली + EN</option>
+            <option value="bho">🇮🇳 भोजपुरी — Bhojpuri (Bihar / UP)</option>
+            <option value="mag">🇮🇳 मगही — Magahi (Magadh, Bihar)</option>
+            <option value="raj">🇮🇳 राजस्थानी / मारवाड़ी (Rajasthan)</option>
+            <option value="bgc">🇮🇳 हरियाणवी — Haryanvi (Haryana)</option>
+            <option value="hne">🇮🇳 छत्तीसगढ़ी — Chhattisgarhi (CG)</option>
+            <option value="mr">🇮🇳 मराठी — Marathi (Maharashtra)</option>
+            <option value="gu">🇮🇳 ગુજરાતી — Gujarati (Gujarat)</option>
+            <option value="pa">🇮🇳 ਪੰਜਾਬੀ — Punjabi (Punjab)</option>
+            <option value="bn">🇮🇳 বাংলা — Bengali (Bengal / Tripura)</option>
+            <option value="as">🇮🇳 অসমীয়া — Assamese (Assam)</option>
+            <option value="or">🇮🇳 ଓଡ଼ିଆ — Odia (Odisha)</option>
+            <option value="ta">🇮🇳 தமிழ் — Tamil (Tamil Nadu)</option>
+            <option value="te">🇮🇳 తెలుగు — Telugu (AP &amp; Telangana)</option>
+            <option value="kn">🇮🇳 ಕನ್ನಡ — Kannada (Karnataka)</option>
+            <option value="ml">🇮🇳 മലയാളം — Malayalam (Kerala)</option>
+            <option value="ur">🇮🇳 اردو / کشمیری — Urdu / Kashmiri (J&amp;K)</option>
+            <option value="ne">🇮🇳 नेपाली — Nepali (Sikkim / Darjeeling)</option>
+            <option value="kok">🇮🇳 कोंकणी — Konkani (Goa)</option>
+            <option value="doi">🇮🇳 डोगरी / पहाड़ी — Dogri (Himachal / J&amp;K)</option>
+            <option value="en">🇮🇳 Indian English (All-India)</option>
+            <option value="all">🌍 Speak All 22 State Languages</option>
+          </select>
+          <label for="human-voice-style-top" class="sr-only">Real Human Voice Persona</label>
+          <select id="human-voice-style-top" class="a11y-select sync-human-persona-select" aria-label="Choose Real Human Voice Persona">
+            <option value="warm_female" selected>🗣️ 👩 Didi (Warm Female Human)</option>
+            <option value="natural_male">🗣️ 👨 Bhaiya (Natural Male Human)</option>
+            <option value="gentle_elder">🗣️ 👵 Dadi/Baba (Gentle Elder Tone)</option>
+            <option value="expressive_friend">🗣️ 🧑 Mitra (Expressive Friend)</option>
           </select>
           <label for="speech-voice-select" class="sr-only">Speech Voice</label>
           <select id="speech-voice-select" class="a11y-select" aria-label="Select speech synthesis voice">
-            <option value="">Voice: Default (en-IN)</option>
+            <option value="">Voice: WaveNet Neural Human</option>
           </select>
           <label for="speech-rate" class="sr-only">Voice Speed</label>
           <select id="speech-rate" class="a11y-select" aria-label="Select voice narration speed">
             <option value="0.85">Speed: 0.85x (Slow)</option>
-            <option value="1" selected>Speed: 1.0x (Normal)</option>
-            <option value="1.25">Speed: 1.25x (Fast)</option>
-            <option value="1.5">Speed: 1.5x (Screen Reader Fast)</option>
+            <option value="1" selected>Speed: 1.0x (Natural Human)</option>
+            <option value="1.15">Speed: 1.15x (Brisk)</option>
+            <option value="1.35">Speed: 1.35x (Fast)</option>
           </select>
           <label for="speech-pitch" class="sr-only">Voice Pitch</label>
           <select id="speech-pitch" class="a11y-select" aria-label="Select speech generation pitch">
@@ -98,8 +115,8 @@
       <div class="brand">
         <div class="brand-logo" aria-hidden="true">🤟🔊</div>
         <div>
-          <h1 class="brand-title">SanketSetu <span class="badge-pill">ISL ⇄ Braille ⇄ Audio Bridge</span></h1>
-          <p class="brand-subtitle">Two-Way ISL Sign-to-Text, 6-Dot Braille Translation, Animated Avatar &amp; Blind Audio Platform</p>
+          <h1 class="brand-title">SanketSetu <span class="badge-pill">ISL ⇄ Braille ⇄ 22-State Human Audio Bridge</span></h1>
+          <p class="brand-subtitle">Two-Way ISL Sign-to-Text, 6-Dot Braille Translation, Animated Avatar &amp; 22 Indian State Real Human Voice Platform</p>
         </div>
       </div>
 
@@ -112,8 +129,6 @@
             <small id="voice-cmd-sub">Say "No Text", "Sign Language", "Blind Language", or "Welcome"</small>
           </span>
         </button>
-
-        
 
         <button type="button" id="btn-sos" class="btn-sos" aria-label="Emergency SOS Alert: Sounds audible siren and flashes high-visibility Indian Sign Language Help sign">
           <span aria-hidden="true">🚨</span> SOS Help
@@ -128,8 +143,8 @@
           <span class="tab-num" aria-hidden="true">1</span>
           <span class="tab-icon" aria-hidden="true">📷</span>
           <span class="tab-label">
-            <strong>Sign-to-Text, Braille &amp; Speech</strong>
-            <small>Camera reads ISL signs → Text, 6-Dot Braille &amp; Audio</small>
+            <strong>Sign-to-Text, Braille &amp; 22-State Speech</strong>
+            <small>Camera reads ISL signs → 22 State Human Voices &amp; Braille</small>
           </span>
         </button>
 
@@ -167,63 +182,94 @@
   <main id="main-content" class="main-container" tabindex="-1">
 
     <!-- =================================================================
-         PROMINENT MULTI-LANGUAGE SIGN OUTPUT CHOOSER BAR (12 LANGUAGES)
+         PROMINENT 22-STATE LOCAL SPEAKING LANGUAGE & REAL HUMAN VOICE BAR
          ================================================================= -->
-    <section id="global-language-bar" class="language-chooser-banner" aria-label="Choose Sign Output Language (Hindi, Maithili and 12 Regional Languages)">
+    <section id="global-language-bar" class="language-chooser-banner" aria-label="Choose Indian State Local Speaking Language and Real Human Voice Tone">
       <div class="lang-chooser-top">
         <div class="lang-chooser-title">
-          <span class="lang-globe-icon" aria-hidden="true">🌐🗣️</span>
+          <span class="lang-globe-icon" aria-hidden="true">🗣️🇮🇳</span>
           <div>
-            <h2>Choose Sign Output Language <span class="welcome-divider">|</span> <span lang="hi">सांकेतिक भाषा की आवाज़ और भाषा चुनें</span></h2>
-            <p>Select which language you want to <strong>hear and see</strong> whenever any sign (e.g., <em>Hello / नमस्ते / प्रणाम</em>) is detected or clicked:</p>
+            <h2>All-India 22 State Local Languages &amp; Real Human Voice <span class="welcome-divider">|</span> <span lang="hi">सभी राज्यों की अपनी स्थानीय बोली और असली मानवीय आवाज़</span></h2>
+            <p>Hear every sign spoken like a <strong>real local human</strong> with authentic regional warmth (<em>"अरे नमस्ते जी!"</em>, <em>"प्रणाम यौ!"</em>, <em>"खम्मा घणी सा!"</em>, <em>"राम-राम जी!"</em>, <em>"जय जोहार संगवारी!"</em>, <em>"नमस्कार मंडळी!"</em>):</p>
+            <div id="active-local-touch-badge" class="badge-pill" style="margin-top:0.35rem; display:inline-block;">
+              🗣️ Active Voice: 👩 Didi (Real Human Neural Voice) • 🌐 हिन्दी + English ("अरे नमस्ते जी! आपसे मिलकर बहुत खुशी हुई।")
+            </div>
           </div>
         </div>
         <div class="lang-chooser-controls">
-          <label for="main-sign-output-lang" class="field-label" style="margin:0;">Active Output Language:</label>
-          <select id="main-sign-output-lang" class="a11y-select sync-sign-lang-select lang-select-prominent" aria-label="Choose spoken output language for all signs">
-            <option value="hi">🇮🇳 हिन्दी (Hindi Output)</option>
-            <option value="en_hi" selected>🌐 हिन्दी + English (Hindi &amp; English Both)</option>
-            <option value="mai">🇮🇳 मैथिली (Maithili Output)</option>
-            <option value="en_mai">🌐 मैथिली + English (Maithili &amp; English)</option>
+          <label for="main-sign-output-lang" class="field-label" style="margin:0;">State / Local Language:</label>
+          <select id="main-sign-output-lang" class="a11y-select sync-sign-lang-select lang-select-prominent" aria-label="Choose Indian state or local language for sign audio output">
+            <option value="hi">🇮🇳 हिन्दी — Hindi (UP / MP / Delhi — "अरे नमस्ते जी!")</option>
+            <option value="en_hi" selected>🌐 हिन्दी + English (Hindi First + English)</option>
+            <option value="mai">🇮🇳 मैथिली — Maithili (Mithila, Bihar — "प्रणाम यौ!")</option>
+            <option value="en_mai">🌐 मैथिली + English (Maithili First + English)</option>
             <option value="multi_top">🌐 हिन्दी + मैथिली + English</option>
-            <option value="bho">🇮🇳 भोजपुरी (Bhojpuri Output)</option>
-            <option value="mr">🇮🇳 मराठी (Marathi Output)</option>
-            <option value="bn">🇮🇳 বাংলা (Bengali Output)</option>
-            <option value="ta">🇮🇳 தமிழ் (Tamil Output)</option>
-            <option value="te">🇮🇳 తెలుగు (Telugu Output)</option>
-            <option value="gu">🇮🇳 ગુજરાતી (Gujarati Output)</option>
-            <option value="pa">🇮🇳 ਪੰਜਾਬੀ (Punjabi Output)</option>
-            <option value="kn">🇮🇳 ಕನ್ನಡ (Kannada Output)</option>
-            <option value="ur">🇮🇳 اردو (Urdu Output)</option>
-            <option value="en">🇬🇧 English Only</option>
-            <option value="all">🌍 Speak All 12 Languages</option>
+            <option value="bho">🇮🇳 भोजपुरी — Bhojpuri (Bihar / Purvanchal — "प्रणाम रउआ के!")</option>
+            <option value="mag">🇮🇳 मगही — Magahi (Magadh, Bihar — "प्रणाम भैया!")</option>
+            <option value="raj">🇮🇳 राजस्थानी / मारवाड़ी — Rajasthani ("खम्मा घणी सा!")</option>
+            <option value="bgc">🇮🇳 हरियाणवी — Haryanvi (Haryana — "राम-राम जी!")</option>
+            <option value="hne">🇮🇳 छत्तीसगढ़ी — Chhattisgarhi ("जय जोहार संगवारी!")</option>
+            <option value="mr">🇮🇳 मराठी — Marathi (Maharashtra — "नमस्कार मंडळी!")</option>
+            <option value="gu">🇮🇳 ગુજરાતી — Gujarati (Gujarat — "નમસ્તે, કેમ છો ભાઈ!")</option>
+            <option value="pa">🇮🇳 ਪੰਜਾਬੀ — Punjabi (Punjab — "ਸਤ ਸ੍ਰੀ ਅਕਾਲ ਜੀ!")</option>
+            <option value="bn">🇮🇳 বাংলা — Bengali (West Bengal — "নমস্কার দাদা!")</option>
+            <option value="as">🇮🇳 অসমীয়া — Assamese (Assam — "নমস্কাৰ দেই!")</option>
+            <option value="or">🇮🇳 ଓଡ଼ିଆ — Odia (Odisha — "ନମସ୍କାର, ଜୟ ଜଗନ୍ନାଥ!")</option>
+            <option value="ta">🇮🇳 தமிழ் — Tamil (Tamil Nadu — "வணக்கம்ங்க!")</option>
+            <option value="te">🇮🇳 తెలుగు — Telugu (AP &amp; Telangana — "నమస్కారం అండీ!")</option>
+            <option value="kn">🇮🇳 ಕನ್ನಡ — Kannada (Karnataka — "ನಮಸ್ಕಾರ ರೀ!")</option>
+            <option value="ml">🇮🇳 മലയാളം — Malayalam (Kerala — "നമസ്കാരം ചേട്ടാ!")</option>
+            <option value="ur">🇮🇳 اردو / کشمیری — Urdu / Kashmiri ("آداب جناب!")</option>
+            <option value="ne">🇮🇳 नेपाली — Nepali (Sikkim / Darjeeling — "नमस्ते हजुर!")</option>
+            <option value="kok">🇮🇳 कोंकणी — Konkani (Goa — "देव बरे करूं!")</option>
+            <option value="doi">🇮🇳 डोगरी / पहाड़ी — Dogri / Pahadi ("जय देवा जी!")</option>
+            <option value="en">🇮🇳 Indian English ("Namaste! Hello friend!")</option>
+            <option value="all">🌍 Speak All 22 State Languages</option>
           </select>
-          <button type="button" id="btn-test-hindi-now" class="btn-primary btn-sm" aria-label="Hear current sign in Hindi right now">
-            🔊 🇮🇳 सुने हिन्दी में (Hear Hindi)
+
+          <label for="human-voice-style-select" class="field-label" style="margin:0;">Human Voice Tone:</label>
+          <select id="human-voice-style-select" class="a11y-select sync-human-persona-select lang-select-prominent" aria-label="Choose Real Human Voice Persona and Tone">
+            <option value="warm_female" selected>👩 Didi — Warm Natural Female Human</option>
+            <option value="natural_male">👨 Bhaiya — Natural Warm Male Human</option>
+            <option value="gentle_elder">👵 Dadi / Baba — Gentle Respectful Elder</option>
+            <option value="expressive_friend">🧑 Mitra — Bright Expressive Friend</option>
+          </select>
+
+          <button type="button" id="btn-test-hindi-now" class="btn-primary btn-sm" aria-label="Hear current sign in Hindi human voice right now">
+            🗣️ 🇮🇳 सुने हिन्दी में (Hindi)
           </button>
-          <button type="button" id="btn-test-maithili-now" class="btn-secondary btn-sm" aria-label="Hear current sign in Maithili right now">
-            🔊 🇮🇳 मैथिली में सुनु (Hear Maithili)
+          <button type="button" id="btn-test-maithili-now" class="btn-secondary btn-sm" aria-label="Hear current sign in Maithili human voice right now">
+            🗣️ 🇮🇳 मैथिली में सुनु (Maithili)
           </button>
         </div>
       </div>
 
-      <!-- One-Click Quick Language Switcher Pills -->
-      <div class="lang-quick-pills" role="group" aria-label="One-click language selection buttons">
-        <button type="button" class="lang-pill-btn" data-set-lang="hi">🇮🇳 हिन्दी (Hindi)</button>
-        <button type="button" class="lang-pill-btn active" data-set-lang="en_hi">🌐 हिन्दी + English</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="mai">🇮🇳 मैथिली (Maithili)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="multi_top">🌐 हिन्दी + मैथिली + EN</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="bho">🇮🇳 भोजपुरी (Bhojpuri)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="mr">🇮🇳 मराठी (Marathi)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="bn">🇮🇳 বাংলা (Bengali)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="ta">🇮🇳 தமிழ் (Tamil)</button>
+      <!-- One-Click Quick State Language Switcher Pills (All 22 Indian State & Local Languages) -->
+      <div class="lang-quick-pills" role="group" aria-label="One-click Indian state language selection buttons">
+        <button type="button" class="lang-pill-btn" data-set-lang="hi">🇮🇳 हिन्दी (UP/MP/Delhi)</button>
+        <button type="button" class="lang-pill-btn active" data-set-lang="en_hi">🌐 हिन्दी + EN</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="mai">🇮🇳 मैथिली (Mithila)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="bho">🇮🇳 भोजपुरी (Bihar/UP)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="mag">🇮🇳 मगही (Magadh)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="raj">🇮🇳 राजस्थानी (Marwari)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="bgc">🇮🇳 हरियाणवी (Haryana)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="hne">🇮🇳 छत्तीसगढ़ी (CG)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="mr">🇮🇳 मराठी (Maharashtra)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="gu">🇮🇳 ગુજરાતી (Gujarat)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="pa">🇮🇳 ਪੰਜਾਬੀ (Punjab)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="bn">🇮🇳 বাংলা (Bengal)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="as">🇮🇳 অসমীয়া (Assam)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="or">🇮🇳 ଓଡ଼ିଆ (Odisha)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="ta">🇮🇳 தமிழ் (Tamil Nadu)</button>
         <button type="button" class="lang-pill-btn" data-set-lang="te">🇮🇳 తెలుగు (Telugu)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="gu">🇮🇳 ગુજરાતી (Gujarati)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="pa">🇮🇳 ਪੰਜਾਬੀ (Punjabi)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="kn">🇮🇳 ಕನ್ನಡ (Kannada)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="ur">🇮🇳 اردو (Urdu)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="en">🇬🇧 English</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="all">🌍 All 12 Languages</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="kn">🇮🇳 ಕನ್ನಡ (Karnataka)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="ml">🇮🇳 മലയാളം (Kerala)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="ur">🇮🇳 اردو / کشمیری (J&amp;K)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="ne">🇮🇳 नेपाली (Sikkim)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="kok">🇮🇳 कोंकणी (Goa)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="doi">🇮🇳 डोगरी / पहाड़ी (HP/J&amp;K)</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="en">🇮🇳 Indian English</button>
+        <button type="button" class="lang-pill-btn" data-set-lang="all">🌍 All 22 State Languages</button>
       </div>
     </section>
 
@@ -415,11 +461,11 @@
           </div>
 
           <!-- Live Multi-Language Sign Output Box (Hindi, Maithili & 10+ Indian Regional Languages) -->
-          <div class="multilang-output-box" id="camera-multilang-box" aria-label="Detected Sign Output in Hindi, Maithili and Regional Languages">
+          <div class="multilang-output-box" id="camera-multilang-box" aria-label="Detected Sign Output in All 22 Indian State Languages">
             <div class="multilang-header">
               <div>
-                <h4>🌐 Sign Output in Hindi, Maithili &amp; 12 Languages <span class="badge-pill" id="cam-multilang-sign-badge">👋 Hello / Namaste</span></h4>
-                <small class="text-secondary">Choose a language or click any language card below to hear this sign spoken aloud</small>
+                <h4>🗣️ Sign Output in All 22 Indian State Languages (Real Human Voice) <span class="badge-pill" id="cam-multilang-sign-badge">👋 Hello / Namaste</span></h4>
+                <small class="text-secondary">Click any state language card below to hear this sign spoken aloud with authentic local human warmth</small>
               </div>
               <div class="multilang-actions">
                 <select class="a11y-select sync-sign-lang-select" aria-label="Choose sign output language">
@@ -438,17 +484,17 @@
                   <option value="kn">🇮🇳 ಕನ್ನಡ (Kannada)</option>
                   <option value="ur">🇮🇳 اردو (Urdu)</option>
                   <option value="en">🇬🇧 English Only</option>
-                  <option value="all">🌍 Speak All 12</option>
+                  <option value="all">🌍 Speak All 22</option>
                 </select>
                 <button type="button" id="btn-speak-active-lang-cam" class="btn-primary btn-xs" aria-label="Speak detected sign in selected regional language">
-                  🔊 Speak Selected Language
+                  🗣️ Speak Selected Language
                 </button>
-                <button type="button" id="btn-speak-all-langs-cam" class="btn-secondary btn-xs" aria-label="Speak detected sign across all Indian regional languages">
-                  🌍 Speak All Languages
+                <button type="button" id="btn-speak-all-langs-cam" class="btn-secondary btn-xs" aria-label="Speak detected sign across all 22 Indian state languages">
+                  🌍 Speak All 22 Languages
                 </button>
               </div>
             </div>
-            <div id="camera-multilang-grid" class="multilang-grid" role="group" aria-label="Translations of detected sign in 12 languages">
+            <div id="camera-multilang-grid" class="multilang-grid" role="group" aria-label="Translations of detected sign in 22 Indian state languages">
               <!-- Populated dynamically by window.renderMultiLangCardsHTML -->
             </div>
           </div>
@@ -631,10 +677,10 @@
           </div>
 
           <!-- Stage Multi-Language Sign Output Box -->
-          <div class="multilang-output-box" id="stage-multilang-box" aria-label="Active Stage Sign in Hindi, Maithili and Regional Languages">
+          <div class="multilang-output-box" id="stage-multilang-box" aria-label="Active Stage Sign in All 22 Indian State Languages">
             <div class="multilang-header">
               <div>
-                <h4>🌐 Active Sign in Hindi, Maithili &amp; 12 Languages <span class="badge-pill" id="stage-multilang-sign-badge">👋 Hello / Namaste</span></h4>
+                <h4>🗣️ Active Sign in All 22 Indian State Languages (Real Human Voice) <span class="badge-pill" id="stage-multilang-sign-badge">👋 Hello / Namaste</span></h4>
               </div>
               <div class="multilang-actions">
                 <select class="a11y-select sync-sign-lang-select" aria-label="Choose stage sign output language">
@@ -653,13 +699,13 @@
                   <option value="kn">🇮🇳 ಕನ್ನಡ (Kannada)</option>
                   <option value="ur">🇮🇳 اردو (Urdu)</option>
                   <option value="en">🇬🇧 English Only</option>
-                  <option value="all">🌍 Speak All 12</option>
+                  <option value="all">🌍 Speak All 22</option>
                 </select>
                 <button type="button" id="btn-speak-active-lang-stage" class="btn-primary btn-xs" aria-label="Speak active stage sign in selected regional language">
-                  🔊 Speak Selected Language
+                  🗣️ Speak Selected Language
                 </button>
-                <button type="button" id="btn-speak-all-langs-stage" class="btn-secondary btn-xs" aria-label="Speak active stage sign in all languages">
-                  🌍 Speak All Languages
+                <button type="button" id="btn-speak-all-langs-stage" class="btn-secondary btn-xs" aria-label="Speak active stage sign in all 22 languages">
+                  🌍 Speak All 22 Languages
                 </button>
               </div>
             </div>

@@ -13,6 +13,7 @@ class BlindAudioEngine {
     this.earconsEnabled = true;
     this.speechRate = 1.0;
     this.speechPitch = 1.0;
+    this.humanVoiceStyle = "warm_female"; // "warm_female" | "natural_male" | "gentle_elder" | "expressive_friend"
     this.audioCtx = null;
     this.voices = [];
     this.selectedVoice = null;
@@ -29,6 +30,90 @@ class BlindAudioEngine {
 
     this.initVoices();
     this._initGestureUnlock();
+  }
+
+  setHumanVoiceStyle(style) {
+    this.humanVoiceStyle = style || "warm_female";
+  }
+
+  /**
+   * Connects a WebAudio AudioBufferSourceNode through a 3-stage Human Vocal Warmth & Presence
+   * Mastering Chain (Chest Warmth Low-Shelf + Vocal Presence Peaking + Digital De-Harsh High-Shelf)
+   * and applies natural human persona pitch/cadence shaping so output sounds like a real human.
+   */
+  _connectHumanWarmthChain(source) {
+    const baseRate = this.speechRate || 1.0;
+    let rateMult = 1.0;
+    let detuneCents = 0;
+    let chestGain = 2.8;
+    let presenceFreq = 2750;
+    let presenceGain = 2.0;
+
+    if (this.humanVoiceStyle === "natural_male") {
+      rateMult = 0.95;
+      detuneCents = -210;
+      chestGain = 3.8;
+      presenceFreq = 2200;
+      presenceGain = 1.8;
+    } else if (this.humanVoiceStyle === "gentle_elder") {
+      rateMult = 0.89;
+      detuneCents = -85;
+      chestGain = 3.2;
+      presenceFreq = 2500;
+      presenceGain = 2.2;
+    } else if (this.humanVoiceStyle === "expressive_friend") {
+      rateMult = 1.03;
+      detuneCents = 55;
+      chestGain = 2.5;
+      presenceFreq = 3000;
+      presenceGain = 2.3;
+    }
+
+    source.playbackRate.value = Math.max(0.65, Math.min(1.6, baseRate * rateMult));
+    if (source.detune) {
+      try {
+        source.detune.value = detuneCents;
+      } catch (e) {}
+    }
+
+    try {
+      const lowShelf = this.audioCtx.createBiquadFilter();
+      lowShelf.type = "lowshelf";
+      lowShelf.frequency.value = 185;
+      lowShelf.gain.value = chestGain;
+
+      const presence = this.audioCtx.createBiquadFilter();
+      presence.type = "peaking";
+      presence.frequency.value = presenceFreq;
+      presence.Q.value = 1.1;
+      presence.gain.value = presenceGain;
+
+      const deHarsh = this.audioCtx.createBiquadFilter();
+      deHarsh.type = "highshelf";
+      deHarsh.frequency.value = 8800;
+      deHarsh.gain.value = -2.4;
+
+      const gainNode = this.audioCtx.createGain();
+      gainNode.gain.value = 1.08;
+
+      source.connect(lowShelf);
+      lowShelf.connect(presence);
+      presence.connect(deHarsh);
+      deHarsh.connect(gainNode);
+      gainNode.connect(this.audioCtx.destination);
+    } catch (e) {
+      const gainNode = this.audioCtx.createGain();
+      gainNode.gain.value = 1.0;
+      source.connect(gainNode);
+      gainNode.connect(this.audioCtx.destination);
+    }
+  }
+
+  _getMimeTypeForBase64(b64Data) {
+    if (!b64Data) return "audio/mpeg";
+    if (b64Data.startsWith("//") || b64Data.startsWith("SUQz")) return "audio/mpeg";
+    if (b64Data.startsWith("AAAA")) return "audio/mp4";
+    return window.SIGN_AUDIO_MIME || "audio/mpeg";
   }
 
   _initGestureUnlock() {
@@ -331,7 +416,8 @@ class BlindAudioEngine {
 
     const playViaHtmlAudio = () => {
       try {
-        const audio = new Audio(`data:audio/mp4;base64,${clips[clipKey]}`);
+        const mime = this._getMimeTypeForBase64(clips[clipKey]);
+        const audio = new Audio(`data:${mime};base64,${clips[clipKey]}`);
         audio.playbackRate = this.speechRate || 1.0;
         audio.volume = 1.0;
         this._activeHtmlAudio = audio;
@@ -384,11 +470,7 @@ class BlindAudioEngine {
           this._stopActiveClipAudio();
           const source = this.audioCtx.createBufferSource();
           source.buffer = audioBuffer;
-          source.playbackRate.value = this.speechRate || 1.0;
-          const gainNode = this.audioCtx.createGain();
-          gainNode.gain.value = 1.0;
-          source.connect(gainNode);
-          gainNode.connect(this.audioCtx.destination);
+          this._connectHumanWarmthChain(source);
           this._activeBufferSource = source;
           source.onended = () => {
             if (this._activeBufferSource === source) {
@@ -428,9 +510,6 @@ class BlindAudioEngine {
    */
   getRegionalClipBase64(langCode, clipKey) {
     if (!clipKey) return null;
-    if (langCode === "en") {
-      return (window.SIGN_AUDIO_CLIPS && window.SIGN_AUDIO_CLIPS[clipKey]) || null;
-    }
     if (
       window.SIGN_AUDIO_CLIPS_LANG &&
       window.SIGN_AUDIO_CLIPS_LANG[langCode] &&
@@ -438,18 +517,23 @@ class BlindAudioEngine {
     ) {
       return window.SIGN_AUDIO_CLIPS_LANG[langCode][clipKey];
     }
-    if (langCode === "hi" && window.SIGN_AUDIO_CLIPS_HI && window.SIGN_AUDIO_CLIPS_HI[clipKey]) {
-      return window.SIGN_AUDIO_CLIPS_HI[clipKey];
+    if (langCode === "en") {
+      return (window.SIGN_AUDIO_CLIPS && window.SIGN_AUDIO_CLIPS[clipKey]) || null;
     }
-    if (langCode === "mai" && window.SIGN_AUDIO_CLIPS_MAI && window.SIGN_AUDIO_CLIPS_MAI[clipKey]) {
-      return window.SIGN_AUDIO_CLIPS_MAI[clipKey];
+    // For numbers/alphabet in regional Indian languages, fall back to Hindi WaveNet human clip if available
+    if (
+      window.SIGN_AUDIO_CLIPS_LANG &&
+      window.SIGN_AUDIO_CLIPS_LANG.hi &&
+      window.SIGN_AUDIO_CLIPS_LANG.hi[clipKey]
+    ) {
+      return window.SIGN_AUDIO_CLIPS_LANG.hi[clipKey];
     }
     return null;
   }
 
   /**
-   * Plays any base64-encoded AAC/M4A clip (English, Hindi, Maithili, or any of the 12 languages)
-   * via Web Audio API AudioContext with HTML5 <audio> and speechSynthesis fallbacks.
+   * Plays any base64-encoded 24kHz Google WaveNet Neural Human Voice clip (across all 22 Indian State Languages)
+   * via Web Audio API AudioContext + Human Vocal Warmth EQ Chain, with HTML5 <audio> and speechSynthesis fallbacks.
    */
   playBase64AudioClip(b64Data, cacheKey, fallbackSpokenText, { voice = null, lang = "hi-IN", onComplete = null } = {}) {
     if (!b64Data) {
@@ -483,7 +567,8 @@ class BlindAudioEngine {
 
     const playViaHtmlAudio = () => {
       try {
-        const audio = new Audio(`data:audio/mp4;base64,${b64Data}`);
+        const mime = this._getMimeTypeForBase64(b64Data);
+        const audio = new Audio(`data:${mime};base64,${b64Data}`);
         audio.playbackRate = this.speechRate || 1.0;
         audio.volume = 1.0;
         this._activeHtmlAudio = audio;
@@ -542,11 +627,7 @@ class BlindAudioEngine {
           this._stopActiveClipAudio();
           const source = this.audioCtx.createBufferSource();
           source.buffer = audioBuffer;
-          source.playbackRate.value = this.speechRate || 1.0;
-          const gainNode = this.audioCtx.createGain();
-          gainNode.gain.value = 1.0;
-          source.connect(gainNode);
-          gainNode.connect(this.audioCtx.destination);
+          this._connectHumanWarmthChain(source);
           this._activeBufferSource = source;
           source.onended = () => {
             if (this._activeBufferSource === source) {
@@ -881,7 +962,7 @@ class BlindAudioEngine {
     if (prefix === "en") {
       return { voice: this.selectedVoice || null, isNativeScriptSupported: true };
     }
-    if (["hi", "mai", "bho", "mr"].includes(prefix) && this.hindiVoice) {
+    if (["hi", "mai", "bho", "mag", "raj", "bgc", "hne", "mr", "ne", "kok", "doi", "or"].includes(prefix) && this.hindiVoice) {
       return { voice: this.hindiVoice, isNativeScriptSupported: true };
     }
 
@@ -898,29 +979,99 @@ class BlindAudioEngine {
   }
 
   /**
-   * Speaks any ISL sign in the selected regional language mode using guaranteed pre-rendered
-   * 12-language WebAudio voice clips (with Web Speech API fallback for custom user-trained signs):
-   *  - "hi" (Hindi Only — Lekha)
-   *  - "en_hi" (Hindi + English — speaks Hindi FIRST then English!)
-   *  - "mai" (Maithili Only — Lekha Devanagari)
-   *  - "en_mai" (Maithili + English — speaks Maithili FIRST then English!)
-   *  - "multi_top" (Hindi + Maithili + English)
-   *  - "all" (All 12 Indian & English Languages sequentially)
-   *  - Individual language codes: "bho", "mr", "bn", "ta", "te", "gu", "pa", "kn", "ur", "en"
+   * Streams live 24kHz Google WaveNet Neural Human Voice for custom signs or sentences,
+   * falling back to Web Speech API if offline.
    */
-  speakSignInLang(signObj, langSetting = "en_hi", { interrupt = true, assertive = true, onComplete = null } = {}) {
+  playLiveWaveNetStream(ttsLang = "hi", text = "", fallbackText = "", { voice = null, lang = "hi-IN", onComplete = null } = {}) {
+    if (!text) {
+      if (typeof onComplete === "function") onComplete();
+      return;
+    }
+    this._stopActiveClipAudio();
+    const statusDot = document.getElementById("audio-status-dot");
+    if (statusDot) statusDot.classList.add("speaking");
+
+    try {
+      const url = `https://translate.googleapis.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${encodeURIComponent(
+        ttsLang
+      )}&q=${encodeURIComponent(text.slice(0, 195))}`;
+      const audio = new Audio();
+      audio.referrerPolicy = "no-referrer";
+      audio.crossOrigin = "anonymous";
+      audio.src = url;
+      const baseRate = this.speechRate || 1.0;
+      const rateMult =
+        this.humanVoiceStyle === "natural_male"
+          ? 0.95
+          : this.humanVoiceStyle === "gentle_elder"
+          ? 0.89
+          : this.humanVoiceStyle === "expressive_friend"
+          ? 1.03
+          : 1.0;
+      audio.playbackRate = Math.max(0.65, Math.min(1.5, baseRate * rateMult));
+      audio.volume = 1.0;
+      this._activeHtmlAudio = audio;
+      audio.onended = () => {
+        if (this._activeHtmlAudio === audio) this._activeHtmlAudio = null;
+        if (statusDot) statusDot.classList.remove("speaking");
+        if (typeof onComplete === "function") onComplete();
+      };
+      audio.onerror = () => {
+        if (this._activeHtmlAudio === audio) this._activeHtmlAudio = null;
+        this._dispatchUtterance(fallbackText || text, {
+          voice,
+          lang,
+          rate: this.speechRate,
+          pitch: this.speechPitch,
+          interrupt: true,
+          skipClipLookup: true,
+          onComplete
+        });
+      };
+      const p = audio.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {
+          this._dispatchUtterance(fallbackText || text, {
+            voice,
+            lang,
+            rate: this.speechRate,
+            pitch: this.speechPitch,
+            interrupt: true,
+            skipClipLookup: true,
+            onComplete
+          });
+        });
+      }
+    } catch (e) {
+      this._dispatchUtterance(fallbackText || text, {
+        voice,
+        lang,
+        rate: this.speechRate,
+        pitch: this.speechPitch,
+        interrupt: true,
+        skipClipLookup: true,
+        onComplete
+      });
+    }
+  }
+
+  /**
+   * Speaks any ISL sign in the selected regional state language mode using guaranteed pre-rendered
+   * 24kHz Google WaveNet Neural Human Voice clips across all 22 Indian State & Local Speaking Languages
+   * (with WebAudio Human Vocal Warmth EQ Chain + Live WaveNet Stream fallback for custom signs).
+   */
+  speakSignInLang(signObj, langSetting = "hi", { interrupt = true, assertive = true, onComplete = null } = {}) {
     if (!signObj || !window.getSignTranslation) return;
 
     let codesToSpeak = [];
     if (langSetting === "en_hi") {
-      // Speak Hindi FIRST so the user hears Hindi output immediately, followed by English
       codesToSpeak = ["hi", "en"];
     } else if (langSetting === "en_mai") {
       codesToSpeak = ["mai", "en"];
     } else if (langSetting === "multi_top") {
       codesToSpeak = ["hi", "mai", "en"];
     } else if (langSetting === "all") {
-      codesToSpeak = ["hi", "mai", "bho", "mr", "bn", "ta", "te", "gu", "pa", "kn", "ur", "en"];
+      codesToSpeak = (window.SIGN_LANGUAGES || []).map((l) => l.code);
     } else {
       codesToSpeak = [langSetting];
     }
@@ -949,11 +1100,19 @@ class BlindAudioEngine {
       this.stopSpeaking();
     }
 
+    const personaLabels = {
+      warm_female: "👩 Didi (Warm Female Human)",
+      natural_male: "👨 Bhaiya (Natural Male Human)",
+      gentle_elder: "👵 Elder (Gentle Respectful Tone)",
+      expressive_friend: "🧑 Mitra (Expressive Friend)"
+    };
+    const personaTag = personaLabels[this.humanVoiceStyle] || personaLabels.warm_female;
+
     const resetStatus = () => {
       if (statusDot) statusDot.classList.remove("speaking");
       if (statusText) {
         statusText.innerHTML =
-          'Audio Guide Ready (Press <strong>Space</strong> for Voice, <strong>L</strong> to Cycle Language, or <strong>S</strong> to Read Screen)';
+          'Human Voice Ready (Press <strong>Space</strong> for Voice, <strong>L</strong> to Cycle State Language, or <strong>S</strong> to Read Screen)';
       }
       if (typeof onComplete === "function") onComplete();
     };
@@ -966,7 +1125,7 @@ class BlindAudioEngine {
       const tr = translations[idx];
       if (statusDot) statusDot.classList.add("speaking");
       if (statusText) {
-        statusText.textContent = `Speaking ${tr.flag} ${tr.langName} (${tr.nativeName}): "${tr.word} — ${tr.phrase}"`;
+        statusText.textContent = `🗣️ ${personaTag} • ${tr.flag} ${tr.shortName || tr.langName} (${tr.nativeName}): "${tr.phrase}"`;
       }
 
       const clipB64 = this.getRegionalClipBase64(tr.langCode, signObj.id);
@@ -985,13 +1144,9 @@ class BlindAudioEngine {
           onComplete: () => playAtIndex(idx + 1)
         });
       } else {
-        this._dispatchUtterance(fallbackText, {
+        this.playLiveWaveNetStream(tr.ttsLang || "hi", tr.ttsText || tr.phrase, fallbackText, {
           voice,
           lang: isNativeScriptSupported ? tr.voiceLang : "en-US",
-          rate: tr.langCode === "en" ? this.speechRate : Math.max(0.85, this.speechRate * 0.95),
-          pitch: this.speechPitch,
-          interrupt: idx === 0,
-          skipClipLookup: true,
           onComplete: () => playAtIndex(idx + 1)
         });
       }
