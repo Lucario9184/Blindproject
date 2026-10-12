@@ -414,57 +414,9 @@ class BlindAudioEngine {
     } catch (e) {}
   }
 
-  /**
-   * Plays sonic & haptic 6-dot Braille rhythm pulses for a word or phrase, then speaks the dot guide.
-   */
-  playBraillePulses(rawText, { speakAfter = true } = {}) {
-    if (!window.BrailleEngine) return;
-    const braille = window.BrailleEngine.translate(rawText);
-    const cells = braille.cells.filter((c) => !c.isSpace).slice(0, 8);
-
-    try {
-      this.ensureAudioContext();
-      if (this.audioCtx && cells.length) {
-        const dotFreqs = [440, 493.88, 554.37, 659.25, 739.99, 880];
-        const now = this.audioCtx.currentTime;
-        let offset = 0;
-        const vibratePattern = [];
-
-        cells.forEach((cell) => {
-          cell.activeNums.forEach((dotNum) => {
-            const osc = this.audioCtx.createOscillator();
-            const gain = this.audioCtx.createGain();
-            osc.type = dotNum <= 3 ? "triangle" : "sine";
-            osc.frequency.setValueAtTime(dotFreqs[dotNum - 1] || 520, now + offset);
-            gain.gain.setValueAtTime(0.14, now + offset);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.075);
-            osc.connect(gain);
-            gain.connect(this.audioCtx.destination);
-            osc.start(now + offset);
-            osc.stop(now + offset + 0.08);
-            offset += 0.085;
-            vibratePattern.push(45, 30);
-          });
-          offset += 0.14;
-          vibratePattern.push(0, 90);
-        });
-
-        if ("vibrate" in navigator && vibratePattern.length) {
-          navigator.vibrate(vibratePattern.slice(0, 24));
-        }
-
-        if (speakAfter) {
-          setTimeout(() => {
-            this.speak(braille.spokenGuide, { interrupt: true, assertive: true });
-          }, Math.min(2200, Math.round(offset * 1000) + 120));
-        }
-        return;
-      }
-    } catch (e) {}
-
-    if (speakAfter) {
-      this.speak(braille.spokenGuide, { interrupt: true, assertive: true });
-    }
+  playBraillePulses() {
+    // Braille pulses disabled
+    return;
   }
 
   _stopActiveClipAudio() {

@@ -3203,24 +3203,7 @@ footer {
   flex-grow: 1;
 }
 
-.qb-braille-row {
-  margin-top: 4px;
-  padding: 8px 10px;
-  background: var(--surface-2, #f5f2ea);
-  border-radius: 8px;
-  border: 1px solid var(--line-2, #ded7c8);
-}
 
-.chat-braille-line,
-.qb-braille-text {
-  font-family: monospace;
-  font-size: 15px;
-  letter-spacing: 2px;
-  color: var(--orange, #e67828);
-  font-weight: 700;
-  display: block;
-  word-break: break-all;
-}
 
 .qb-status-indicator {
   font-size: 11.5px;
@@ -3259,10 +3242,7 @@ footer {
 [data-bs-theme="dark"] .qb-spoken {
   color: #b5afa1;
 }
-[data-bs-theme="dark"] .qb-braille-row {
-  background: #14120f;
-  border-color: #ffffff1a;
-}
+
 [data-bs-theme="dark"] .qb-badge-active {
   color: #86efac;
   background: #14532d;

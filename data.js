@@ -532,7 +532,6 @@ window.QUICK_BOARD_ITEMS = [
     title: "I am Blind — Please Speak or Tap",
     spoken: "Excuse me, I am visually impaired. Please speak to me or use this screen to communicate in Indian Sign Language.",
     hindiSpoken: "माफ़ कीजिए, मैं दृष्टिबाधित हूँ। कृपया मुझसे बोलकर बात करें या इस स्क्रीन का उपयोग करें।",
-    braille: "⠿ ⠊⠀⠁⠍⠀⠃⠇⠊⠝⠙⠀⠀⠀⠏⠇⠑⠁⠎⠑⠀⠎⠏⠑⠁⠅⠀⠕⠗⠀⠞⠁⠏",
     emoji: "🦯"
   },
   {
@@ -541,7 +540,6 @@ window.QUICK_BOARD_ITEMS = [
     title: "Can You Guide Me?",
     spoken: "Hello, could you please help guide me to my destination?",
     hindiSpoken: "नमस्ते! क्या आप मुझे मेरी मंज़िल का रास्ता बता सकते हैं?",
-    braille: "⠿ ⠉⠁⠝⠀⠽⠕⠥⠀⠛⠥⠊⠙⠑⠀⠍⠑⠦",
     emoji: "🆘"
   },
   {
@@ -550,7 +548,6 @@ window.QUICK_BOARD_ITEMS = [
     title: "Hello / Namaste Friend",
     spoken: "Namaste! Hello friend, how are you doing today?",
     hindiSpoken: "नमस्ते दोस्त! आप आज कैसे हैं?",
-    braille: "⠿ ⠓⠑⠇⠇⠕",
     emoji: "🙏"
   },
   {
@@ -559,7 +556,6 @@ window.QUICK_BOARD_ITEMS = [
     title: "Where is Drinking Water?",
     spoken: "Excuse me, where can I find drinking water?",
     hindiSpoken: "माफ़ कीजिए, पीने का पानी कहाँ मिलेगा?",
-    braille: "⠿ ⠺⠓⠑⠗⠑⠀⠊⠎⠀⠙⠗⠊⠝⠅⠊⠝⠛⠀⠺⠁⠞⠑⠗⠦",
     emoji: "💧"
   },
   {
@@ -568,7 +564,6 @@ window.QUICK_BOARD_ITEMS = [
     title: "Looking for Food / Cafe",
     spoken: "Could you direct me to the nearest food counter or restaurant?",
     hindiSpoken: "क्या आप मुझे नज़दीकी भोजनालय या खाने की जगह बता सकते हैं?",
-    braille: "⠿ ⠇⠕⠕⠅⠊⠝⠛⠀⠋⠕⠗⠀⠋⠕⠕⠙",
     emoji: "🍲"
   },
   {
@@ -577,7 +572,6 @@ window.QUICK_BOARD_ITEMS = [
     title: "Thank You Very Much!",
     spoken: "Thank you so much for your kindness and assistance!",
     hindiSpoken: "आपकी सहायता के लिए बहुत-बहुत धन्यवाद!",
-    braille: "⠿ ⠞⠓⠁⠝⠅⠀⠽⠕⠥⠀⠧⠑⠗⠽⠀⠍⠥⠉⠓⠖",
     emoji: "🤲"
   },
   {
@@ -586,16 +580,14 @@ window.QUICK_BOARD_ITEMS = [
     title: "Medical Help / Doctor",
     spoken: "I need medical assistance or directions to a doctor or pharmacy.",
     hindiSpoken: "मुझे चिकित्सीय सहायता चाहिए। क्या आप डॉक्टर का रास्ता बता सकते हैं?",
-    braille: "⠿ ⠍⠑⠙⠊⠉⠁⠇⠀⠓⠑⠇⠏",
     emoji: "🩺"
   },
   {
     key: "I",
     signId: "call",
     title: "Please Call My Contact",
-    spoken: "Could you please help me make a phone call?",
+    spoken: "Could you please help make a phone call?",
     hindiSpoken: "क्या आप मेरे परिजन को फ़ोन लगाने में मेरी मदद कर सकते हैं?",
-    braille: "⠿ ⠏⠇⠑⠁⠎⠑⠀⠉⠁⠇⠇⠀⠍⠽⠀⠉⠕⠝⠞⠁⠉⠞",
     emoji: "📞"
   },
   {
@@ -604,7 +596,6 @@ window.QUICK_BOARD_ITEMS = [
     title: "Where is the Restroom?",
     spoken: "Excuse me, could you guide me to the nearest restroom or washroom?",
     hindiSpoken: "माफ़ कीजिए, नज़दीकी शौचालय कहाँ है?",
-    braille: "⠿ ⠺⠓⠑⠗⠑⠀⠊⠎⠀⠞⠓⠑⠀⠗⠑⠎⠞⠗⠕⠕⠍⠦",
     emoji: "🚻"
   },
   {
@@ -613,185 +604,27 @@ window.QUICK_BOARD_ITEMS = [
     title: "Please Sign / Speak Slowly",
     spoken: "Please communicate slowly so we can understand each other clearly.",
     hindiSpoken: "कृपया धीरे-धीरे इशारा या बात करें ताकि हम स्पष्ट समझ सकें।",
-    braille: "⠿ ⠏⠇⠑⠁⠎⠑⠀⠎⠊⠛⠝",
     emoji: "🐢"
   }
 ];
 
 // ============================================================================
-// 6-DOT BRAILLE TRANSLATION ENGINE (Grade 1 / Unified & Bharati Braille)
+// BRAILLE TRANSLATION SYSTEM (Disabled)
 // ============================================================================
-// Standard 6-dot positions:
-//   (1) (4)
-//   (2) (5)
-//   (3) (6)
-const BRAILLE_MAP = {
-  a: [1, 0, 0, 0, 0, 0],
-  b: [1, 1, 0, 0, 0, 0],
-  c: [1, 0, 0, 1, 0, 0],
-  d: [1, 0, 0, 1, 1, 0],
-  e: [1, 0, 0, 0, 1, 0],
-  f: [1, 1, 0, 1, 0, 0],
-  g: [1, 1, 0, 1, 1, 0],
-  h: [1, 1, 0, 0, 1, 0],
-  i: [0, 1, 0, 1, 0, 0],
-  j: [0, 1, 0, 1, 1, 0],
-  k: [1, 0, 1, 0, 0, 0],
-  l: [1, 1, 1, 0, 0, 0],
-  m: [1, 0, 1, 1, 0, 0],
-  n: [1, 0, 1, 1, 1, 0],
-  o: [1, 0, 1, 0, 1, 0],
-  p: [1, 1, 1, 1, 0, 0],
-  q: [1, 1, 1, 1, 1, 0],
-  r: [1, 1, 1, 0, 1, 0],
-  s: [0, 1, 1, 1, 0, 0],
-  t: [0, 1, 1, 1, 1, 0],
-  u: [1, 0, 1, 0, 0, 1],
-  v: [1, 1, 1, 0, 0, 1],
-  w: [0, 1, 0, 1, 1, 1],
-  x: [1, 0, 1, 1, 0, 1],
-  y: [1, 0, 1, 1, 1, 1],
-  z: [1, 0, 1, 0, 1, 1],
-  "1": [1, 0, 0, 0, 0, 0],
-  "2": [1, 1, 0, 0, 0, 0],
-  "3": [1, 0, 0, 1, 0, 0],
-  "4": [1, 0, 0, 1, 1, 0],
-  "5": [1, 0, 0, 0, 1, 0],
-  "6": [1, 1, 0, 1, 0, 0],
-  "7": [1, 1, 0, 1, 1, 0],
-  "8": [1, 1, 0, 0, 1, 0],
-  "9": [0, 1, 0, 1, 0, 0],
-  "0": [0, 1, 0, 1, 1, 0],
-  ",": [0, 1, 0, 0, 0, 0],
-  ".": [0, 1, 0, 0, 1, 1],
-  "?": [0, 1, 1, 0, 0, 1],
-  "!": [0, 1, 1, 0, 1, 0],
-  "-": [0, 0, 1, 0, 0, 1],
-  " ": [0, 0, 0, 0, 0, 0]
-};
-
-function dotsToUnicode(dots) {
-  let mask = 0;
-  for (let i = 0; i < 6; i++) {
-    if (dots[i]) mask |= 1 << i;
-  }
-  return String.fromCharCode(0x2800 + mask);
-}
-
-function getActiveDotNumbers(dots) {
-  const nums = [];
-  for (let i = 0; i < 6; i++) {
-    if (dots[i]) nums.push(i + 1);
-  }
-  return nums;
-}
-
 window.BrailleEngine = {
-  /**
-   * Translates any English / ISL text string into Unicode Braille, 6-dot cell arrays, and spoken dot guides.
-   */
   translate(rawText) {
-    const cleaned = (rawText || "")
-      .replace(/\/.*/g, "") // e.g., "Hello / Namaste" -> "Hello"
-      .trim();
-    if (!cleaned) {
-      return { unicode: "⠀", cells: [], spokenGuide: "Empty Braille line." };
-    }
-
-    const cells = [];
-    let unicode = "";
-    const spokenParts = [];
-
-    for (const ch of cleaned) {
-      const lower = ch.toLowerCase();
-      const isDigit = /^[0-9]$/.test(lower);
-      const dots = BRAILLE_MAP[lower] || [0, 0, 0, 0, 0, 0];
-      const uChar = dotsToUnicode(dots);
-      const activeNums = getActiveDotNumbers(dots);
-
-      if (isDigit) {
-        // Add Braille Number Indicator (dots 3-4-5-6 = ⠼)
-        const numSignDots = [0, 0, 1, 1, 1, 1];
-        unicode += dotsToUnicode(numSignDots);
-      }
-
-      unicode += uChar;
-      cells.push({
-        char: ch === " " ? "␣" : ch.toUpperCase(),
-        unicode: uChar,
-        dots,
-        activeNums,
-        isSpace: ch === " "
-      });
-
-      if (ch === " ") {
-        spokenParts.push("Space");
-      } else if (activeNums.length) {
-        spokenParts.push(`${ch.toUpperCase()} (dots ${activeNums.join("-")})`);
-      }
-    }
-
     return {
-      sourceText: cleaned,
-      unicode,
-      cells,
-      spokenGuide: `Braille for "${cleaned}": ${spokenParts.slice(0, 18).join(", ")}.`
+      sourceText: String(rawText || ''),
+      unicode: '',
+      cells: [],
+      spokenGuide: ''
     };
   },
-
-  /**
-   * Renders visual & accessible 6-dot tactile Braille cells HTML for a given text.
-   */
-  renderBrailleCellsHTML(rawText, { maxCells = 16 } = {}) {
-    const result = this.translate(rawText);
-    const subset = result.cells.slice(0, maxCells);
-
-    if (!subset.length) {
-      return `<span class="placeholder-muted">Braille cells will appear here...</span>`;
-    }
-
-    return subset
-      .map((cell) => {
-        if (cell.isSpace) {
-          return `
-            <div class="braille-cell braille-space" role="img" aria-label="Braille Space">
-              <div class="braille-dots-grid">
-                <span class="b-dot"></span><span class="b-dot"></span>
-                <span class="b-dot"></span><span class="b-dot"></span>
-                <span class="b-dot"></span><span class="b-dot"></span>
-              </div>
-              <span class="braille-char-label">␣</span>
-            </div>
-          `;
-        }
-        // Grid order in 2 columns x 3 rows: (d1, d4), (d2, d5), (d3, d6)
-        const d = cell.dots;
-        const dotOrder = [
-          { on: d[0], num: 1 },
-          { on: d[3], num: 4 },
-          { on: d[1], num: 2 },
-          { on: d[4], num: 5 },
-          { on: d[2], num: 3 },
-          { on: d[5], num: 6 }
-        ];
-        return `
-          <div class="braille-cell" tabindex="0" role="img" aria-label="Character ${cell.char}, Braille dots ${cell.activeNums.join(" ")}">
-            <div class="braille-dots-grid">
-              ${dotOrder
-                .map(
-                  (dot) =>
-                    `<span class="b-dot ${dot.on ? "raised" : ""}" title="Dot ${dot.num}"></span>`
-                )
-                .join("")}
-            </div>
-            <span class="braille-char-label">${cell.char}</span>
-            <span class="braille-dot-nums">${cell.activeNums.join("") || "-"}</span>
-          </div>
-        `;
-      })
-      .join("");
+  renderBrailleCellsHTML() {
+    return '';
   }
 };
+
 
 /**
  * Converts a sequence of ISL Sign Glosses into a natural, grammatically fluent sentence for Speech Generation.
@@ -974,8 +807,8 @@ const HINDI_ISL_DICTIONARY = {
   },
   blind: {
     hindiWord: "नेत्रहीन / दृष्टिबाधित",
-    hindiPhrase: "मैं दृष्टिबाधित हूँ, कृपया मुझसे बोलकर या ब्रेल के माध्यम से बात करें।",
-    hindiPhonetic: "Main drishtibadhit hoon, kripya mujhse bolkar ya Braille ke madhyam se baat karein.",
+    hindiPhrase: "मैं दृष्टिबाधित हूँ, कृपया मुझसे बोलकर बात करें।",
+    hindiPhonetic: "Main drishtibadhit hoon, kripya mujhse bolkar baat karein.",
     keywords: ["नेत्रहीन", "दृष्टिबाधित", "अंधा", "netraheen", "drishtibadhit"]
   },
   deaf: {

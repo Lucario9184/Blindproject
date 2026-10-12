@@ -13,35 +13,7 @@
 
   const CUSTOM_SIGNS_STORAGE_KEY = "sanketsetu_custom_signs_v1";
 
-  // Reverse lookup from 6-dot binary key (e.g., "100000") to character for the Braille Keyer
-  const DOTS_TO_CHAR_MAP = {
-    "100000": "a",
-    "110000": "b",
-    "100100": "c",
-    "100110": "d",
-    "100010": "e",
-    "110100": "f",
-    "110110": "g",
-    "110010": "h",
-    "010100": "i",
-    "010110": "j",
-    "101000": "k",
-    "111000": "l",
-    "101100": "m",
-    "101110": "n",
-    "101010": "o",
-    "111100": "p",
-    "111110": "q",
-    "111010": "r",
-    "011100": "s",
-    "011110": "t",
-    "101001": "u",
-    "111001": "v",
-    "010111": "w",
-    "101101": "x",
-    "101111": "y",
-    "101011": "z"
-  };
+
 
   // Application State
   const state = {
@@ -120,7 +92,7 @@
       state.currentDetectedSign = helloSign;
       document.getElementById("detected-visual").innerHTML = window.renderISLAvatarSVG(helloSign);
       updateCameraMultiLangDisplay(helloSign);
-      updateCameraBrailleDisplay("Hello");
+      
     }
 
     // Populate initial translator sequence ("Hello friend thank you")
@@ -163,14 +135,14 @@
   const BILINGUAL_WELCOME_MODES = {
     default: {
       badge: "Mode: Bilingual Auto-Welcome (EN + हिंदी)",
-      en: "Welcome to the website! Welcome to SanketSetu — the Indian Sign Language, 6-Dot Braille, and Blind Audio Bridge. If you give no text, you can communicate using Sign Language, Voice, or Blind Language.",
-      hi: "नमस्ते! वेबसाइट में आपका स्वागत है। संकेतसेतु में आपका स्वागत है — यदि आप कोई टेक्स्ट नहीं देते हैं, तो आप सांकेतिक भाषा, बोलकर, या नेत्रहीन ऑडियो और ब्रेल भाषा में संवाद कर सकते हैं।",
+      en: "Welcome to the website! Welcome to SanketSetu — the Indian Sign Language, and Blind Audio Bridge. If you give no text, you can communicate using Sign Language, Voice, or Blind Language.",
+      hi: "नमस्ते! वेबसाइट में आपका स्वागत है। संकेतसेतु में आपका स्वागत है — यदि आप कोई टेक्स्ट नहीं देते हैं, तो आप सांकेतिक भाषा, बोलकर, या नेत्रहीन ऑडियो भाषा में संवाद कर सकते हैं।",
       hiPhonetic:
-        "Namaste! Website mein aapka swagat hai. Sanket Setu mein aapka swagat hai. Yadi aap koi text nahi dete hain, toh aap Sign Language, bolkar, ya Blind Audio aur Braille bhasha mein samvaad kar sakte hain."
+        "Namaste! Website mein aapka swagat hai. Sanket Setu mein aapka swagat hai. Yadi aap koi text nahi dete hain, toh aap Sign Language, bolkar, ya Blind Audio bhasha mein samvaad kar sakte hain."
     },
     "no-text": {
       badge: "Mode: No-Text Hands-Free (बिना टेक्स्ट मोड)",
-      en: "Welcome to the website! No Text Mode is active. You do not need to type any text — speak aloud, show Sign Language, or use Blind Audio and Braille.",
+      en: "Welcome to the website! No Text Mode is active. You do not need to type any text — speak aloud, show Sign Language, or use Blind Audio.",
       hi: "नमस्ते! वेबसाइट में आपका स्वागत है। बिना टेक्स्ट मोड चालू है। आपको कुछ भी टाइप करने की आवश्यकता नहीं है — आप सीधे बोलकर, सांकेतिक भाषा, या नेत्रहीन भाषा से संवाद कर सकते हैं।",
       hiPhonetic:
         "Namaste! Website mein aapka swagat hai. Bina text mode chalu hai. Aapko kuch bhi type karne ki aavashyakta nahi hai — aap seedhe bolkar, Sign Language, ya Blind Audio bhasha se samvaad kar sakte hain."
@@ -183,18 +155,18 @@
         "Namaste! Website mein aapka swagat hai. Bharatiya Sign Language mode chalu hai. Camera ke samne apne haath ke sanket dikhayein ya screen par Avatar ko Namaste karte dekhein."
     },
     "blind-language": {
-      badge: "Mode: Blind Audio & 6-Dot Braille (नेत्रहीन व ब्रेल भाषा)",
-      en: "Welcome to the website! Blind Audio and 6-Dot Braille Language Mode is active. Every sign, avatar posture, and message is spoken aloud in English and Hindi with Braille dot audio.",
-      hi: "नमस्ते! वेबसाइट में आपका स्वागत है। नेत्रहीन ऑडियो और ६-डॉट ब्रेल भाषा मोड चालू है। हर संकेत और संदेश आपको अंग्रेजी और हिंदी में बोलकर तथा ब्रेल ध्वनि के साथ सुनाया जाएगा।",
+      badge: "Mode: Blind Audio & Voice (नेत्रहीन ऑडियो भाषा)",
+      en: "Welcome to the website! Blind Audio and Voice Language Mode is active. Every sign, avatar posture, and message is spoken aloud in English and Hindi.",
+      hi: "नमस्ते! वेबसाइट में आपका स्वागत है। नेत्रहीन ऑडियो और वॉइस भाषा मोड चालू है। हर संकेत और संदेश आपको अंग्रेजी और हिंदी में बोलकर सुनाया जाएगा।",
       hiPhonetic:
-        "Namaste! Website mein aapka swagat hai. Blind Audio aur 6-Dot Braille bhasha mode chalu hai. Har sanket aur sandesh aapko English aur Hindi mein bolkar tatha Braille dhwani ke saath sunaya jayega."
+        "Namaste! Website mein aapka swagat hai. Blind Audio aur Voice bhasha mode chalu hai. Har sanket aur sandesh aapko English aur Hindi mein bolkar sunaya jayega."
     },
     "idle-no-input": {
       badge: "Mode: Hands-Free Prompt (EN + हिंदी)",
-      en: "Welcome to the website! No text or sign input was detected. You can communicate without text using Sign Language, Voice, or Blind Audio and Braille.",
-      hi: "नमस्ते! वेबसाइट में आपका स्वागत है। कोई टेक्स्ट या संकेत नहीं मिला। आप बिना टेक्स्ट के सांकेतिक भाषा, बोलकर, या नेत्रहीन ब्रेल भाषा का उपयोग कर सकते हैं।",
+      en: "Welcome to the website! No text or sign input was detected. You can communicate without text using Sign Language, Voice, or Blind Audio.",
+      hi: "नमस्ते! वेबसाइट में आपका स्वागत है। कोई टेक्स्ट या संकेत नहीं मिला। आप बिना टेक्स्ट के सांकेतिक भाषा, बोलकर, या नेत्रहीन भाषा का उपयोग कर सकते हैं।",
       hiPhonetic:
-        "Namaste! Website mein aapka swagat hai. Koi text ya sanket nahi mila. Aap bina text ke Sign Language, bolkar, ya Blind Braille bhasha ka upyog kar sakte hain."
+        "Namaste! Website mein aapka swagat hai. Koi text ya sanket nahi mila. Aap bina text ke Sign Language, bolkar, ya Blind Audio bhasha ka upyog kar sakte hain."
     }
   };
 
@@ -274,12 +246,12 @@
       if (namasteSign) {
         state.currentDetectedSign = namasteSign;
         document.getElementById("detected-visual").innerHTML = window.renderISLAvatarSVG(namasteSign);
-        updateCameraBrailleDisplay(namasteSign.word);
+        
       }
       speakBilingualWelcome("sign-language");
     } else if (modeKey === "blind-language") {
       switchTab("translator", { announce: false });
-      window.audioEngine.playBraillePulses("Welcome", { speakAfter: false });
+      
       speakBilingualWelcome("blind-language");
     } else {
       speakBilingualWelcome("default");
@@ -933,13 +905,13 @@
   function speakOrientationGuide() {
     window.audioEngine.playEarcon("welcome");
     const enGuide =
-      "Welcome to the website! Welcome to SanketSetu, the two-way Indian Sign Language, 6-Dot Braille, and Blind Audio Communication Bridge. " +
+      "Welcome to the website! Welcome to SanketSetu, the two-way Indian Sign Language, and Blind Audio Communication Bridge. " +
       "Press W for English and Hindi Welcome, S to read the screen and ISL Avatar aloud, B for Ultra Contrast, or Spacebar for voice commands.";
     const hiGuide =
-      "नमस्ते! वेबसाइट में आपका स्वागत है। संकेतसेतु भारतीय सांकेतिक भाषा, ६-डॉट ब्रेल और नेत्रहीन ऑडियो ब्रिज है। " +
-      "बिना टेक्स्ट के संवाद करने के लिए सांकेतिक भाषा, वॉयस कमांड या ब्रेल मोड का उपयोग करें।";
+      "नमस्ते! वेबसाइट में आपका स्वागत है। संकेतसेतु भारतीय सांकेतिक भाषा, और नेत्रहीन ऑडियो ब्रिज है। " +
+      "बिना टेक्स्ट के संवाद करने के लिए सांकेतिक भाषा, वॉयस कमांड का उपयोग करें।";
     const hiPhonetic =
-      "Namaste! Website mein aapka swagat hai. Sanket Setu Bharatiya Sign Language, 6-Dot Braille aur Blind Audio Bridge hai. Bina text ke samvaad karne ke liye Sign Language, Voice Command ya Braille mode ka upyog karein.";
+      "Namaste! Website mein aapka swagat hai. Sanket Setu Bharatiya Sign Language aur Blind Audio Bridge hai. Bina text ke samvaad karne ke liye Sign Language ya Voice Command ka upyog karein.";
     window.audioEngine.speakBilingual(enGuide, hiGuide, {
       hindiPhonetic: hiPhonetic,
       interrupt: true,
@@ -993,7 +965,7 @@
   }
 
   // =========================================================================
-  // MODULE 1: HIGH-PRECISION 3D CAMERA SIGN-TO-TEXT, BRAILLE & SPEECH
+  // MODULE 1: HIGH-PRECISION 3D CAMERA SIGN-TO-TEXT & SPEECH
   // =========================================================================
   function initCameraModule() {
     renderSimulatorButtons();
@@ -1071,7 +1043,7 @@
 
     document.getElementById("btn-speak-panel-1").addEventListener("click", () => {
       window.audioEngine.speak(
-        "In Sign-to-Text, Braille, and Speech mode, SanketSetu tracks 21 3D hand landmarks, mirrors the sign on the on-screen ISL Avatar, translates it into 6-dot tactile Braille cells, and speaks the sign meaning aloud."
+        "In Sign-to-Text and Speech mode, SanketSetu tracks 21 3D hand landmarks, mirrors the sign on the on-screen ISL Avatar, and speaks the sign meaning aloud."
       );
     });
 
@@ -1161,7 +1133,7 @@
         const primarySign = state.currentDetectedSign || window.ISL_SIGNS[0];
         addTwoWayChatMessage({
           role: "deaf",
-          speakerLabel: "🤟 Deaf Signer (Camera Sign → Text & Braille)",
+          speakerLabel: "🤟 Deaf Signer (Camera Sign → Speech)",
           text: naturalText,
           glossText: words.join(" → "),
           signObj: primarySign,
@@ -1173,28 +1145,8 @@
     document.getElementById("btn-clear-sentence").addEventListener("click", () => {
       state.accumulatedSentence = [];
       renderSentenceDisplay();
-      updateCameraBrailleDisplay("Hello");
       window.audioEngine.speak("Conversation transcript cleared.");
     });
-
-    // Camera Braille Audio & Sonic Pulse Buttons
-    const btnSpeakBrailleCam = document.getElementById("btn-speak-braille-cam");
-    if (btnSpeakBrailleCam) {
-      btnSpeakBrailleCam.addEventListener("click", () => {
-        const targetText = getActiveCameraBrailleText();
-        const braille = window.BrailleEngine.translate(targetText);
-        window.audioEngine.playEarcon("braille_pulse");
-        window.audioEngine.speak(braille.spokenGuide, { interrupt: true, assertive: true });
-      });
-    }
-
-    const btnPulseBrailleCam = document.getElementById("btn-pulse-braille-cam");
-    if (btnPulseBrailleCam) {
-      btnPulseBrailleCam.addEventListener("click", () => {
-        const targetText = getActiveCameraBrailleText();
-        window.audioEngine.playBraillePulses(targetText, { speakAfter: true });
-      });
-    }
   }
 
   function updateCameraMultiLangDisplay(signObj) {
@@ -1234,28 +1186,7 @@
     }
   }
 
-  function getActiveCameraBrailleText() {
-    if (state.accumulatedSentence.length) {
-      return state.accumulatedSentence
-        .map((w) => w.replace(/\/.*/g, "").trim())
-        .join(" ");
-    }
-    if (state.currentDetectedSign) {
-      return state.currentDetectedSign.word.replace(/\/.*/g, "").trim();
-    }
-    return "Hello";
-  }
 
-  function updateCameraBrailleDisplay(rawText) {
-    if (!window.BrailleEngine) return;
-    const bData = window.BrailleEngine.translate(rawText);
-    const unicodeEl = document.getElementById("camera-braille-unicode");
-    const cellsEl = document.getElementById("camera-braille-cells");
-    if (unicodeEl) unicodeEl.textContent = bData.unicode || "⠀";
-    if (cellsEl) {
-      cellsEl.innerHTML = window.BrailleEngine.renderBrailleCellsHTML(rawText, { maxCells: 18 });
-    }
-  }
 
   function populateTargetSignSelect(selectEl) {
     const el = selectEl || document.getElementById("camera-target-sign");
@@ -2589,7 +2520,7 @@
     // Append to Sign-to-Text Sentence Builder & Update Natural Speech + 6-Dot Braille
     state.accumulatedSentence.push(signObj.word);
     renderSentenceDisplay();
-    updateCameraBrailleDisplay(getActiveCameraBrailleText());
+    
 
     const hiTr = window.getSignTranslation ? window.getSignTranslation(signObj, "hi") : null;
     const maiTr = window.getSignTranslation ? window.getSignTranslation(signObj, "mai") : null;
@@ -2820,7 +2751,7 @@
   }
 
   // =========================================================================
-  // MODULE 2: SPEECH-TO-ISL TRANSLATOR, ON-SCREEN AVATAR & 6-DOT BRAILLE
+  // MODULE 2: SPEECH-TO-ISL TRANSLATOR, ON-SCREEN AVATAR & SPEECH
   // =========================================================================
   function initTranslatorModule() {
     const inputEl = document.getElementById("isl-text-input");
@@ -2912,107 +2843,6 @@
       });
     }
 
-    // Stage Braille Audio & Sonic Pulse Buttons
-    const btnStageBraille = document.getElementById("btn-stage-read-braille");
-    if (btnStageBraille) {
-      btnStageBraille.addEventListener("click", () => {
-        const braille = window.BrailleEngine.translate(state.lastTranslatedText || "Hello");
-        window.audioEngine.playEarcon("braille_pulse");
-        window.audioEngine.speak(braille.spokenGuide, { interrupt: true, assertive: true });
-      });
-    }
-
-    const btnStagePulse = document.getElementById("btn-stage-pulse-braille");
-    if (btnStagePulse) {
-      btnStagePulse.addEventListener("click", () => {
-        window.audioEngine.playBraillePulses(state.lastTranslatedText || "Hello", {
-          speakAfter: true
-        });
-      });
-    }
-
-    // Initialize 6-Dot Perkins Braille Keyer Composer
-    initBrailleChordKeyer();
-  }
-
-  function initBrailleChordKeyer() {
-    const dotChks = document.querySelectorAll(".b-dot-chk");
-    const previewEl = document.getElementById("braille-chord-preview");
-    const btnAppend = document.getElementById("btn-braille-append");
-    const btnSpace = document.getElementById("btn-braille-space");
-    const btnClear = document.getElementById("btn-braille-clear-dots");
-    const inputEl = document.getElementById("isl-text-input");
-
-    const getChordInfo = () => {
-      const dots = [0, 0, 0, 0, 0, 0];
-      dotChks.forEach((chk) => {
-        const idx = parseInt(chk.value, 10) - 1;
-        if (chk.checked && idx >= 0 && idx < 6) dots[idx] = 1;
-      });
-      const key = dots.join("");
-      const ch = DOTS_TO_CHAR_MAP[key] || "";
-      let mask = 0;
-      for (let i = 0; i < 6; i++) {
-        if (dots[i]) mask |= 1 << i;
-      }
-      const uChar = String.fromCharCode(0x2800 + mask);
-      const activeNums = dots
-        .map((v, idx) => (v ? idx + 1 : null))
-        .filter(Boolean);
-      return { dots, ch, uChar, activeNums };
-    };
-
-    const updateChordPreview = () => {
-      const info = getChordInfo();
-      if (previewEl) {
-        const label = info.ch ? info.ch.toUpperCase() : info.activeNums.length ? "Pattern" : "Blank";
-        previewEl.textContent = `Preview: ${label} (${info.uChar})`;
-      }
-    };
-
-    dotChks.forEach((chk) => {
-      chk.addEventListener("change", () => {
-        updateChordPreview();
-        const info = getChordInfo();
-        window.audioEngine.playEarcon("focus");
-        if (info.ch) {
-          window.audioEngine.speak(`Braille dots ${info.activeNums.join(" ")}: Letter ${info.ch.toUpperCase()}`);
-        }
-      });
-    });
-
-    if (btnAppend) {
-      btnAppend.addEventListener("click", () => {
-        const info = getChordInfo();
-        if (!info.ch) {
-          window.audioEngine.playEarcon("quiz_wrong");
-          window.audioEngine.speak("Selected dot combination does not match a standard letter A to Z.");
-          return;
-        }
-        inputEl.value = (inputEl.value || "") + info.ch;
-        window.audioEngine.playEarcon("braille_pulse");
-        window.audioEngine.speak(`Added Braille letter ${info.ch.toUpperCase()}. Message is now: ${inputEl.value}`);
-        translateTextToISL(inputEl.value, { speakConfirmation: false, addToChat: false });
-      });
-    }
-
-    if (btnSpace) {
-      btnSpace.addEventListener("click", () => {
-        inputEl.value = (inputEl.value || "") + " ";
-        window.audioEngine.playEarcon("focus");
-        window.audioEngine.speak("Added space.");
-      });
-    }
-
-    if (btnClear) {
-      btnClear.addEventListener("click", () => {
-        dotChks.forEach((c) => {
-          c.checked = false;
-        });
-        updateChordPreview();
-        window.audioEngine.speak("Reset 6 Braille dots.");
-      });
-    }
   }
 
   function normalizeWordStem(word) {
@@ -3108,7 +2938,6 @@
 
     renderSequenceStrip();
     renderActiveStageSign({ speakTactile: false });
-    updateStageBrailleDisplay(cleaned);
 
     if (addToChat) {
       addTwoWayChatMessage({
@@ -3129,17 +2958,6 @@
       playStageSequence();
     } else if (autoPlayAvatar) {
       playStageSequence();
-    }
-  }
-
-  function updateStageBrailleDisplay(rawText) {
-    if (!window.BrailleEngine) return;
-    const bData = window.BrailleEngine.translate(rawText);
-    const unicodeEl = document.getElementById("stage-braille-unicode");
-    const cellsEl = document.getElementById("stage-braille-cells");
-    if (unicodeEl) unicodeEl.textContent = bData.unicode || "⠀";
-    if (cellsEl) {
-      cellsEl.innerHTML = window.BrailleEngine.renderBrailleCellsHTML(rawText, { maxCells: 20 });
     }
   }
 
@@ -3293,7 +3111,7 @@
         btn.addEventListener("click", () => {
           addTwoWayChatMessage({
             role: "deaf",
-            speakerLabel: "🤟 Deaf Partner (Signed Reply → Spoken Audio & Braille)",
+            speakerLabel: "🤟 Deaf Partner (Signed Reply → Spoken Audio)",
             text: sign.spokenPhrase,
             glossText: sign.word,
             signObj: sign,
@@ -3311,7 +3129,7 @@
       const primarySign = state.translatedSequence[0] || window.ISL_SIGNS[0];
       addTwoWayChatMessage({
         role: "deaf",
-        speakerLabel: "🤟 Deaf Partner (Typed/Signed → Spoken Audio & Braille)",
+        speakerLabel: "🤟 Deaf Partner (Typed/Signed → Spoken Audio)",
         text: val,
         glossText: state.translatedSequence.map((s) => s.word).join(" → "),
         signObj: primarySign,
@@ -3354,7 +3172,7 @@
     const blindSign = window.ISL_SIGNS.find((s) => s.id === "blind") || window.ISL_SIGNS[0];
     addTwoWayChatMessage({
       role: "blind",
-      speakerLabel: "🦯 Blind Speaker (Speech → ISL Avatar & Braille)",
+      speakerLabel: "🦯 Blind Speaker (Speech → ISL Avatar)",
       text: "Hello friend, I am visually impaired. Can you guide me?",
       glossText: "Hello / Namaste → Friend → Blind → Help",
       signObj: blindSign,
@@ -3362,7 +3180,7 @@
     });
     addTwoWayChatMessage({
       role: "deaf",
-      speakerLabel: "🤟 Deaf Partner (ISL Sign → Spoken Audio & Braille)",
+      speakerLabel: "🤟 Deaf Partner (ISL Sign → Spoken Audio)",
       text: "Hello! Namaste, Yes, I am happy to help guide you.",
       glossText: "Hello / Namaste → Yes → Help",
       signObj: helloSign,
@@ -3371,7 +3189,7 @@
   }
 
   function addTwoWayChatMessage({ role, speakerLabel, text, glossText, signObj, speakNow = true }) {
-    const braille = window.BrailleEngine.translate(text);
+    
     const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
     const msgObj = {
@@ -3380,8 +3198,8 @@
       speakerLabel,
       text,
       glossText: glossText || (signObj ? signObj.word : ""),
-      brailleUnicode: braille.unicode,
-      brailleSpoken: braille.spokenGuide,
+      brailleUnicode: "",
+      brailleSpoken: "",
       signObj: signObj || window.ISL_SIGNS[0],
       time: timeStr
     };
@@ -3440,24 +3258,16 @@
           <span class="chat-role-badge">${msg.speakerLabel} • ${msg.time}</span>
           <p class="chat-msg-text">"${msg.text}"</p>
           <p class="text-secondary"><strong>🤟 ISL Gloss:</strong> ${msg.glossText}</p>
-          <p class="chat-braille-line" aria-label="Braille output"><strong>⠿ 6-Dot Braille:</strong> ${msg.brailleUnicode}</p>
         </div>
         <div class="chat-bubble-actions">
           <button type="button" class="btn-primary btn-xs btn-chat-read" aria-label="Read message text and avatar pose aloud">
             🔊 Read Text &amp; Avatar
-          </button>
-          <button type="button" class="btn-outline btn-xs btn-chat-braille" aria-label="Read 6-dot Braille and play sonic pulses">
-            ⠿ Hear Braille
           </button>
         </div>
       `;
 
       item.querySelector(".btn-chat-read").addEventListener("click", () => {
         readChatMessageAloud(msg);
-      });
-
-      item.querySelector(".btn-chat-braille").addEventListener("click", () => {
-        window.audioEngine.playBraillePulses(msg.text, { speakAfter: true });
       });
 
       logEl.appendChild(item);
@@ -3532,7 +3342,6 @@
     const toRender = filtered.slice(0, limit);
 
     toRender.forEach((sign) => {
-      const bWord = window.BrailleEngine.translate(sign.word);
       const hiTr = window.getSignTranslation ? window.getSignTranslation(sign, "hi") : { word: sign.word };
       const maiTr = window.getSignTranslation ? window.getSignTranslation(sign, "mai") : { word: sign.word };
       const card = document.createElement("article");
@@ -3547,7 +3356,6 @@
               <h3 class="dict-card-title">${sign.emoji} ${sign.word}</h3>
               <p class="stage-meaning">"${sign.spokenPhrase}"</p>
               <p class="regional-phrase-highlight" style="font-size:0.82rem; margin:0.25rem 0;">🇮🇳 हिन्दी: ${hiTr.word} • मैथिली: ${maiTr.word}</p>
-              <p class="chat-braille-line">⠿ Braille: ${bWord.unicode}</p>
             </div>
           </div>
           <p class="dict-tactile-text"><strong>✋ Tactile Guide:</strong> ${sign.tactileGuide}</p>
@@ -3558,9 +3366,6 @@
           </button>
           <button type="button" class="btn-secondary btn-sm btn-hear-guide" aria-label="Listen to tactile hand guide and Avatar description for ${sign.word}">
             🔊 Guide
-          </button>
-          <button type="button" class="btn-outline btn-sm btn-hear-braille" aria-label="Listen to 6-dot Braille for ${sign.word}">
-            ⠿ Braille
           </button>
           <button type="button" class="btn-outline btn-sm btn-open-stage" aria-label="Show ${sign.word} on large Avatar stage">
             🧑‍🦯 Stage
@@ -3579,10 +3384,6 @@
         window.audioEngine.speakSign(sign, { interrupt: true, assertive: true });
       });
 
-      card.querySelector(".btn-hear-braille").addEventListener("click", () => {
-        window.audioEngine.playBraillePulses(sign.word, { speakAfter: true });
-      });
-
       card.querySelector(".btn-open-stage").addEventListener("click", () => {
         state.translatedSequence = [sign];
         state.lastTranslatedText = sign.word;
@@ -3590,7 +3391,6 @@
         switchTab("translator", { announce: false });
         renderSequenceStrip();
         renderActiveStageSign({ speakTactile: true });
-        updateStageBrailleDisplay(sign.word);
       });
 
       grid.appendChild(card);
@@ -3700,9 +3500,6 @@
         </div>
         <h3 class="qb-title">${item.title}</h3>
         <p class="qb-spoken">"${item.spoken}"</p>
-        <div class="qb-braille-row" aria-label="Braille: ${item.braille}">
-          <span class="qb-braille-text" aria-hidden="true">${item.braille}</span>
-        </div>
         <div class="qb-status-indicator" id="qb-status-${item.key.toLowerCase()}">
           <span class="qb-tap-hint">👆 Tap to Speak &amp; Sign</span>
         </div>
@@ -3741,7 +3538,6 @@
       state.currentStageIndex = 0;
       renderSequenceStrip();
       renderActiveStageSign({ speakTactile: false });
-      updateStageBrailleDisplay(item.spoken);
 
       const detVisual = document.getElementById("detected-visual");
       if (detVisual && window.renderISLAvatarSVG) {
@@ -3848,7 +3644,7 @@
       btnDictate.addEventListener("click", () => {
         document.getElementById("isl-text-input").focus();
         window.audioEngine.speak(
-          "Please type your message in the text box and press Enter to translate into Indian Sign Language and Braille."
+          "Please type your message in the text box and press Enter to translate into Indian Sign Language."
         );
       });
       return;
@@ -4040,14 +3836,7 @@
       speakCurrentContextSummary();
       return;
     }
-    if (cmd.includes("braille")) {
-      const text =
-        state.activeTab === "camera"
-          ? getActiveCameraBrailleText()
-          : state.lastTranslatedText || "Hello";
-      window.audioEngine.playBraillePulses(text, { speakAfter: true });
-      return;
-    }
+
     if (cmd.includes("add sign") || cmd.includes("train sign") || cmd.includes("custom sign")) {
       document.getElementById("btn-open-custom-sign")?.click();
       return;
@@ -4207,7 +3996,7 @@
   }
 
   /**
-   * Reads aloud the active text on screen, the on-screen ISL Avatar's posture & expression, and its 6-dot Braille summary in English and Hindi.
+   * Reads aloud the active text on screen and the on-screen ISL Avatar's posture & expression in English and Hindi.
    */
   function speakCurrentContextSummary() {
     window.audioEngine.playEarcon("avatar_read");
@@ -4219,9 +4008,8 @@
       const hiData = state.accumulatedSentence.length && window.naturalizeISLGlossHindi
         ? window.naturalizeISLGlossHindi(state.accumulatedSentence)
         : { hi: sign.hindiPhrase || sign.hindiWord, hiPhonetic: sign.hindiPhonetic || sign.spokenPhrase };
-      const braille = window.BrailleEngine.translate(getActiveCameraBrailleText());
       window.audioEngine.speakBilingual(
-        `Screen & Avatar Summary: ${window.getAvatarDescription(sign)} Text on screen: "${naturalSentence}". ${braille.spokenGuide}`,
+        `Screen & Avatar Summary: ${window.getAvatarDescription(sign)} Text on screen: "${naturalSentence}".`,
         hiData.hi,
         {
           hindiPhonetic: hiData.hiPhonetic,
@@ -4231,9 +4019,9 @@
       );
     } else if (state.activeTab === "translator") {
       const current = state.translatedSequence[state.currentStageIndex] || window.ISL_SIGNS[0];
-      const braille = window.BrailleEngine.translate(state.lastTranslatedText || current.word);
+      
       window.audioEngine.speakBilingual(
-        `Screen & Avatar Summary: Active translated text is "${state.lastTranslatedText}". ${window.getAvatarDescription(current)} ${braille.spokenGuide}`,
+        `Screen & Avatar Summary: Active translated text is "${state.lastTranslatedText}". ${window.getAvatarDescription(current)}`,
         current.hindiPhrase || current.hindiWord || current.spokenPhrase,
         {
           hindiPhonetic: current.hindiPhonetic || current.spokenPhrase,
