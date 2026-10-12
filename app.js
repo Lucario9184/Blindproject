@@ -428,7 +428,7 @@
     window.audioEngine.playEarcon("welcome");
     const enGuide =
       "Welcome to the website! Welcome to SanketSetu, the two-way Indian Sign Language, 6-Dot Braille, and Blind Audio Communication Bridge. " +
-      "Press W for English and Hindi Welcome, S to read the screen and ISL Avatar aloud, B for Braille audio, or Spacebar for voice commands.";
+      "Press W for English and Hindi Welcome, S to read the screen and ISL Avatar aloud, B for Ultra Contrast, or Spacebar for voice commands.";
     const hiGuide =
       "नमस्ते! वेबसाइट में आपका स्वागत है। संकेतसेतु भारतीय सांकेतिक भाषा, ६-डॉट ब्रेल और नेत्रहीन ऑडियो ब्रिज है। " +
       "बिना टेक्स्ट के संवाद करने के लिए सांकेतिक भाषा, वॉयस कमांड या ब्रेल मोड का उपयोग करें।";
@@ -3060,8 +3060,7 @@
           break;
         case "c":
         case "C":
-          e.preventDefault();
-          toggleUltraContrast();
+          // C key is now free for standard copy/paste commands (Cmd+C / Ctrl+C)
           break;
         case "s":
         case "S":
@@ -3071,11 +3070,10 @@
         case "b":
         case "B": {
           e.preventDefault();
-          const bText =
-            state.activeTab === "camera"
-              ? getActiveCameraBrailleText()
-              : state.lastTranslatedText || "Hello";
-          window.audioEngine.playBraillePulses(bText, { speakAfter: true });
+          // B key now toggles Ultra Contrast
+          if (!e.metaKey && !e.ctrlKey) {
+            toggleUltraContrast();
+          }
           break;
         }
         default: {
