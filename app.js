@@ -3131,10 +3131,23 @@
 
     // Render BOTH Expressive On-Screen ISL Avatar AND Articulated 5-Finger Hand Pose
     const avatarContainer = document.getElementById("stage-avatar-container");
-    if (avatarContainer) {
+    if (avatarContainer && window.renderISLAvatarSVG) {
       avatarContainer.innerHTML = window.renderISLAvatarSVG(signObj);
     }
-    document.getElementById("stage-svg-container").innerHTML = window.renderISLSignSVG(signObj);
+    const svgContainer = document.getElementById("stage-svg-container");
+    if (svgContainer && window.renderISLSignSVG) {
+      svgContainer.innerHTML = window.renderISLSignSVG(signObj);
+    }
+
+    // Also sync QuickBoard showcase stage if loaded
+    const qbAvatar = document.getElementById("qb-avatar-container");
+    if (qbAvatar && window.renderISLAvatarSVG) {
+      qbAvatar.innerHTML = window.renderISLAvatarSVG(signObj);
+    }
+    const qbHand = document.getElementById("qb-hand-container");
+    if (qbHand && window.renderISLSignSVG) {
+      qbHand.innerHTML = window.renderISLSignSVG(signObj);
+    }
 
     document.getElementById("stage-type-badge").textContent =
       signObj.category === "alphabet" ? "ISL Finger-Spell" : signObj.isCustom ? "Custom ISL Sign" : "ISL Sign";

@@ -397,7 +397,9 @@ window.ISL_SIGNS = [
 
 // Multi-word phrase idioms mapped directly to sign IDs for high-precision NLP translation
 window.ISL_PHRASE_IDIOMS = [
-  { phrase: "thank you very much", signIds: ["thankyou", "good"] },
+  { phrase: "thank you very much good friend", signIds: ["thankyou", "friend"] },
+  { phrase: "thank you very much", signIds: ["thankyou"] },
+  { phrase: "good friend", signIds: ["friend"] },
   { phrase: "thank you", signIds: ["thankyou"] },
   { phrase: "excuse me", signIds: ["sorry"] },
   { phrase: "i am sorry", signIds: ["sorry"] },
@@ -983,42 +985,63 @@ window.naturalizeISLGlossHindi = function (signWordsArray) {
  * Helper to draw an articulated 5-finger SVG hand given finger extension states [thumb, index, middle, ring, pinky]
  */
 function renderArticulatedHandSVG(fingerStates, { x = 100, y = 105, scale = 1, mirror = false, highlightColor = "#fde047" } = {}) {
-  const [th, idx, mid, rng, pnk] = fingerStates;
+  const [th, idx, mid, rng, pnk] = fingerStates || [1, 1, 1, 1, 1];
   const flip = mirror ? -1 : 1;
 
   const fConfigs = [
-    { val: idx, dx: -16, baseLen: 36 },
-    { val: mid, dx: -5, baseLen: 41 },
-    { val: rng, dx: 6, baseLen: 37 },
-    { val: pnk, dx: 17, baseLen: 29 }
+    { val: idx, dx: -15 * flip, baseLen: 34 },
+    { val: mid, dx: -5 * flip, baseLen: 38 },
+    { val: rng, dx: 5 * flip, baseLen: 35 },
+    { val: pnk, dx: 15 * flip, baseLen: 28 }
   ];
 
   const fingersSvg = fConfigs
     .map((f) => {
-      const extLen = f.val >= 0.75 ? f.baseLen : f.val >= 0.35 ? f.baseLen * 0.55 : 10;
-      const strokeCol = f.val >= 0.75 ? highlightColor : f.val >= 0.35 ? "#38bdf8" : "#64748b";
-      const fillCol = f.val >= 0.75 ? "#1e293b" : "#0f172a";
+      const isExt = f.val >= 0.75;
+      const isSemi = f.val >= 0.35 && f.val < 0.75;
+      const extLen = isExt ? f.baseLen : isSemi ? f.baseLen * 0.52 : 11;
       const fx = f.dx;
       const fy = -18 - extLen;
+      const strokeCol = isExt ? highlightColor : isSemi ? "#38bdf8" : "#94a3b8";
+      const fillCol = isExt ? "url(#avSkinGrad)" : isSemi ? "url(#avSkinGrad)" : "#1e293b";
       return `
-        <rect x="${fx - 4.5}" y="${fy}" width="9" height="${extLen + 6}" rx="4.5" fill="${fillCol}" stroke="${strokeCol}" stroke-width="2.5"/>
-        ${f.val >= 0.75 ? `<circle cx="${fx}" cy="${fy + 4}" r="2.2" fill="${highlightColor}"/>` : ""}
+        <g>
+          <rect x="${fx - 4}" y="${fy}" width="8" height="${extLen + 5}" rx="4" fill="${fillCol}" stroke="${strokeCol}" stroke-width="1.6" filter="url(#avDepthShadow)"/>
+          ${isExt ? `
+            <line x1="${fx - 2.5}" y1="${fy + extLen * 0.35}" x2="${fx + 2.5}" y2="${fy + extLen * 0.35}" stroke="#b45309" stroke-width="1" opacity="0.6"/>
+            <line x1="${fx - 2.5}" y1="${fy + extLen * 0.65}" x2="${fx + 2.5}" y2="${fy + extLen * 0.65}" stroke="#b45309" stroke-width="1" opacity="0.6"/>
+            <ellipse cx="${fx}" cy="${fy + 3}" rx="2.5" ry="2" fill="#ffffff" opacity="0.8"/>
+            <circle cx="${fx}" cy="${fy + 3}" r="1.5" fill="${highlightColor}"/>
+          ` : `
+            <ellipse cx="${fx}" cy="${fy + 4}" rx="3" ry="2" fill="#475569" opacity="0.8"/>
+          `}
+        </g>
       `;
     })
     .join("");
 
-  const thumbAngle = th >= 0.75 ? -38 * flip : th >= 0.35 ? -18 * flip : 12 * flip;
-  const thumbLen = th >= 0.75 ? 28 : 18;
-  const thumbStroke = th >= 0.75 ? highlightColor : "#64748b";
-  const thumbX = -24 * flip;
+  const isThumbExt = th >= 0.75;
+  const thumbAngle = isThumbExt ? -36 * flip : th >= 0.35 ? -18 * flip : 14 * flip;
+  const thumbLen = isThumbExt ? 26 : 16;
+  const thumbStroke = isThumbExt ? highlightColor : "#94a3b8";
+  const thumbFill = isThumbExt ? "url(#avSkinGrad)" : "#1e293b";
+  const thumbX = -22 * flip;
 
   return `
     <g transform="translate(${x}, ${y}) scale(${scale})">
-      <rect x="-14" y="16" width="28" height="16" rx="4" fill="#0f172a" stroke="#475569" stroke-width="2"/>
-      <rect x="-23" y="-20" width="46" height="40" rx="12" fill="#1e293b" stroke="#38bdf8" stroke-width="2.5"/>
+      <rect x="-14" y="16" width="28" height="14" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+      <rect x="-21" y="-18" width="42" height="36" rx="10" fill="url(#avSkinGrad)" stroke="#c2410c" stroke-width="1.5" filter="url(#avDepthShadow)"/>
+      <ellipse cx="${-10 * flip}" cy="1" rx="8" ry="11" fill="url(#avSkinGrad)" stroke="#b45309" stroke-width="1" opacity="0.7"/>
+      <path d="M ${-10 * flip} -8 Q ${0 * flip} 4 ${12 * flip} 8" fill="none" stroke="#b45309" stroke-width="1.2" opacity="0.5"/>
+      <path d="M ${-12 * flip} -2 Q ${-4 * flip} 8 ${8 * flip} 12" fill="none" stroke="#b45309" stroke-width="1" opacity="0.4"/>
       ${fingersSvg}
-      <g transform="translate(${thumbX}, 0) rotate(${thumbAngle})">
-        <rect x="-5" y="${-thumbLen}" width="10" height="${thumbLen + 6}" rx="5" fill="#1e293b" stroke="${thumbStroke}" stroke-width="2.5"/>
+      <g transform="translate(${thumbX}, 2) rotate(${thumbAngle})">
+        <rect x="-4.5" y="${-thumbLen}" width="9" height="${thumbLen + 4}" rx="4.5" fill="${thumbFill}" stroke="${thumbStroke}" stroke-width="1.6" filter="url(#avDepthShadow)"/>
+        ${isThumbExt ? `
+          <line x1="-2.5" y1="${-thumbLen * 0.5}" x2="2.5" y2="${-thumbLen * 0.5}" stroke="#b45309" stroke-width="1" opacity="0.6"/>
+          <ellipse cx="0" cy="${-thumbLen + 3}" rx="2.5" ry="2" fill="#ffffff" opacity="0.8"/>
+          <circle cx="0" cy="${-thumbLen + 3}" r="1.5" fill="${highlightColor}"/>
+        ` : ""}
       </g>
     </g>
   `;
@@ -1341,82 +1364,204 @@ window.getAvatarDescription = function (signObj) {
  * Generates an expressive On-Screen ISL Signing Avatar SVG (Upper Body + Facial Expression + Articulated Hands)
  */
 window.renderISLAvatarSVG = function (signObj) {
+  if (!signObj) return "";
   const label = signObj.letterChar || signObj.word.split(" ")[0].toUpperCase();
   const spec = getPoseVisualSpec(signObj);
   const isTwoHanded = spec.hands.length === 2;
+  const safeAria = (window.getAvatarDescription(signObj) || "").replace(/"/g, "&quot;");
 
-  // Facial mouth & eyebrow geometry based on expression
-  let mouthPath = "M 92 72 Q 100 79 108 72"; // warm smile
-  let browLeft = "M 85 52 Q 90 49 95 52";
-  let browRight = "M 105 52 Q 110 49 115 52";
+  // Facial mouth, eyelids, and eyebrow geometry based on expression
+  let mouthPath = "M 92 73 Q 100 81 108 73"; // warm smile
+  let teethPath = `<path d="M 94 73 Q 100 77 106 73 Z" fill="#ffffff" opacity="0.9"/>`;
+  let browLeft = "M 82 50 Q 88 47 94 50";
+  let browRight = "M 106 50 Q 112 47 118 50";
+  let eyeSquint = false;
+
   if (spec.expression === "question") {
-    mouthPath = "M 95 73 Q 100 70 105 73";
-    browLeft = "M 85 49 Q 90 44 95 49";
-    browRight = "M 105 49 Q 110 44 115 49";
+    mouthPath = "M 94 74 Q 100 70 106 74";
+    teethPath = "";
+    browLeft = "M 82 46 Q 88 41 94 46";
+    browRight = "M 106 52 Q 112 51 118 53";
   } else if (spec.expression === "urgent") {
-    mouthPath = "M 93 75 Q 100 69 107 75";
-    browLeft = "M 85 48 L 95 52";
-    browRight = "M 115 48 L 105 52";
+    mouthPath = "M 93 76 Q 100 70 107 76";
+    teethPath = "";
+    browLeft = "M 82 48 L 94 53";
+    browRight = "M 118 48 L 106 53";
+    eyeSquint = true;
   }
 
   const pos1 = spec.avatarPos[0] || { x: 138, y: 112 };
-  const pos2 = spec.avatarPos[1] || { x: 62, y: 112 };
+  const pos2 = isTwoHanded ? (spec.avatarPos[1] || { x: 62, y: 112 }) : { x: 60, y: 168 };
+
+  // Calculate natural anatomical 3D elbow coordinates
+  const ex1 = (136 + pos1.x) / 2 + 16;
+  const ey1 = Math.max((118 + pos1.y) / 2 + 10, 130);
+
+  const ex2 = isTwoHanded ? (64 + pos2.x) / 2 - 16 : 50;
+  const ey2 = isTwoHanded ? Math.max((118 + pos2.y) / 2 + 10, 130) : 144;
 
   return `
-    <svg viewBox="0 0 200 200" width="100%" height="100%" role="img" aria-label="${window.getAvatarDescription(signObj)}">
+    <svg viewBox="0 0 200 200" width="100%" height="100%" role="img" aria-label="${safeAria}">
       <defs>
-        <radialGradient id="avatarHalo" cx="50%" cy="45%" r="52%">
-          <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.26"/>
-          <stop offset="100%" stop-color="#090d16" stop-opacity="0"/>
+        <!-- 3D Studio Rim Background -->
+        <radialGradient id="avBg3D" cx="50%" cy="40%" r="65%">
+          <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.32"/>
+          <stop offset="55%" stop-color="#0c1425" stop-opacity="0.9"/>
+          <stop offset="100%" stop-color="#050811" stop-opacity="1"/>
         </radialGradient>
+
+        <!-- 3D Volumetric Warm Skin Radial Gradient -->
+        <radialGradient id="avSkinGrad" cx="38%" cy="32%" r="68%">
+          <stop offset="0%" stop-color="#fed7aa"/>
+          <stop offset="42%" stop-color="#fba86b"/>
+          <stop offset="82%" stop-color="#d97706"/>
+          <stop offset="100%" stop-color="#9a3412"/>
+        </radialGradient>
+
+        <!-- 3D Tech Jacket Linear Gradient -->
+        <linearGradient id="avJacketGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#334155"/>
+          <stop offset="40%" stop-color="#1e293b"/>
+          <stop offset="100%" stop-color="#0f172a"/>
+        </linearGradient>
+
+        <!-- 3D Hair Volumetric Gradient -->
+        <linearGradient id="avHairGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#475569"/>
+          <stop offset="35%" stop-color="#1e293b"/>
+          <stop offset="100%" stop-color="#020617"/>
+        </linearGradient>
+
+        <!-- 3D Iris Sclera Gradient -->
+        <linearGradient id="avIrisGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#38bdf8"/>
+          <stop offset="70%" stop-color="#0284c7"/>
+          <stop offset="100%" stop-color="#0369a1"/>
+        </linearGradient>
+
+        <!-- 3D Arm Volumetric Cylinders -->
+        <linearGradient id="avArmRight" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#475569"/>
+          <stop offset="45%" stop-color="#1e293b"/>
+          <stop offset="100%" stop-color="#0f172a"/>
+        </linearGradient>
+
+        <linearGradient id="avArmLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="55%" stop-color="#1e293b"/>
+          <stop offset="100%" stop-color="#475569"/>
+        </linearGradient>
+
+        <!-- 3D Depth Shadow Filter -->
+        <filter id="avDepthShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="3.5" stdDeviation="3.5" flood-color="#000000" flood-opacity="0.6"/>
+        </filter>
       </defs>
-      <rect width="200" height="200" rx="18" fill="#090d16"/>
-      <circle cx="100" cy="92" r="78" fill="url(#avatarHalo)" stroke="#1e293b" stroke-width="1.5"/>
+
+      <!-- Stage Backdrop -->
+      <rect width="200" height="200" rx="16" fill="url(#avBg3D)"/>
+      <circle cx="100" cy="88" r="76" fill="none" stroke="#38bdf8" stroke-width="1.2" stroke-opacity="0.25" stroke-dasharray="4 4"/>
 
       <!-- Top Motion Banner -->
-      <rect x="20" y="6" width="160" height="19" rx="9.5" fill="#121929" stroke="#38bdf8" stroke-width="1"/>
-      <text x="100" y="19" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="9.5" fill="#7dd3fc">
-        AVATAR: ${spec.motion}
+      <rect x="18" y="7" width="164" height="20" rx="10" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2"/>
+      <circle cx="28" cy="17" r="3" fill="#22c55e">
+        <animate attributeName="opacity" values="1;0.4;1" dur="1.5s" repeatCount="indefinite"/>
+      </circle>
+      <text x="102" y="21" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="9" fill="#7dd3fc" letter-spacing="0.5">
+        3D AVATAR SIGN: ${spec.motion.toUpperCase()}
       </text>
 
-      <!-- Avatar Torso & Shoulders -->
-      <path d="M 48 152 C 48 112, 72 98, 100 98 C 128 98, 152 112, 152 152 Z" fill="#1e293b" stroke="#475569" stroke-width="2.5"/>
-      <!-- Neck & Collar -->
-      <rect x="91" y="84" width="18" height="16" rx="6" fill="#cbd5e1"/>
-      <path d="M 84 98 L 100 114 L 116 98" fill="none" stroke="#38bdf8" stroke-width="2"/>
+      <!-- 3D Torso & Shoulders -->
+      <g filter="url(#avDepthShadow)">
+        <path d="M 46 156 C 46 112, 70 96, 100 96 C 130 96, 154 112, 154 156 Z" fill="url(#avJacketGrad)" stroke="#475569" stroke-width="2"/>
+        <path d="M 76 98 L 94 136 L 100 156 L 106 136 L 124 98" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 86 94 L 100 114 L 114 94 Z" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+        <line x1="100" y1="114" x2="100" y2="156" stroke="#475569" stroke-width="1.5"/>
+      </g>
 
-      <!-- Avatar Head -->
-      <circle cx="100" cy="62" r="24" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>
-      <!-- Hair / Headband Accent -->
-      <path d="M 77 56 C 80 36, 120 36, 123 56" fill="none" stroke="#fde047" stroke-width="3" stroke-linecap="round"/>
-      <!-- Eyebrows & Eyes -->
-      <path d="${browLeft}" fill="none" stroke="#fde047" stroke-width="2" stroke-linecap="round"/>
-      <path d="${browRight}" fill="none" stroke="#fde047" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="90" cy="58" r="2.8" fill="#f8fafc"/>
-      <circle cx="110" cy="58" r="2.8" fill="#f8fafc"/>
-      <!-- Mouth -->
-      <path d="${mouthPath}" fill="none" stroke="#fde047" stroke-width="2.2" stroke-linecap="round"/>
+      <!-- 3D Neck -->
+      <g>
+        <rect x="91" y="80" width="18" height="20" rx="6" fill="url(#avSkinGrad)" stroke="#b45309" stroke-width="1.2"/>
+        <ellipse cx="100" cy="82" rx="10" ry="3.5" fill="#78350f" opacity="0.4"/>
+      </g>
 
-      <!-- Arm Guides from Shoulders to Active Hand Positions -->
-      ${
-        isTwoHanded
-          ? `
-            <path d="M 62 118 Q 66 134 ${pos1.x} ${pos1.y}" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-dasharray="3 2"/>
-            <path d="M 138 118 Q 134 134 ${pos2.x} ${pos2.y}" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-dasharray="3 2"/>
-            ${renderArticulatedHandSVG(spec.hands[0], { x: pos1.x, y: pos1.y, scale: 0.56, mirror: true })}
-            ${renderArticulatedHandSVG(spec.hands[1], { x: pos2.x, y: pos2.y, scale: 0.56, mirror: false })}
-          `
-          : `
-            <path d="M 138 118 Q 146 128 ${pos1.x} ${pos1.y}" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-dasharray="3 2"/>
-            ${renderArticulatedHandSVG(spec.hands[0], { x: pos1.x, y: pos1.y, scale: 0.62, mirror: false })}
-          `
-      }
+      <!-- 3D Head & Face -->
+      <g filter="url(#avDepthShadow)">
+        <ellipse cx="73" cy="62" rx="4.5" ry="8" fill="url(#avSkinGrad)" stroke="#b45309" stroke-width="1.2"/>
+        <ellipse cx="127" cy="62" rx="4.5" ry="8" fill="url(#avSkinGrad)" stroke="#b45309" stroke-width="1.2"/>
+        <ellipse cx="73.5" cy="62" rx="2" ry="4" fill="#9a3412" opacity="0.4"/>
+        <ellipse cx="126.5" cy="62" rx="2" ry="4" fill="#9a3412" opacity="0.4"/>
 
-      <!-- Bottom High-Contrast ISL Label -->
-      <rect x="12" y="156" width="176" height="32" rx="8" fill="#38bdf8"/>
-      <text x="100" y="177" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="14" fill="#000000">
-        ${signObj.emoji || "🤟"} ISL: ${label}
-      </text>
+        <ellipse cx="100" cy="62" rx="24" ry="26" fill="url(#avSkinGrad)" stroke="#c2410c" stroke-width="1.5"/>
+        <ellipse cx="85" cy="66" rx="6" ry="3.5" fill="#f43f5e" opacity="0.18"/>
+        <ellipse cx="115" cy="66" rx="6" ry="3.5" fill="#f43f5e" opacity="0.18"/>
+
+        <path d="M 73 54 C 74 30, 126 30, 127 54 C 122 40, 108 34, 100 34 C 92 34, 78 40, 73 54 Z" fill="url(#avHairGrad)" stroke="#38bdf8" stroke-width="1.5"/>
+        <path d="M 80 44 C 88 38, 112 38, 120 44" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+
+        <path d="${browLeft}" fill="none" stroke="#1e293b" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="${browRight}" fill="none" stroke="#1e293b" stroke-width="2.6" stroke-linecap="round"/>
+
+        <ellipse cx="88" cy="58" rx="${eyeSquint ? 6 : 7}" ry="${eyeSquint ? 3 : 5.2}" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+        <circle cx="88.5" cy="58" r="3.2" fill="url(#avIrisGrad)"/>
+        <circle cx="88.5" cy="58" r="1.6" fill="#0f172a"/>
+        <circle cx="87.2" cy="56.8" r="1.1" fill="#ffffff"/>
+        <circle cx="89.6" cy="59" r="0.6" fill="#ffffff"/>
+        <path d="M 81 56 Q 88 52 95 56" fill="none" stroke="#1e293b" stroke-width="1.4" stroke-linecap="round"/>
+
+        <ellipse cx="112" cy="58" rx="${eyeSquint ? 6 : 7}" ry="${eyeSquint ? 3 : 5.2}" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+        <circle cx="111.5" cy="58" r="3.2" fill="url(#avIrisGrad)"/>
+        <circle cx="111.5" cy="58" r="1.6" fill="#0f172a"/>
+        <circle cx="110.2" cy="56.8" r="1.1" fill="#ffffff"/>
+        <circle cx="112.6" cy="59" r="0.6" fill="#ffffff"/>
+        <path d="M 105 56 Q 112 52 119 56" fill="none" stroke="#1e293b" stroke-width="1.4" stroke-linecap="round"/>
+
+        <path d="M 100 58 L 98 67 L 102 67" fill="none" stroke="#b45309" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="100" cy="67" r="1.5" fill="#d97706" opacity="0.6"/>
+
+        ${teethPath}
+        <path d="${mouthPath}" fill="none" stroke="#b91c1c" stroke-width="2.4" stroke-linecap="round"/>
+      </g>
+
+      <!-- 3D Volumetric Arms & Elbow Kinematics -->
+      <g filter="url(#avDepthShadow)">
+        ${
+          isTwoHanded
+            ? `
+              <path d="M 64 112 Q ${ex2} ${ey2 - 12} ${ex2} ${ey2}" stroke="url(#avArmLeft)" stroke-width="16" stroke-linecap="round" fill="none"/>
+              <path d="M ${ex2} ${ey2} Q ${(ex2 + pos2.x) / 2} ${(ey2 + pos2.y) / 2} ${pos2.x} ${pos2.y}" stroke="url(#avArmLeft)" stroke-width="14" stroke-linecap="round" fill="none"/>
+              <circle cx="${ex2}" cy="${ey2}" r="7" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+              <ellipse cx="${pos2.x}" cy="${pos2.y + 10}" rx="8" ry="4" fill="#38bdf8" opacity="0.8"/>
+              <g>
+                <animateTransform attributeName="transform" type="translate" values="0 0; 0 -2.5; 0 0" dur="1.8s" repeatCount="indefinite"/>
+                ${renderArticulatedHandSVG(spec.hands[1], { x: pos2.x, y: pos2.y, scale: 0.58, mirror: true })}
+              </g>
+            `
+            : `
+              <path d="M 62 112 Q 50 135 50 144" stroke="url(#avArmLeft)" stroke-width="15" stroke-linecap="round" fill="none"/>
+              <path d="M 50 144 Q 54 158 60 166" stroke="url(#avArmLeft)" stroke-width="13" stroke-linecap="round" fill="none"/>
+              <circle cx="50" cy="144" r="6" fill="#1e293b"/>
+              ${renderArticulatedHandSVG([1, 1, 1, 1, 1], { x: 60, y: 170, scale: 0.44, mirror: true })}
+            `
+        }
+
+        <path d="M 136 112 Q ${ex1} ${ey1 - 12} ${ex1} ${ey1}" stroke="url(#avArmRight)" stroke-width="16" stroke-linecap="round" fill="none"/>
+        <path d="M ${ex1} ${ey1} Q ${(ex1 + pos1.x) / 2} ${(ey1 + pos1.y) / 2} ${pos1.x} ${pos1.y}" stroke="url(#avArmRight)" stroke-width="14" stroke-linecap="round" fill="none"/>
+        <circle cx="${ex1}" cy="${ey1}" r="7" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+        <ellipse cx="${pos1.x}" cy="${pos1.y + 10}" rx="8" ry="4" fill="#38bdf8" opacity="0.8"/>
+        <g>
+          <animateTransform attributeName="transform" type="translate" values="0 0; 0 -2.5; 0 0" dur="1.8s" repeatCount="indefinite"/>
+          ${renderArticulatedHandSVG(spec.hands[0], { x: pos1.x, y: pos1.y, scale: 0.58, mirror: false })}
+        </g>
+      </g>
+
+      <!-- Bottom High-Contrast 3D ISL Gloss Label -->
+      <g filter="url(#avDepthShadow)">
+        <rect x="12" y="156" width="176" height="33" rx="10" fill="#0284c7" stroke="#38bdf8" stroke-width="1.5"/>
+        <text x="100" y="178" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="13.5" fill="#ffffff" letter-spacing="0.5">
+          ${signObj.emoji || "🤟"} ISL: ${label}
+        </text>
+      </g>
     </svg>
   `;
 };
