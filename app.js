@@ -50,6 +50,9 @@
     lastTranslatedText: "Hello friend thank you",
     currentStageIndex: 0,
     stageTimer: null,
+    avatarSpeed: 1400,
+    avatarLoop: false,
+    avatarAudioSync: true,
     // Two-Way Conversation Hub State
     chatMessages: [],
     // Dictionary & Quiz State
@@ -2791,43 +2794,120 @@
       });
     });
 
-    document.getElementById("btn-stage-prev").addEventListener("click", () => {
-      window.audioEngine.stopSpeaking();
-      stopStageAutoPlay();
-      if (state.translatedSequence.length) {
-        state.currentStageIndex =
-          (state.currentStageIndex - 1 + state.translatedSequence.length) %
-          state.translatedSequence.length;
-        renderActiveStageSign({ speakTactile: false });
-      }
+    const btnPrev = document.getElementById("btn-stage-prev");
+    if (btnPrev) {
+      btnPrev.addEventListener("click", () => {
+        window.audioEngine.stopSpeaking();
+        stopStageAutoPlay();
+        if (state.translatedSequence.length) {
+          state.currentStageIndex =
+            (state.currentStageIndex - 1 + state.translatedSequence.length) %
+            state.translatedSequence.length;
+          renderActiveStageSign({ speakTactile: false });
+        }
+      });
+    }
+
+    const btnNext = document.getElementById("btn-stage-next");
+    if (btnNext) {
+      btnNext.addEventListener("click", () => {
+        window.audioEngine.stopSpeaking();
+        stopStageAutoPlay();
+        if (state.translatedSequence.length) {
+          state.currentStageIndex =
+            (state.currentStageIndex + 1) % state.translatedSequence.length;
+          renderActiveStageSign({ speakTactile: false });
+        }
+      });
+    }
+
+    const btnPlay = document.getElementById("btn-stage-play");
+    if (btnPlay) {
+      btnPlay.addEventListener("click", () => {
+        if (state.stageTimer) {
+          stopStageAutoPlay();
+        } else {
+          playStageSequence();
+        }
+      });
+    }
+
+    const btnLoop = document.getElementById("btn-stage-loop");
+    if (btnLoop) {
+      btnLoop.addEventListener("click", () => {
+        state.avatarLoop = !state.avatarLoop;
+        btnLoop.textContent = state.avatarLoop ? "🔁 Loop: ON" : "🔁 Loop: OFF";
+        btnLoop.classList.toggle("btn-primary", state.avatarLoop);
+        btnLoop.classList.toggle("btn-outline", !state.avatarLoop);
+      });
+    }
+
+    const btnAudioSync = document.getElementById("btn-stage-audiosync");
+    if (btnAudioSync) {
+      btnAudioSync.addEventListener("click", () => {
+        state.avatarAudioSync = !state.avatarAudioSync;
+        btnAudioSync.textContent = state.avatarAudioSync ? "🔊 Voice: ON" : "🔇 Voice: OFF";
+        btnAudioSync.classList.toggle("btn-secondary", state.avatarAudioSync);
+        btnAudioSync.classList.toggle("btn-outline", !state.avatarAudioSync);
+      });
+    }
+
+    document.querySelectorAll(".btn-speed-pill").forEach((pill) => {
+      pill.addEventListener("click", () => {
+        document.querySelectorAll(".btn-speed-pill").forEach((p) => p.classList.remove("active"));
+        pill.classList.add("active");
+        const spd = pill.dataset.speed;
+        if (spd === "slow") state.avatarSpeed = 2200;
+        else if (spd === "fast") state.avatarSpeed = 850;
+        else state.avatarSpeed = 1400;
+
+        if (state.stageTimer) {
+          playStageSequence();
+        }
+      });
     });
 
-    document.getElementById("btn-stage-next").addEventListener("click", () => {
-      window.audioEngine.stopSpeaking();
-      stopStageAutoPlay();
-      if (state.translatedSequence.length) {
-        state.currentStageIndex =
-          (state.currentStageIndex + 1) % state.translatedSequence.length;
-        renderActiveStageSign({ speakTactile: false });
-      }
-    });
-
-    document.getElementById("btn-stage-play").addEventListener("click", () => {
-      playStageSequence();
-    });
-
-    document.getElementById("btn-stage-describe").addEventListener("click", () => {
-      const current = state.translatedSequence[state.currentStageIndex];
-      if (current) {
-        window.audioEngine.playEarcon("avatar_read");
-        window.audioEngine.speakSignInLang(current, state.signOutputLang, {
-          includeEnglishGuide: true,
-          guidePrefix: window.getAvatarDescription(current),
-          interrupt: true,
-          assertive: true
+    const btnCopyGloss = document.getElementById("btn-copy-gloss");
+    if (btnCopyGloss) {
+      btnCopyGloss.addEventListener("click", () => {
+        if (!state.translatedSequence || !state.translatedSequence.length) return;
+        const glossStr = state.translatedSequence
+          .map((s) => `[${s.word.toUpperCase()}${s.hindiWord ? " / " + s.hindiWord : ""}]`)
+          .join(" → ");
+        navigator.clipboard.writeText(glossStr).then(() => {
+          btnCopyGloss.textContent = "✅ Copied!";
+          setTimeout(() => { btnCopyGloss.textContent = "📋 Copy Gloss"; }, 2000);
+        }).catch(() => {
+          btnCopyGloss.textContent = "📋 Copy Gloss";
         });
-      }
-    });
+      });
+    }
+
+    if (inputEl) {
+      const matchBadge = document.getElementById("text-match-count");
+      inputEl.addEventListener("input", () => {
+        const words = (inputEl.value || "").trim().split(/\s+/).filter(Boolean);
+        if (matchBadge) {
+          matchBadge.textContent = words.length > 0 ? `⚡ ${words.length} Word${words.length > 1 ? "s" : ""} to Sign` : "⚡ Real-Time ISL Parser";
+        }
+      });
+    }
+
+    const btnStageDescribe = document.getElementById("btn-stage-describe");
+    if (btnStageDescribe) {
+      btnStageDescribe.addEventListener("click", () => {
+        const current = state.translatedSequence[state.currentStageIndex];
+        if (current) {
+          window.audioEngine.playEarcon("avatar_read");
+          window.audioEngine.speakSignInLang(current, state.signOutputLang, {
+            includeEnglishGuide: true,
+            guidePrefix: window.getAvatarDescription(current),
+            interrupt: true,
+            assertive: true
+          });
+        }
+      });
+    }
 
     const btnReadAllStage = document.getElementById("btn-stage-read-everything");
     if (btnReadAllStage) {
@@ -3164,9 +3244,18 @@
     }
     document.getElementById("stage-tactile-desc").textContent = signObj.tactileGuide;
 
+    const karaokeEl = document.getElementById("stage-karaoke-count");
+    if (karaokeEl && state.translatedSequence.length) {
+      karaokeEl.textContent = `Word ${state.currentStageIndex + 1} of ${state.translatedSequence.length}: ${signObj.word}`;
+    }
+
     const cards = document.querySelectorAll(".seq-card");
     cards.forEach((c, idx) => {
-      c.classList.toggle("active", idx === state.currentStageIndex);
+      const isActive = idx === state.currentStageIndex;
+      c.classList.toggle("active", isActive);
+      if (isActive && c.scrollIntoView) {
+        c.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      }
     });
 
     if (speakTactile) {
@@ -3216,14 +3305,39 @@
     state.currentStageIndex = 0;
     renderActiveStageSign({ speakTactile: false });
 
+    const playBtn = document.getElementById("btn-stage-play");
+    if (playBtn) playBtn.textContent = "⏸ Pause Avatar";
+    const stageBox = document.getElementById("isl-active-stage");
+    if (stageBox) stageBox.classList.add("avatar-signing-active");
+
+    const speedMs = state.avatarSpeed || 1400;
+
+    if (state.avatarAudioSync && state.translatedSequence[0]) {
+      window.audioEngine.speakSignInLang(state.translatedSequence[0], state.signOutputLang, { interrupt: false });
+    }
+
     state.stageTimer = setInterval(() => {
       if (state.currentStageIndex < state.translatedSequence.length - 1) {
         state.currentStageIndex += 1;
         renderActiveStageSign({ speakTactile: false });
+        if (state.avatarAudioSync) {
+          const curSign = state.translatedSequence[state.currentStageIndex];
+          if (curSign) {
+            window.audioEngine.speakSignInLang(curSign, state.signOutputLang, { interrupt: false });
+          }
+        }
       } else {
-        stopStageAutoPlay();
+        if (state.avatarLoop) {
+          state.currentStageIndex = 0;
+          renderActiveStageSign({ speakTactile: false });
+          if (state.avatarAudioSync && state.translatedSequence[0]) {
+            window.audioEngine.speakSignInLang(state.translatedSequence[0], state.signOutputLang, { interrupt: false });
+          }
+        } else {
+          stopStageAutoPlay();
+        }
       }
-    }, 1400);
+    }, speedMs);
   }
 
   function stopStageAutoPlay() {
@@ -3231,15 +3345,19 @@
       clearInterval(state.stageTimer);
       state.stageTimer = null;
     }
+    const playBtn = document.getElementById("btn-stage-play");
+    if (playBtn) playBtn.textContent = "▶ Play Avatar";
+    const stageBox = document.getElementById("isl-active-stage");
+    if (stageBox) stageBox.classList.remove("avatar-signing-active");
   }
 
   // =========================================================================
-  // TWO-WAY LIVE COMMUNICATION SYSTEM (DEAF SIGNER ⇄ BLIND LISTENER)
+  // TWO-WAY LIVE COMMUNICATION SYSTEM (GUARDED SAFELY)
   // =========================================================================
   function initTwoWayBridgeModule() {
     const deafInput = document.getElementById("deaf-partner-input");
-    const btnDeafSend = document.getElementById("btn-deaf-send-reply");
     const quickChipsContainer = document.getElementById("deaf-quick-sign-chips");
+    if (!deafInput && !quickChipsContainer) return;
     const btnReadLast = document.getElementById("btn-read-last-chat");
     const btnClearChat = document.getElementById("btn-clear-chat");
 

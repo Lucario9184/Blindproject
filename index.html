@@ -224,7 +224,7 @@
                 <span class="tab-num" aria-hidden="true">02</span>
                 <span class="tab-label">
                   <strong>Speech &amp; Text → 3D Signing Avatar</strong>
-                  <small>Speak/Type → Animated ISL Avatar &amp; Chat</small>
+                  <small>Speak/Type → Animated ISL 3D Avatar &amp; Voice</small>
                 </span>
               </button>
 
@@ -459,23 +459,31 @@
                 </div>
 
                 <div class="input-group">
-                  <label for="isl-text-input" class="field-label">Type Message to Sign on 3D Avatar:</label>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <label for="isl-text-input" class="field-label" style="margin-bottom:0;">Type Message to Sign on 3D Avatar:</label>
+                    <span id="text-match-count" class="badge-pill" style="font-size:11px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.3);color:var(--ink-1);font-weight:600;">⚡ Real-Time ISL Parser</span>
+                  </div>
                   <div class="text-input-row">
                     <input type="text" id="isl-text-input" class="text-input" placeholder="e.g., Hello friend how are you please help me" value="Hello friend thank you" />
                     <button type="button" id="btn-translate-text" class="btn-primary">Sign on Avatar 🤟</button>
-                    <button type="button" id="btn-speak-text-audio" class="btn-secondary" title="Listen to written text spoken aloud">🔊 Listen Audio</button>
+                    <button type="button" id="btn-speak-text-audio" class="btn-secondary" title="Listen to written text spoken aloud in selected regional voice">🔊 Speak Voice</button>
+                    <button type="button" id="btn-copy-gloss" class="btn-outline" title="Copy parsed ISL gloss sequence to clipboard">📋 Copy Gloss</button>
                   </div>
                 </div>
 
                 <div class="preset-sentences">
-                  <span class="field-label">Quick Conversation Phrases (Click to Sign):</span>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span class="field-label" style="margin-bottom:0;">Quick Conversation Phrases (Click to Sign):</span>
+                  </div>
                   <div class="chip-row" role="group">
                     <button type="button" class="chip-btn" data-sentence="Hello friend how are you">👋 "Hello friend, how are you?"</button>
+                    <button type="button" class="chip-btn" data-sentence="Thank you very much good friend">🙏 "Thank you very much, good friend"</button>
                     <button type="button" class="chip-btn" data-sentence="Please help me I am deaf">🧏 "Please help me, I am Deaf"</button>
                     <button type="button" class="chip-btn" data-sentence="Where is water and food">💧 "Where is water and food?"</button>
-                    <button type="button" class="chip-btn" data-sentence="Thank you very much good friend">🙏 "Thank you very much, good friend"</button>
+                    <button type="button" class="chip-btn" data-sentence="Where is the restroom washroom">🚻 "Where is the restroom?"</button>
                     <button type="button" class="chip-btn" data-sentence="Call doctor emergency help">🏥 "Call doctor, emergency help!"</button>
                     <button type="button" class="chip-btn" data-sentence="Please repeat slow I understand">🐢 "Please repeat slowly, I understand"</button>
+                    <button type="button" class="chip-btn" data-sentence="Good morning welcome namaste">☀️ "Good morning, welcome namaste"</button>
                   </div>
                 </div>
               </div>
@@ -491,7 +499,18 @@
                     <button type="button" id="btn-stage-prev" class="btn-outline btn-sm">⏮ Prev</button>
                     <button type="button" id="btn-stage-play" class="btn-primary btn-sm">▶ Play Avatar</button>
                     <button type="button" id="btn-stage-next" class="btn-outline btn-sm">Next ⏭</button>
-                    <button type="button" id="btn-stage-describe" class="btn-secondary btn-sm">🗣️ Speak Regional</button>
+                    <button type="button" id="btn-stage-loop" class="btn-outline btn-sm" title="Toggle repeat gesture loop">🔁 Loop: OFF</button>
+                    <button type="button" id="btn-stage-audiosync" class="btn-secondary btn-sm" title="Toggle audio spoken synchronized with avatar">🔊 Voice: ON</button>
+                  </div>
+                </div>
+
+                <!-- Avatar Speed Controller Strip -->
+                <div class="avatar-speed-strip">
+                  <span class="speed-label">⏱️ Avatar Animation Speed:</span>
+                  <div class="speed-btn-group" role="group" aria-label="Avatar animation speed">
+                    <button type="button" class="btn-speed-pill" data-speed="slow" title="Practice gestures in slow motion">🐢 0.6x (Practice)</button>
+                    <button type="button" class="btn-speed-pill active" data-speed="normal" title="Normal fluid signing speed">⚡ 1.0x (Normal)</button>
+                    <button type="button" class="btn-speed-pill" data-speed="fast" title="Fast fluent signing speed">🚀 1.5x (Fast)</button>
                   </div>
                 </div>
 
@@ -522,9 +541,12 @@
                   </div>
                 </div>
 
-                <!-- Sequence Breakdown Strip -->
+                <!-- Sequence Breakdown Strip with Karaoke Progress -->
                 <div class="sequence-strip-wrapper">
-                  <span class="field-label">ISL Gloss Sequence (Click any word to view sign):</span>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span class="field-label" style="margin-bottom:0;">ISL Gloss Sequence (Click word to view sign):</span>
+                    <span id="stage-karaoke-count" class="badge-pill" style="font-size:11px;font-family:var(--font-jetbrains-mono),monospace;">Word 1 of 3</span>
+                  </div>
                   <div id="isl-sequence-strip" class="sequence-strip" role="list"></div>
                 </div>
 
@@ -540,31 +562,6 @@
                   <div id="stage-multilang-grid" class="multilang-grid" role="group"></div>
                 </div>
               </div>
-            </div>
-
-            <!-- Two-Way Deaf Signer <-> Regional Speaker Conversation Hub -->
-            <div class="card twoway-hub-card" id="twoway-bridge-section">
-              <div class="twoway-header">
-                <div>
-                  <span class="sec-tag">🔄 TWO-WAY CONVERSATION CHAT</span>
-                  <h3 style="font-size:20px;font-weight:600;margin-top:4px;">Deaf Signer (ISL) ⇄ Regional Language Speaker</h3>
-                  <p style="font-size:13.5px;color:var(--ink-2);">Tap quick ISL sign replies or type below — every reply is spoken aloud in the selected regional voice and animated on the 3D Avatar.</p>
-                </div>
-                <div class="twoway-header-actions" style="display:flex;gap:8px;">
-                  <button type="button" id="btn-read-last-chat" class="btn-primary btn-sm">🔊 Replay Latest</button>
-                  <button type="button" id="btn-clear-chat" class="btn-outline btn-sm">🗑️ Clear Chat</button>
-                </div>
-              </div>
-
-              <div class="deaf-reply-bar" style="display:flex;flex-direction:column;gap:10px;">
-                <div class="text-input-row">
-                  <input type="text" id="deaf-partner-input" class="text-input" placeholder="Deaf signer: type or tap ISL chips below to speak in regional language..." />
-                  <button type="button" id="btn-deaf-send-reply" class="btn-secondary">🗣️ Speak Reply</button>
-                </div>
-                <div id="deaf-quick-sign-chips" class="chip-row" role="group"></div>
-              </div>
-
-              <div id="twoway-chat-log" class="twoway-chat-log" role="log" aria-live="polite"></div>
             </div>
           </section>
 
