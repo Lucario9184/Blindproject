@@ -531,6 +531,8 @@ window.QUICK_BOARD_ITEMS = [
     signId: "blind",
     title: "I am Blind — Please Speak or Tap",
     spoken: "Excuse me, I am visually impaired. Please speak to me or use this screen to communicate in Indian Sign Language.",
+    hindiSpoken: "माफ़ कीजिए, मैं दृष्टिबाधित हूँ। कृपया मुझसे बोलकर बात करें या इस स्क्रीन का उपयोग करें।",
+    braille: "⠿ ⠊⠀⠁⠍⠀⠃⠇⠊⠝⠙⠀⠀⠀⠏⠇⠑⠁⠎⠑⠀⠎⠏⠑⠁⠅⠀⠕⠗⠀⠞⠁⠏",
     emoji: "🦯"
   },
   {
@@ -538,6 +540,8 @@ window.QUICK_BOARD_ITEMS = [
     signId: "help",
     title: "Can You Guide Me?",
     spoken: "Hello, could you please help guide me to my destination?",
+    hindiSpoken: "नमस्ते! क्या आप मुझे मेरी मंज़िल का रास्ता बता सकते हैं?",
+    braille: "⠿ ⠉⠁⠝⠀⠽⠕⠥⠀⠛⠥⠊⠙⠑⠀⠍⠑⠦",
     emoji: "🆘"
   },
   {
@@ -545,6 +549,8 @@ window.QUICK_BOARD_ITEMS = [
     signId: "hello",
     title: "Hello / Namaste Friend",
     spoken: "Namaste! Hello friend, how are you doing today?",
+    hindiSpoken: "नमस्ते दोस्त! आप आज कैसे हैं?",
+    braille: "⠿ ⠓⠑⠇⠇⠕",
     emoji: "🙏"
   },
   {
@@ -552,6 +558,8 @@ window.QUICK_BOARD_ITEMS = [
     signId: "water",
     title: "Where is Drinking Water?",
     spoken: "Excuse me, where can I find drinking water?",
+    hindiSpoken: "माफ़ कीजिए, पीने का पानी कहाँ मिलेगा?",
+    braille: "⠿ ⠺⠓⠑⠗⠑⠀⠊⠎⠀⠙⠗⠊⠝⠅⠊⠝⠛⠀⠺⠁⠞⠑⠗⠦",
     emoji: "💧"
   },
   {
@@ -559,6 +567,8 @@ window.QUICK_BOARD_ITEMS = [
     signId: "food",
     title: "Looking for Food / Cafe",
     spoken: "Could you direct me to the nearest food counter or restaurant?",
+    hindiSpoken: "क्या आप मुझे नज़दीकी भोजनालय या खाने की जगह बता सकते हैं?",
+    braille: "⠿ ⠇⠕⠕⠅⠊⠝⠛⠀⠋⠕⠗⠀⠋⠕⠕⠙",
     emoji: "🍲"
   },
   {
@@ -566,6 +576,8 @@ window.QUICK_BOARD_ITEMS = [
     signId: "thankyou",
     title: "Thank You Very Much!",
     spoken: "Thank you so much for your kindness and assistance!",
+    hindiSpoken: "आपकी सहायता के लिए बहुत-बहुत धन्यवाद!",
+    braille: "⠿ ⠞⠓⠁⠝⠅⠀⠽⠕⠥⠀⠧⠑⠗⠽⠀⠍⠥⠉⠓⠖",
     emoji: "🤲"
   },
   {
@@ -573,6 +585,8 @@ window.QUICK_BOARD_ITEMS = [
     signId: "doctor",
     title: "Medical Help / Doctor",
     spoken: "I need medical assistance or directions to a doctor or pharmacy.",
+    hindiSpoken: "मुझे चिकित्सीय सहायता चाहिए। क्या आप डॉक्टर का रास्ता बता सकते हैं?",
+    braille: "⠿ ⠍⠑⠙⠊⠉⠁⠇⠀⠓⠑⠇⠏",
     emoji: "🩺"
   },
   {
@@ -580,6 +594,8 @@ window.QUICK_BOARD_ITEMS = [
     signId: "call",
     title: "Please Call My Contact",
     spoken: "Could you please help me make a phone call?",
+    hindiSpoken: "क्या आप मेरे परिजन को फ़ोन लगाने में मेरी मदद कर सकते हैं?",
+    braille: "⠿ ⠏⠇⠑⠁⠎⠑⠀⠉⠁⠇⠇⠀⠍⠽⠀⠉⠕⠝⠞⠁⠉⠞",
     emoji: "📞"
   },
   {
@@ -587,6 +603,8 @@ window.QUICK_BOARD_ITEMS = [
     signId: "bathroom",
     title: "Where is the Restroom?",
     spoken: "Excuse me, could you guide me to the nearest restroom or washroom?",
+    hindiSpoken: "माफ़ कीजिए, नज़दीकी शौचालय कहाँ है?",
+    braille: "⠿ ⠺⠓⠑⠗⠑⠀⠊⠎⠀⠞⠓⠑⠀⠗⠑⠎⠞⠗⠕⠕⠍⠦",
     emoji: "🚻"
   },
   {
@@ -594,6 +612,8 @@ window.QUICK_BOARD_ITEMS = [
     signId: "slow",
     title: "Please Sign / Speak Slowly",
     spoken: "Please communicate slowly so we can understand each other clearly.",
+    hindiSpoken: "कृपया धीरे-धीरे इशारा या बात करें ताकि हम स्पष्ट समझ सकें।",
+    braille: "⠿ ⠏⠇⠑⠁⠎⠑⠀⠎⠊⠛⠝",
     emoji: "🐢"
   }
 ];

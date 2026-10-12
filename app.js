@@ -3677,27 +3677,35 @@
   }
 
   // =========================================================================
-  // MODULE 4: BLIND ASSISTIVE QUICK-BOARD
+  // MODULE 4: DEAF QUICK-COMMUNICATOR BOARD
   // =========================================================================
   function initQuickBoardModule() {
     const grid = document.getElementById("quickboard-grid");
+    if (!grid) return;
+    grid.innerHTML = "";
+
     window.QUICK_BOARD_ITEMS.forEach((item) => {
-      const b = window.BrailleEngine.translate(item.title);
       const card = document.createElement("button");
       card.type = "button";
-      card.className = "quick-card";
+      card.className = "quick-card qb-card";
+      card.id = `qb-card-${item.key.toLowerCase()}`;
       card.setAttribute(
         "aria-label",
-        `${item.title}. Shortcut key ${item.key}. Speaks message aloud, shows ISL Avatar, and translates to Braille.`
+        `${item.title}. Shortcut Key ${item.key}. Speaks message immediately in regional voice and displays ISL sign.`
       );
       card.innerHTML = `
         <div class="quick-card-header">
           <span class="quick-card-emoji" aria-hidden="true">${item.emoji}</span>
-          <kbd>Key ${item.key}</kbd>
+          <kbd class="qb-kbd">Key ${item.key}</kbd>
         </div>
-        <h3>${item.title}</h3>
-        <p>"${item.spoken}"</p>
-        <span class="chat-braille-line" aria-hidden="true">⠿ ${b.unicode}</span>
+        <h3 class="qb-title">${item.title}</h3>
+        <p class="qb-spoken">"${item.spoken}"</p>
+        <div class="qb-braille-row" aria-label="Braille: ${item.braille}">
+          <span class="qb-braille-text" aria-hidden="true">${item.braille}</span>
+        </div>
+        <div class="qb-status-indicator" id="qb-status-${item.key.toLowerCase()}">
+          <span class="qb-tap-hint">👆 Tap to Speak &amp; Sign</span>
+        </div>
       `;
       card.addEventListener("click", () => {
         activateQuickBoardItem(item);
@@ -3709,18 +3717,63 @@
   function activateQuickBoardItem(item) {
     window.audioEngine.playEarcon("sign_detected");
 
-    const signObj = window.ISL_SIGNS.find((s) => s.id === item.signId);
+    // Dynamic visual feedback on card
+    const card = document.getElementById(`qb-card-${item.key.toLowerCase()}`);
+    if (card) {
+      card.classList.add("qb-active-pulse");
+      const statusEl = document.getElementById(`qb-status-${item.key.toLowerCase()}`);
+      if (statusEl) {
+        statusEl.innerHTML = `<span class="qb-badge-active">✓ Speaking &amp; Signing Aloud</span>`;
+      }
+      setTimeout(() => {
+        card.classList.remove("qb-active-pulse");
+        if (statusEl) {
+          statusEl.innerHTML = `<span class="qb-tap-hint">👆 Tap to Speak &amp; Sign</span>`;
+        }
+      }, 3200);
+    }
+
+    const signObj = window.ISL_SIGNS.find((s) => s.id === item.signId) || window.ISL_SIGNS[0];
     if (signObj) {
-      window.audioEngine.speakSignInLang(signObj, state.signOutputLang, {
-        interrupt: true,
-        assertive: true
-      });
+      state.currentDetectedSign = signObj;
       state.translatedSequence = [signObj];
       state.lastTranslatedText = item.spoken;
       state.currentStageIndex = 0;
       renderSequenceStrip();
       renderActiveStageSign({ speakTactile: false });
       updateStageBrailleDisplay(item.spoken);
+
+      const detVisual = document.getElementById("detected-visual");
+      if (detVisual && window.renderISLAvatarSVG) {
+        detVisual.innerHTML = window.renderISLAvatarSVG(signObj);
+      }
+      const detName = document.getElementById("detected-sign-name");
+      if (detName) detName.textContent = `${item.emoji} ${item.title}`;
+      const detSpoken = document.getElementById("detected-sign-spoken");
+      if (detSpoken) detSpoken.textContent = `"${item.spoken}"`;
+    }
+
+    // Speak immediately in selected language (default Indian English to Hindi)
+    if (state.signOutputLang === "en_hi" || state.signOutputLang === "multi_top") {
+      window.audioEngine.speakBilingual(item.spoken, item.hindiSpoken || item.spoken, {
+        interrupt: true,
+        assertive: true
+      });
+    } else if (state.signOutputLang === "hi") {
+      window.audioEngine.speakHindi(item.hindiSpoken || item.spoken, "", {
+        interrupt: true,
+        assertive: true
+      });
+    } else if (state.signOutputLang === "en") {
+      window.audioEngine.speak(item.spoken, {
+        interrupt: true,
+        assertive: true
+      });
+    } else if (signObj) {
+      window.audioEngine.speakSignInLang(signObj, state.signOutputLang, {
+        interrupt: true,
+        assertive: true
+      });
     } else {
       window.audioEngine.speak(item.spoken, { interrupt: true, assertive: true });
     }
@@ -4099,10 +4152,19 @@
           }
           break;
         case "w":
-        case "W":
+        case "W": {
+          if (state.activeTab === "assist") {
+            const quickW = window.QUICK_BOARD_ITEMS.find((it) => it.key === "W");
+            if (quickW) {
+              e.preventDefault();
+              activateQuickBoardItem(quickW);
+              break;
+            }
+          }
           e.preventDefault();
           speakBilingualWelcome("default");
           break;
+        }
         case "l":
         case "L":
           e.preventDefault();
@@ -4134,7 +4196,7 @@
         default: {
           const upper = e.key.toUpperCase();
           const quickItem = window.QUICK_BOARD_ITEMS.find((item) => item.key === upper);
-          if (quickItem && state.activeTab === "assist") {
+          if (quickItem && (state.activeTab === "assist" || e.altKey)) {
             e.preventDefault();
             activateQuickBoardItem(quickItem);
           }
