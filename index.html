@@ -1,961 +1,805 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark-hc">
+<html lang="en" data-bs-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SanketSetu — ISL &amp; Blind Accessibility Bridge</title>
-  <meta name="description" content="Two-way Indian Sign Language (ISL) and Blind/Visually Impaired communication platform with real-time Sign-to-Speech, Speech-to-ISL, Tactile Audio Dictionary, and 100% Eyes-Free Voice Navigation." />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+  <title>SanketSetu · Indian Sign Language (ISL) &amp; 22 Regional Language Translator</title>
+  <meta name="description" content="SanketSetu is a real-time two-way Indian Sign Language (ISL) translator for the Deaf community across all 22 Indian regional languages with natural human voices and a 3D signing avatar." />
   <link rel="stylesheet" href="styles.css" />
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("bs-theme");
+        var theme = saved || "light";
+        document.documentElement.setAttribute("data-bs-theme", theme);
+      } catch (e) {
+        document.documentElement.setAttribute("data-bs-theme", "light");
+      }
+    })();
+  </script>
   <!-- MediaPipe Hands for real-time webcam gesture recognition -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous" defer></script>
 </head>
-<body>
-  <!-- Skip Links for Screen Readers & Keyboard Users -->
-  <a href="#main-content" class="skip-link">Skip to main content (Press Enter)</a>
-  <a href="#voice-command-btn" class="skip-link">Jump to Voice Assistant (Shortcut: Alt + V)</a>
+<body id="top">
+  <a href="#converter" class="skip-link">Skip to Live ISL Translator</a>
 
-  <!-- Screen Reader Live Regions -->
+  <!-- Screen Reader / Live Caption Regions -->
   <div id="sr-assertive" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
   <div id="sr-polite" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
-  <!-- Top Accessibility & Audio Control Bar -->
-  <section class="a11y-bar" aria-label="Accessibility and Audio Controls">
-    <div class="a11y-bar-inner">
-      <div class="a11y-status">
-        <span class="pulse-dot" id="audio-status-dot" aria-hidden="true"></span>
-        <span id="audio-status-text">Audio Guide Ready (Press <strong>Space</strong> to Speak Command)</span>
+  <!-- =====================================================================
+       CLEAN TOP NAVIGATION BAR
+       ===================================================================== -->
+  <nav class="top" aria-label="Primary Navigation">
+    <div class="bar">
+      <a class="brand" href="#top" data-nav-scroll="top" aria-label="SanketSetu Home">
+        <div class="brand-logo-svg" aria-hidden="true">🤟</div>
+        <span class="brand-name">SanketSetu <span>संकेत सेतु</span></span>
+      </a>
+
+      <div class="nav-links" id="primary-nav-links" role="navigation" aria-label="Main Navigation">
+        <a href="#converter" class="nav-link active" data-nav-tab="camera" data-nav-scroll="converter">📹 Camera → Voice</a>
+        <a href="#converter" class="nav-link" data-nav-tab="translator" data-nav-scroll="converter">🧏 Speech → 3D Avatar</a>
+        <a href="#converter" class="nav-link" data-nav-tab="dictionary" data-nav-scroll="converter">📖 ISL Dictionary</a>
+        <a href="#converter" class="nav-link" data-nav-tab="assist" data-nav-scroll="converter">⚡ Quick-Board</a>
+        <a href="#pipeline" class="nav-link" data-nav-scroll="pipeline">🔄 How It Works</a>
+        <a href="#bhashini" class="nav-link" data-nav-scroll="bhashini">🇮🇳 Bhashini Impact</a>
       </div>
-      <div class="a11y-controls" role="toolbar" aria-label="Visual and Audio Preferences">
-        <button type="button" id="btn-bilingual-welcome" class="a11y-btn active" aria-label="Play Welcome to Website statement in English and Hindi (Shortcut: W)">
-          <span aria-hidden="true">🙏</span> Welcome (EN / हिंदी) <kbd>W</kbd>
+
+      <div class="nav-cta">
+        <label for="sign-output-lang" class="sr-only">Regional Language Output</label>
+        <select id="sign-output-lang" class="nav-lang-select sync-sign-lang-select" aria-label="Select Indian regional language for ISL translation">
+          <option value="hi">🇮🇳 हिन्दी (Hindi)</option>
+          <option value="en_hi" selected>🌐 हिन्दी + English</option>
+          <option value="mai">🇮🇳 मैथिली (Maithili)</option>
+          <option value="en_mai">🌐 मैथिली + English</option>
+          <option value="multi_top">🌐 हिन्दी + मैथिली + EN</option>
+          <option value="bho">🇮🇳 भोजपुरी (Bhojpuri)</option>
+          <option value="mag">🇮🇳 मगही (Magahi)</option>
+          <option value="raj">🇮🇳 राजस्थानी (Rajasthani)</option>
+          <option value="bgc">🇮🇳 हरियाणवी (Haryanvi)</option>
+          <option value="hne">🇮🇳 छत्तीसगढ़ी (Chhattisgarhi)</option>
+          <option value="mr">🇮🇳 मराठी (Marathi)</option>
+          <option value="gu">🇮🇳 ગુજરાતી (Gujarati)</option>
+          <option value="pa">🇮🇳 ਪੰਜਾਬੀ (Punjabi)</option>
+          <option value="bn">🇮🇳 বাংলা (Bengali)</option>
+          <option value="as">🇮🇳 অসমীয়া (Assamese)</option>
+          <option value="or">🇮🇳 ଓଡ଼ିଆ (Odia)</option>
+          <option value="ta">🇮🇳 தமிழ் (Tamil)</option>
+          <option value="te">🇮🇳 తెలుగు (Telugu)</option>
+          <option value="kn">🇮🇳 ಕನ್ನಡ (Kannada)</option>
+          <option value="ml">🇮🇳 മലയാളം (Malayalam)</option>
+          <option value="ur">🇮🇳 اردو / کشمیری (Urdu)</option>
+          <option value="ne">🇮🇳 नेपाली (Nepali)</option>
+          <option value="kok">🇮🇳 कोंकणी (Konkani)</option>
+          <option value="doi">🇮🇳 डोगरी (Dogri)</option>
+          <option value="en">🇮🇳 Indian English</option>
+          <option value="all">🌍 All 22 Languages</option>
+        </select>
+
+        <button type="button" id="bs-theme-toggle" class="theme-btn" aria-label="Toggle light or dark theme" title="Toggle theme">
+          <svg class="icn icn-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+          </svg>
+          <svg class="icn icn-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
         </button>
-        <button type="button" id="btn-welcome-audio" class="a11y-btn" aria-label="Play spoken orientation guide for blind users (Shortcut: H)">
-          <span aria-hidden="true">🔊</span> Orientation Guide <kbd>H</kbd>
+
+        <button type="button" id="nav-start-cam-btn" class="btn btn-primary nav-btn-cta">
+          📹 Start Camera
         </button>
-        <button type="button" id="btn-read-screen-avatar" class="a11y-btn active" aria-label="Read current text and ISL Avatar action on screen aloud (Shortcut: S)">
-          <span aria-hidden="true">🧑‍🦯</span> Read Text &amp; Avatar <kbd>S</kbd>
-        </button>
-        <button type="button" id="btn-auto-narrate" class="a11y-btn active" aria-pressed="true" aria-label="Toggle automatic voice narration on focus and hover">
-          <span aria-hidden="true">🗣️</span> Auto-Narrate: <span id="narrate-state">ON</span>
-        </button>
-        <button type="button" id="btn-earcons" class="a11y-btn active" aria-pressed="true" aria-label="Toggle sonic earcon sound effects">
-          <span aria-hidden="true">🎵</span> Sonic Cues: <span id="earcon-state">ON</span>
-        </button>
-        <button type="button" id="btn-contrast" class="a11y-btn" aria-pressed="false" aria-label="Toggle Yellow on Black Ultra High Contrast Mode (Shortcut: C)">
-          <span aria-hidden="true">👁️</span> Ultra Contrast <kbd>C</kbd>
-        </button>
-        <div class="a11y-group" role="group" aria-label="Font size controls">
-          <button type="button" id="btn-font-dec" class="a11y-btn-icon" aria-label="Decrease text size">A-</button>
-          <button type="button" id="btn-font-inc" class="a11y-btn-icon" aria-label="Increase text size">A+</button>
-        </div>
-        <div class="a11y-group" role="group" aria-label="Sign Language Output Language, Human Voice Persona, Speed and Pitch">
-          <label for="sign-output-lang" class="sr-only">Sign Output State Language</label>
-          <select id="sign-output-lang" class="a11y-select sync-sign-lang-select" aria-label="Select spoken output state language for detected Indian Sign Language gestures (Shortcut: L)">
-            <option value="hi">🇮🇳 हिन्दी (UP / MP / Delhi)</option>
-            <option value="en_hi" selected>🌐 हिन्दी + English (Both)</option>
-            <option value="mai">🇮🇳 मैथिली — Maithili (Mithila, Bihar)</option>
-            <option value="en_mai">🌐 मैथिली + English</option>
-            <option value="multi_top">🌐 हिन्दी + मैथिली + EN</option>
-            <option value="bho">🇮🇳 भोजपुरी — Bhojpuri (Bihar / UP)</option>
-            <option value="mag">🇮🇳 मगही — Magahi (Magadh, Bihar)</option>
-            <option value="raj">🇮🇳 राजस्थानी / मारवाड़ी (Rajasthan)</option>
-            <option value="bgc">🇮🇳 हरियाणवी — Haryanvi (Haryana)</option>
-            <option value="hne">🇮🇳 छत्तीसगढ़ी — Chhattisgarhi (CG)</option>
-            <option value="mr">🇮🇳 मराठी — Marathi (Maharashtra)</option>
-            <option value="gu">🇮🇳 ગુજરાતી — Gujarati (Gujarat)</option>
-            <option value="pa">🇮🇳 ਪੰਜਾਬੀ — Punjabi (Punjab)</option>
-            <option value="bn">🇮🇳 বাংলা — Bengali (Bengal / Tripura)</option>
-            <option value="as">🇮🇳 অসমীয়া — Assamese (Assam)</option>
-            <option value="or">🇮🇳 ଓଡ଼ିଆ — Odia (Odisha)</option>
-            <option value="ta">🇮🇳 தமிழ் — Tamil (Tamil Nadu)</option>
-            <option value="te">🇮🇳 తెలుగు — Telugu (AP &amp; Telangana)</option>
-            <option value="kn">🇮🇳 ಕನ್ನಡ — Kannada (Karnataka)</option>
-            <option value="ml">🇮🇳 മലയാളം — Malayalam (Kerala)</option>
-            <option value="ur">🇮🇳 اردو / کشمیری — Urdu / Kashmiri (J&amp;K)</option>
-            <option value="ne">🇮🇳 नेपाली — Nepali (Sikkim / Darjeeling)</option>
-            <option value="kok">🇮🇳 कोंकणी — Konkani (Goa)</option>
-            <option value="doi">🇮🇳 डोगरी / पहाड़ी — Dogri (Himachal / J&amp;K)</option>
-            <option value="en">🇮🇳 Indian English (All-India)</option>
-            <option value="all">🌍 Speak All 22 State Languages</option>
-          </select>
-          <label for="human-voice-style-top" class="sr-only">Real Human Voice Persona</label>
-          <select id="human-voice-style-top" class="a11y-select sync-human-persona-select" aria-label="Choose Real Human Voice Persona">
-            <option value="warm_female" selected>🗣️ 👩 Didi (Warm Female Human)</option>
-            <option value="natural_male">🗣️ 👨 Bhaiya (Natural Male Human)</option>
-            <option value="gentle_elder">🗣️ 👵 Dadi/Baba (Gentle Elder Tone)</option>
-            <option value="expressive_friend">🗣️ 🧑 Mitra (Expressive Friend)</option>
-          </select>
-          <label for="speech-voice-select" class="sr-only">Speech Voice</label>
-          <select id="speech-voice-select" class="a11y-select" aria-label="Select speech synthesis voice">
-            <option value="">Voice: WaveNet Neural Human</option>
-          </select>
-          <label for="speech-rate" class="sr-only">Voice Speed</label>
-          <select id="speech-rate" class="a11y-select" aria-label="Select voice narration speed">
-            <option value="0.85">Speed: 0.85x (Slow)</option>
-            <option value="1" selected>Speed: 1.0x (Natural Human)</option>
-            <option value="1.15">Speed: 1.15x (Brisk)</option>
-            <option value="1.35">Speed: 1.35x (Fast)</option>
-          </select>
-          <label for="speech-pitch" class="sr-only">Voice Pitch</label>
-          <select id="speech-pitch" class="a11y-select" aria-label="Select speech generation pitch">
-            <option value="0.85">Pitch: Warm Low</option>
-            <option value="1" selected>Pitch: Natural</option>
-            <option value="1.15">Pitch: Clear High</option>
-          </select>
+      </div>
+    </div>
+  </nav>
+
+  <!-- =====================================================================
+       SIMPLE HERO + CAMERA & TRANSLATION PART DIRECTLY AFTER <p class="lede">
+       ===================================================================== -->
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-header-clean">
+        <span class="eyebrow">
+          <span class="dot"></span>
+          BUILT FOR INDIA'S DEAF COMMUNITY · 22 REGIONAL LANGUAGES
+        </span>
+        <h1 class="title">
+          SanketSetu: Two-Way <span class="grad-o">Sign Language</span> &amp; <span class="grad-g">Regional Voice</span> Bridge
+        </h1>
+        <p class="lede">
+          Real-time Indian Sign Language (ISL) translation powered by 3D hand tracking and Bhashini-aligned regional voice synthesis. Show hand signs on camera to speak in any of <strong>22 Indian regional languages</strong> with natural human voices, or speak and type to animate our 3D ISL Signing Avatar.
+        </p>
+      </div>
+
+      <!-- CAMERA AND TRANSLATION PART DIRECTLY AFTER <p class="lede"> -->
+      <div class="converter-shell" id="converter" tabindex="-1">
+        <div id="main-content" tabindex="-1" class="converter-inner">
+          <!-- 22-State Regional Language & Real Human Voice Selector Banner -->
+          <div id="global-language-bar" class="language-chooser-banner" aria-label="Choose Indian Regional Speaking Language and Real Human Voice">
+            <div class="lang-chooser-top">
+              <div class="lang-chooser-title">
+                <span class="lang-globe-icon" aria-hidden="true">🇮🇳</span>
+                <div>
+                  <h3>Select Regional Language &amp; Human Voice (22 Indian Languages)</h3>
+                  <p>Translate ISL signs into natural regional speech (<em>हिन्दी, मैथिली, भोजपुरी, मराठी, தமிழ், తెలుగు, বাংলা, ਪੰਜਾਬੀ, ગુજરાતી, ଓଡ଼ିଆ, অসমীয়া, ಕನ್ನಡ, മലയാളം</em>):</p>
+                  <div id="active-local-touch-badge" class="badge-pill" style="margin-top: 6px; display: inline-block;">
+                    🗣️ Active Voice: 👩 Didi (Natural Female Voice) • 🌐 हिन्दी + English
+                  </div>
+                </div>
+              </div>
+
+              <div class="lang-chooser-controls">
+                <label for="main-sign-output-lang" class="sr-only">Regional Language</label>
+                <select id="main-sign-output-lang" class="a11y-select sync-sign-lang-select" aria-label="Choose Indian regional language for sign audio output">
+                  <option value="hi">🇮🇳 हिन्दी — Hindi (UP / MP / Delhi)</option>
+                  <option value="en_hi" selected>🌐 हिन्दी + English (Bilingual)</option>
+                  <option value="mai">🇮🇳 मैथिली — Maithili (Mithila, Bihar)</option>
+                  <option value="en_mai">🌐 मैथिली + English</option>
+                  <option value="multi_top">🌐 हिन्दी + मैथिली + English</option>
+                  <option value="bho">🇮🇳 भोजपुरी — Bhojpuri (Bihar / UP)</option>
+                  <option value="mag">🇮🇳 मगही — Magahi (Magadh, Bihar)</option>
+                  <option value="raj">🇮🇳 राजस्थानी — Rajasthani (Marwari)</option>
+                  <option value="bgc">🇮🇳 हरियाणवी — Haryanvi (Haryana)</option>
+                  <option value="hne">🇮🇳 छत्तीसगढ़ी — Chhattisgarhi (CG)</option>
+                  <option value="mr">🇮🇳 मराठी — Marathi (Maharashtra)</option>
+                  <option value="gu">🇮🇳 ગુજરાતી — Gujarati (Gujarat)</option>
+                  <option value="pa">🇮🇳 ਪੰਜਾਬੀ — Punjabi (Punjab)</option>
+                  <option value="bn">🇮🇳 বাংলা — Bengali (West Bengal)</option>
+                  <option value="as">🇮🇳 অসমীয়া — Assamese (Assam)</option>
+                  <option value="or">🇮🇳 ଓଡ଼ିଆ — Odia (Odisha)</option>
+                  <option value="ta">🇮🇳 தமிழ் — Tamil (Tamil Nadu)</option>
+                  <option value="te">🇮🇳 తెలుగు — Telugu (AP &amp; Telangana)</option>
+                  <option value="kn">🇮🇳 ಕನ್ನಡ — Kannada (Karnataka)</option>
+                  <option value="ml">🇮🇳 മലയാളം — Malayalam (Kerala)</option>
+                  <option value="ur">🇮🇳 اردو / کشمیری — Urdu / Kashmiri (J&amp;K)</option>
+                  <option value="ne">🇮🇳 नेपाली — Nepali (Sikkim / Darjeeling)</option>
+                  <option value="kok">🇮🇳 कोंकणी — Konkani (Goa)</option>
+                  <option value="doi">🇮🇳 डोगरी / पहाड़ी — Dogri (HP / J&amp;K)</option>
+                  <option value="en">🇮🇳 Indian English</option>
+                  <option value="all">🌍 Speak All 22 Regional Languages</option>
+                </select>
+
+                <label for="human-voice-style-select" class="sr-only">Voice Persona</label>
+                <select id="human-voice-style-select" class="a11y-select sync-human-persona-select" aria-label="Choose Real Human Voice Persona">
+                  <option value="warm_female" selected>👩 Didi — Natural Female Voice</option>
+                  <option value="natural_male">👨 Bhaiya — Natural Male Voice</option>
+                  <option value="gentle_elder">👵 Elder — Respectful Tone</option>
+                  <option value="expressive_friend">🧑 Mitra — Expressive Friend</option>
+                </select>
+
+                <button type="button" id="btn-test-hindi-now" class="btn-primary btn-sm">🗣️ सुने हिन्दी में</button>
+                <button type="button" id="btn-test-maithili-now" class="btn-secondary btn-sm">🗣️ मैथिली में सुनु</button>
+              </div>
+            </div>
+
+            <!-- One-Click Regional Language Pills -->
+            <div class="lang-quick-pills" role="group" aria-label="One-click Indian regional language selection">
+              <button type="button" class="lang-pill-btn" data-set-lang="hi">🇮🇳 हिन्दी</button>
+              <button type="button" class="lang-pill-btn active" data-set-lang="en_hi">🌐 हिन्दी + EN</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="mai">🇮🇳 मैथिली</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="bho">🇮🇳 भोजपुरी</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="mag">🇮🇳 मगही</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="raj">🇮🇳 राजस्थानी</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="bgc">🇮🇳 हरियाणवी</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="hne">🇮🇳 छत्तीसगढ़ी</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="mr">🇮🇳 मराठी</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="gu">🇮🇳 ગુજરાતી</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="pa">🇮🇳 ਪੰਜਾਬੀ</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="bn">🇮🇳 বাংলা</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="as">🇮🇳 অসমীয়া</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="or">🇮🇳 ଓଡ଼ିଆ</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="ta">🇮🇳 தமிழ்</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="te">🇮🇳 తెలుగు</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="kn">🇮🇳 ಕನ್ನಡ</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="ml">🇮🇳 മലയാളം</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="ur">🇮🇳 اردو</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="ne">🇮🇳 नेपाली</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="kok">🇮🇳 कोंकणी</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="doi">🇮🇳 डोगरी</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="en">🇮🇳 English</button>
+              <button type="button" class="lang-pill-btn" data-set-lang="all">🌍 All 22</button>
+            </div>
+          </div>
+
+          <!-- Primary Converter Mode Tabs -->
+          <nav class="main-nav" aria-label="Translator Modes">
+            <div class="nav-tabs" role="tablist">
+              <button type="button" role="tab" id="tab-btn-camera" class="nav-tab active" aria-selected="true" aria-controls="panel-camera" data-tab="camera">
+                <span class="tab-num" aria-hidden="true">01</span>
+                <span class="tab-label">
+                  <strong>Camera Sign → Regional Speech</strong>
+                  <small>Live Webcam → 22 Indian Languages</small>
+                </span>
+              </button>
+
+              <button type="button" role="tab" id="tab-btn-translator" class="nav-tab" aria-selected="false" aria-controls="panel-translator" data-tab="translator">
+                <span class="tab-num" aria-hidden="true">02</span>
+                <span class="tab-label">
+                  <strong>Speech &amp; Text → 3D Signing Avatar</strong>
+                  <small>Speak/Type → Animated ISL Avatar &amp; Chat</small>
+                </span>
+              </button>
+
+              <button type="button" role="tab" id="tab-btn-dictionary" class="nav-tab" aria-selected="false" aria-controls="panel-dictionary" data-tab="dictionary">
+                <span class="tab-num" aria-hidden="true">03</span>
+                <span class="tab-label">
+                  <strong>ISL Dictionary &amp; Practice Quiz</strong>
+                  <small>70+ ISL Signs, A–Z &amp; Numbers</small>
+                </span>
+              </button>
+
+              <button type="button" role="tab" id="tab-btn-assist" class="nav-tab" aria-selected="false" aria-controls="panel-assist" data-tab="assist">
+                <span class="tab-num" aria-hidden="true">04</span>
+                <span class="tab-label">
+                  <strong>Deaf Quick-Board &amp; Custom Sign</strong>
+                  <small>One-Tap Phrases &amp; BhashaDaan Recorder</small>
+                </span>
+              </button>
+            </div>
+          </nav>
+
+          <!-- ===============================================================
+               PANEL 1: LIVE CAMERA SIGN -> 22 REGIONAL LANGUAGES & SPEECH
+               =============================================================== -->
+          <section id="panel-camera" class="tab-panel active" role="tabpanel" aria-labelledby="tab-btn-camera">
+            <div class="panel-header">
+              <div>
+                <h2>Live Camera ISL Sign → 22 Regional Languages &amp; Voice</h2>
+                <p>Start your webcam and show an ISL sign, or click any sign in the simulator below to hear the translation in your chosen Indian language.</p>
+              </div>
+              <div class="panel-header-actions">
+                <button type="button" id="btn-open-custom-sign" class="btn-primary">
+                  ➕ Train Custom Sign
+                </button>
+                <button type="button" id="voice-command-btn" class="btn-outline" style="display:none;"></button>
+                <button type="button" id="btn-sos" class="btn-outline">🚨 Emergency SOS</button>
+              </div>
+            </div>
+
+            <div class="camera-grid">
+              <!-- Left: Live Webcam Feed + 3D Telemetry + Simulator -->
+              <div class="card camera-card">
+                <div class="camera-toolbar">
+                  <button type="button" id="btn-toggle-camera" class="btn-primary">
+                    <span aria-hidden="true">📹</span> <span id="camera-btn-text">Start Live Webcam</span>
+                  </button>
+                  <label class="toggle-label">
+                    <input type="checkbox" id="chk-auto-speak-sign" checked />
+                    <span>Auto-Speak Voice</span>
+                  </label>
+                  <label class="toggle-label">
+                    <input type="checkbox" id="chk-spatial-beep" />
+                    <span>Tracking Cue</span>
+                  </label>
+                  <div class="precision-select-group">
+                    <select id="camera-lang-select" class="a11y-select sync-sign-lang-select" aria-label="Camera output regional language">
+                      <option value="hi">🇮🇳 Language: हिन्दी (Hindi)</option>
+                      <option value="en_hi" selected>🌐 Language: हिन्दी + English</option>
+                      <option value="mai">🇮🇳 Language: मैथिली (Maithili)</option>
+                      <option value="en_mai">🌐 Language: मैथिली + English</option>
+                      <option value="multi_top">🌐 Language: हिन्दी + मैथिली + EN</option>
+                      <option value="bho">🇮🇳 Language: भोजपुरी (Bhojpuri)</option>
+                      <option value="mag">🇮🇳 Language: मगही (Magahi)</option>
+                      <option value="raj">🇮🇳 Language: राजस्थानी (Rajasthani)</option>
+                      <option value="bgc">🇮🇳 Language: हरियाणवी (Haryanvi)</option>
+                      <option value="hne">🇮🇳 Language: छत्तीसगढ़ी (Chhattisgarhi)</option>
+                      <option value="mr">🇮🇳 Language: मराठी (Marathi)</option>
+                      <option value="gu">🇮🇳 Language: ગુજરાતી (Gujarati)</option>
+                      <option value="pa">🇮🇳 Language: ਪੰਜਾਬੀ (Punjabi)</option>
+                      <option value="bn">🇮🇳 Language: বাংলা (Bengali)</option>
+                      <option value="as">🇮🇳 Language: অসমীয়া (Assamese)</option>
+                      <option value="or">🇮🇳 Language: ଓଡ଼ିଆ (Odia)</option>
+                      <option value="ta">🇮🇳 தமிழ் (Tamil)</option>
+                      <option value="te">🇮🇳 తెలుగు (Telugu)</option>
+                      <option value="kn">🇮🇳 ಕನ್ನಡ (Kannada)</option>
+                      <option value="ml">🇮🇳 മലയാളം (Malayalam)</option>
+                      <option value="ur">🇮🇳 اردو / کشمیری (Urdu)</option>
+                      <option value="ne">🇮🇳 नेपाली (Nepali)</option>
+                      <option value="kok">🇮🇳 कोंकणी (Konkani)</option>
+                      <option value="doi">🇮🇳 डोगरी (Dogri)</option>
+                      <option value="en">🇬🇧 Language: Indian English</option>
+                      <option value="all">🌍 Language: Speak All 22</option>
+                    </select>
+                    <select id="camera-precision-mode" class="a11y-select" aria-label="Camera precision threshold">
+                      <option value="strict">Precision: Strict (85% • 6 Frames)</option>
+                      <option value="high" selected>Precision: High (78% • 4 Frames)</option>
+                      <option value="fast">Precision: Fast (70% • 2 Frames)</option>
+                    </select>
+                    <select id="camera-scope-mode" class="a11y-select" aria-label="Recognition vocabulary scope">
+                      <option value="all" selected>Scope: All Signs + Numbers + A–Z (70+)</option>
+                      <option value="conversational">Scope: Conversational Signs Only</option>
+                      <option value="numbers">Scope: ISL Numbers (1–9) Only</option>
+                      <option value="alphabet">Scope: ISL Alphabet (A–Z) Only</option>
+                    </select>
+                    <select id="camera-target-sign" class="a11y-select" aria-label="Target sign focus">
+                      <option value="auto" selected>🎯 Focus: Auto-Detect All Signs</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="video-container" aria-label="Webcam hand tracking view">
+                  <video id="webcam-video" class="input-video" playsinline muted></video>
+                  <canvas id="output-canvas" class="output-canvas" width="640" height="480"></canvas>
+
+                  <div id="camera-placeholder" class="camera-placeholder">
+                    <div class="placeholder-icon" aria-hidden="true">📷🤟</div>
+                    <h3>Live 3D ISL Hand Tracker</h3>
+                    <p>Click <strong>"Start Live Webcam"</strong> above for real-time 21-point hand tracking, or click any sign in the <strong>Instant Simulator</strong> below.</p>
+                  </div>
+
+                  <div class="camera-hud" aria-live="polite">
+                    <div class="hud-badge" id="hand-presence-badge">No Hand in Frame</div>
+                    <div class="hud-confidence" id="hud-confidence">Confidence: --</div>
+                  </div>
+                </div>
+
+                <!-- 3D Landmark Telemetry -->
+                <div class="telemetry-panel" aria-label="Live 3D hand landmark precision telemetry">
+                  <div class="telemetry-top-row">
+                    <div class="lock-status">
+                      <span class="telemetry-label">🎯 Gesture Lock-In:</span>
+                      <strong id="lock-candidate-label">Waiting for hand pose...</strong>
+                    </div>
+                    <span class="badge-subtle" id="telemetry-motion-badge">Palm Scale: -- • Motion: Steady</span>
+                  </div>
+                  <div class="lock-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="lock-progress-bar">
+                    <div class="lock-progress-fill" id="lock-progress-fill" style="width: 0%"></div>
+                  </div>
+                  <div class="finger-telemetry-grid" aria-hidden="true">
+                    <div class="finger-meter"><span class="f-name">Thumb</span><div class="f-bar"><div id="f-bar-thumb" class="f-fill"></div></div><span id="f-val-thumb" class="f-pct">--</span></div>
+                    <div class="finger-meter"><span class="f-name">Index</span><div class="f-bar"><div id="f-bar-index" class="f-fill"></div></div><span id="f-val-index" class="f-pct">--</span></div>
+                    <div class="finger-meter"><span class="f-name">Middle</span><div class="f-bar"><div id="f-bar-middle" class="f-fill"></div></div><span id="f-val-middle" class="f-pct">--</span></div>
+                    <div class="finger-meter"><span class="f-name">Ring</span><div class="f-bar"><div id="f-bar-ring" class="f-fill"></div></div><span id="f-val-ring" class="f-pct">--</span></div>
+                    <div class="finger-meter"><span class="f-name">Pinky</span><div class="f-bar"><div id="f-bar-pinky" class="f-fill"></div></div><span id="f-val-pinky" class="f-pct">--</span></div>
+                  </div>
+                </div>
+
+                <!-- Instant ISL Simulator -->
+                <div class="simulator-box" aria-label="Interactive ISL Gesture Simulator">
+                  <div class="simulator-header">
+                    <h4>⚡ Instant Sign Simulator (Click any sign to translate &amp; speak)</h4>
+                    <span class="badge-subtle" id="sim-count-badge">70+ Signs Ready</span>
+                  </div>
+                  <div id="simulator-buttons" class="simulator-grid" role="group" aria-label="Simulated ISL gestures"></div>
+                </div>
+              </div>
+
+              <!-- Right: Translation Output + 22 Regional Languages + Sentence Builder -->
+              <div class="card output-card">
+                <div class="detected-sign-banner" id="detected-sign-banner" tabindex="0">
+                  <div class="detected-visual avatar-thumb-box" id="detected-visual" aria-hidden="true">👋</div>
+                  <div class="detected-info">
+                    <div class="detected-eyebrow-row">
+                      <span class="sec-tag">DETECTED ISL SIGN &amp; AVATAR</span>
+                      <button type="button" id="btn-read-detected-avatar" class="btn-outline btn-xs">🔊 Replay Voice</button>
+                    </div>
+                    <h3 id="detected-sign-name">Waiting for sign...</h3>
+                    <p id="detected-sign-spoken" class="spoken-phrase">"Show an ISL hand gesture on camera or click any simulator sign"</p>
+                    <p id="detected-sign-regional" class="regional-phrase-highlight" lang="hi">🇮🇳 हिन्दी: "अरे नमस्ते जी! आपसे मिलकर बहुत खुशी हुई।" • मैथिली: "प्रणाम यौ! अहाँ सँ मिलिकय बड़ खुशी भेल।"</p>
+                    <p id="detected-sign-tactile" class="tactile-hint">ISL Handshape: Two-handed or single-handed posture with facial expression.</p>
+                  </div>
+                </div>
+
+                <!-- Sentence Builder -->
+                <div class="sentence-builder">
+                  <div class="sentence-header">
+                    <h4>📝 Signed Sentence Builder (ISL Gloss → Regional Sentence)</h4>
+                    <div class="sentence-actions">
+                      <button type="button" id="btn-speak-sentence" class="btn-primary btn-sm">🔊 Speak Sentence</button>
+                      <button type="button" id="btn-send-cam-to-bridge" class="btn-secondary btn-sm">💬 Send to Chat</button>
+                      <button type="button" id="btn-clear-sentence" class="btn-outline btn-sm">🗑️ Clear</button>
+                    </div>
+                  </div>
+                  <div id="sentence-display" class="sentence-box" tabindex="0" aria-live="polite">
+                    <span class="placeholder-muted">Detected signs combine here into a complete sentence...</span>
+                  </div>
+                  <div class="natural-speech-bar" id="natural-speech-bar">
+                    <span class="natural-label">🗣️ Translated Output:</span>
+                    <strong id="natural-speech-preview">"Waiting for signed input..."</strong>
+                  </div>
+                </div>
+
+                <!-- 22 Indian Regional Languages Grid -->
+                <div class="multilang-output-box" id="camera-multilang-box">
+                  <div class="multilang-header">
+                    <div>
+                      <h4>🇮🇳 Translation in All 22 Indian Regional Languages <span class="badge-pill" id="cam-multilang-sign-badge">👋 Hello / Namaste</span></h4>
+                      <small style="color:var(--ink-3);font-size:12px;">Click any language card below to hear the natural regional human voice</small>
+                    </div>
+                    <div class="multilang-actions">
+                      <button type="button" id="btn-speak-active-lang-cam" class="btn-primary btn-xs">🗣️ Speak Selected</button>
+                      <button type="button" id="btn-speak-all-langs-cam" class="btn-outline btn-xs">🌍 Speak All 22</button>
+                    </div>
+                  </div>
+                  <div id="camera-multilang-grid" class="multilang-grid" role="group" aria-label="Translations in 22 Indian regional languages"></div>
+                </div>
+
+                <!-- Recent Sign History -->
+                <div class="history-section">
+                  <h4>🕒 Recent Translation History</h4>
+                  <ul id="sign-history-list" class="history-list">
+                    <li class="history-empty">No signs detected yet in this session.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ===============================================================
+               PANEL 2: REGIONAL TEXT & SPEECH -> 3D SIGNING AVATAR & 2-WAY CHAT
+               =============================================================== -->
+          <section id="panel-translator" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-translator" hidden>
+            <div class="panel-header">
+              <div>
+                <h2>Regional Speech &amp; Text → 3D ISL Signing Avatar</h2>
+                <p>Speak into the microphone or type a message in English, Hindi, or any Indian language to animate our 3D ISL Signing Avatar.</p>
+              </div>
+              <div class="panel-header-actions">
+                <button type="button" id="btn-stage-read-everything" class="btn-primary">🔊 Speak Active Sign</button>
+              </div>
+            </div>
+
+            <div class="translator-grid">
+              <!-- Left: Speech & Text Input -->
+              <div class="card translator-input-card">
+                <div class="voice-capture-box">
+                  <button type="button" id="btn-dictate-isl" class="btn-mic-large" aria-pressed="false">
+                    <span class="mic-ring" aria-hidden="true">🎙️</span>
+                    <strong id="dictate-btn-title" style="font-size:16px;">Click to Speak Your Message</strong>
+                    <small id="dictate-btn-status" style="color:var(--ink-2);">Converts spoken voice → ISL Gloss → 3D Signing Avatar</small>
+                  </button>
+                </div>
+
+                <div class="input-group">
+                  <label for="isl-text-input" class="field-label">Type Message to Sign on 3D Avatar:</label>
+                  <div class="text-input-row">
+                    <input type="text" id="isl-text-input" class="text-input" placeholder="e.g., Hello friend how are you please help me" value="Hello friend thank you" />
+                    <button type="button" id="btn-translate-text" class="btn-primary">Sign on Avatar 🤟</button>
+                  </div>
+                </div>
+
+                <div class="preset-sentences">
+                  <span class="field-label">Quick Conversation Phrases (Click to Sign):</span>
+                  <div class="chip-row" role="group">
+                    <button type="button" class="chip-btn" data-sentence="Hello friend how are you">👋 "Hello friend, how are you?"</button>
+                    <button type="button" class="chip-btn" data-sentence="Please help me I am deaf">🧏 "Please help me, I am Deaf"</button>
+                    <button type="button" class="chip-btn" data-sentence="Where is water and food">💧 "Where is water and food?"</button>
+                    <button type="button" class="chip-btn" data-sentence="Thank you very much good friend">🙏 "Thank you very much, good friend"</button>
+                    <button type="button" class="chip-btn" data-sentence="Call doctor emergency help">🏥 "Call doctor, emergency help!"</button>
+                    <button type="button" class="chip-btn" data-sentence="Please repeat slow I understand">🐢 "Please repeat slowly, I understand"</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right: Rigged 3D ISL Signing Avatar & Hand Stage -->
+              <div class="card translator-stage-card">
+                <div class="stage-header">
+                  <div>
+                    <span class="sec-tag">3D ISL SIGNING AVATAR &amp; HAND POSTURE</span>
+                    <h3 id="stage-current-token" style="font-size:20px;font-weight:600;">Ready to Sign</h3>
+                  </div>
+                  <div class="stage-controls" role="group">
+                    <button type="button" id="btn-stage-prev" class="btn-outline btn-sm">⏮ Prev</button>
+                    <button type="button" id="btn-stage-play" class="btn-primary btn-sm">▶ Play Avatar</button>
+                    <button type="button" id="btn-stage-next" class="btn-outline btn-sm">Next ⏭</button>
+                    <button type="button" id="btn-stage-describe" class="btn-secondary btn-sm">🗣️ Speak Regional</button>
+                  </div>
+                </div>
+
+                <div id="isl-active-stage" class="isl-stage-box dual-avatar-stage" tabindex="0" aria-live="polite">
+                  <div class="stage-dual-visuals">
+                    <div class="visual-panel">
+                      <span class="visual-caption">🧏 3D ISL Signing Avatar</span>
+                      <div class="isl-stage-svg" id="stage-avatar-container" aria-hidden="true"></div>
+                    </div>
+                    <div class="visual-panel">
+                      <span class="visual-caption">✋ Hand Formation Guide</span>
+                      <div class="isl-stage-svg" id="stage-svg-container" aria-hidden="true"></div>
+                    </div>
+                  </div>
+                  <div class="isl-stage-details">
+                    <div class="stage-badges">
+                      <span class="badge-isl" id="stage-type-badge">ISL Sign</span>
+                      <span class="badge-hands" id="stage-hands-badge">2-Handed ISL Sign</span>
+                    </div>
+                    <h4 id="stage-sign-title" style="font-size:19px;font-weight:600;">Hello / Namaste</h4>
+                    <p id="stage-sign-meaning" class="spoken-phrase">Meaning: "Hello, greetings!"</p>
+                    <p id="stage-sign-regional" class="regional-phrase-highlight" lang="hi">🇮🇳 हिन्दी: "नमस्ते! आपसे मिलकर बहुत खुशी हुई।"</p>
+                    <p id="stage-avatar-narration" style="font-size:12.5px;color:var(--ink-2);margin-top:4px;">Avatar Action: Brings both open palms together at heart level in a respectful Namaste.</p>
+                    <div class="tactile-box">
+                      <strong>🤟 How to Perform This ISL Sign:</strong>
+                      <p id="stage-tactile-desc">Bring both palms together in front of your chest (Namaste) or raise your dominant open palm to your forehead with warm eye contact.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Sequence Breakdown Strip -->
+                <div class="sequence-strip-wrapper">
+                  <span class="field-label">ISL Gloss Sequence (Click any word to view sign):</span>
+                  <div id="isl-sequence-strip" class="sequence-strip" role="list"></div>
+                </div>
+
+                <!-- Stage 22-Language Output -->
+                <div class="multilang-output-box" id="stage-multilang-box">
+                  <div class="multilang-header">
+                    <h4>🗣️ Active Avatar Sign in All 22 Regional Languages <span class="badge-pill" id="stage-multilang-sign-badge">👋 Hello / Namaste</span></h4>
+                    <div class="multilang-actions">
+                      <button type="button" id="btn-speak-active-lang-stage" class="btn-primary btn-xs">🗣️ Speak Selected</button>
+                      <button type="button" id="btn-speak-all-langs-stage" class="btn-outline btn-xs">🌍 Speak All 22</button>
+                    </div>
+                  </div>
+                  <div id="stage-multilang-grid" class="multilang-grid" role="group"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Two-Way Deaf Signer <-> Regional Speaker Conversation Hub -->
+            <div class="card twoway-hub-card" id="twoway-bridge-section">
+              <div class="twoway-header">
+                <div>
+                  <span class="sec-tag">🔄 TWO-WAY CONVERSATION CHAT</span>
+                  <h3 style="font-size:20px;font-weight:600;margin-top:4px;">Deaf Signer (ISL) ⇄ Regional Language Speaker</h3>
+                  <p style="font-size:13.5px;color:var(--ink-2);">Tap quick ISL sign replies or type below — every reply is spoken aloud in the selected regional voice and animated on the 3D Avatar.</p>
+                </div>
+                <div class="twoway-header-actions" style="display:flex;gap:8px;">
+                  <button type="button" id="btn-read-last-chat" class="btn-primary btn-sm">🔊 Replay Latest</button>
+                  <button type="button" id="btn-clear-chat" class="btn-outline btn-sm">🗑️ Clear Chat</button>
+                </div>
+              </div>
+
+              <div class="deaf-reply-bar" style="display:flex;flex-direction:column;gap:10px;">
+                <div class="text-input-row">
+                  <input type="text" id="deaf-partner-input" class="text-input" placeholder="Deaf signer: type or tap ISL chips below to speak in regional language..." />
+                  <button type="button" id="btn-deaf-send-reply" class="btn-secondary">🗣️ Speak Reply</button>
+                </div>
+                <div id="deaf-quick-sign-chips" class="chip-row" role="group"></div>
+              </div>
+
+              <div id="twoway-chat-log" class="twoway-chat-log" role="log" aria-live="polite"></div>
+            </div>
+          </section>
+
+          <!-- ===============================================================
+               PANEL 3: 22-LANGUAGE ISL VISUAL DICTIONARY & DEAF QUIZ
+               =============================================================== -->
+          <section id="panel-dictionary" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-dictionary" hidden>
+            <div class="panel-header">
+              <div>
+                <h2>Indian Sign Language (ISL) Dictionary &amp; Regional Voice Bank</h2>
+                <p>Browse 70+ ISL signs (conversational phrases, two-handed alphabet A–Z, and numbers 1–9) with 3D avatar visuals and audio in all 22 Indian languages.</p>
+              </div>
+              <div class="panel-header-actions">
+                <button type="button" id="btn-dict-add-sign" class="btn-outline">➕ Add Custom Sign</button>
+                <button type="button" id="btn-start-quiz" class="btn-primary">🎯 Start Practice Quiz</button>
+              </div>
+            </div>
+
+            <div id="quiz-container" class="card quiz-card" hidden>
+              <div class="stage-header">
+                <div>
+                  <span class="sec-tag">🎯 ISL PRACTICE QUIZ</span>
+                  <h3 id="quiz-question-title" style="font-size:18px;font-weight:600;margin-top:4px;">Identify the Indian Sign Language gesture!</h3>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span>Score: <strong id="quiz-score">0 / 0</strong></span>
+                  <button type="button" id="btn-close-quiz" class="btn-outline btn-sm">Close Quiz</button>
+                </div>
+              </div>
+              <p id="quiz-prompt-text" style="font-size:14px;color:var(--ink-2);">Read or listen to the ISL formation clue and pick the matching sign.</p>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <button type="button" id="btn-quiz-replay" class="btn-secondary btn-sm" style="align-self:flex-start;">🔊 Replay Clue</button>
+                <div id="quiz-options" class="chip-row" role="group"></div>
+              </div>
+            </div>
+
+            <div class="dict-controls card">
+              <input type="search" id="dict-search" class="text-input" placeholder="Search 70+ ISL signs (e.g., 'Namaste', 'Doctor', 'Water', 'Deaf', 'School', 'A', '5')..." />
+              <div class="category-filters" role="group">
+                <button type="button" class="filter-btn active" data-category="all">All Signs (70+)</button>
+                <button type="button" class="filter-btn" data-category="greetings">Greetings &amp; Social</button>
+                <button type="button" class="filter-btn" data-category="needs">Daily Needs &amp; Travel</button>
+                <button type="button" class="filter-btn" data-category="emergency">Health &amp; Emergency</button>
+                <button type="button" class="filter-btn" data-category="custom">✨ Custom Signs</button>
+                <button type="button" class="filter-btn" data-category="alphabet">Alphabet (A–Z)</button>
+                <button type="button" class="filter-btn" data-category="numbers">Numbers (1–9)</button>
+              </div>
+            </div>
+
+            <div id="dictionary-grid" class="dictionary-grid" role="list"></div>
+          </section>
+
+          <!-- ===============================================================
+               PANEL 4: DEAF QUICK-COMMUNICATOR BOARD & CUSTOM SIGN STUDIO
+               =============================================================== -->
+          <section id="panel-assist" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-assist" hidden>
+            <div class="panel-header">
+              <div>
+                <h2>Deaf Quick-Communicator Board</h2>
+                <p>One-tap cards for hospitals, railways, schools, and daily public services — speaks immediately in your selected regional language while showing the ISL sign.</p>
+              </div>
+            </div>
+            <div class="quickboard-grid" id="quickboard-grid" role="group"></div>
+          </section>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Main Header -->
-  <header class="site-header" role="banner">
-    <div class="header-inner">
-      <div class="brand">
-        <div class="brand-logo" aria-hidden="true">🤟🔊</div>
-        <div>
-          <h1 class="brand-title">SanketSetu <span class="badge-pill">ISL ⇄ Braille ⇄ 22-State Human Audio Bridge</span></h1>
-          <p class="brand-subtitle">Two-Way ISL Sign-to-Text, 6-Dot Braille Translation, Animated Avatar &amp; 22 Indian State Real Human Voice Platform</p>
+  <!-- =====================================================================
+       HOW IT WORKS · 5-STAGE TRANSLATION PIPELINE (#pipeline)
+       ===================================================================== -->
+  <section class="block" id="pipeline">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-tag">HOW SANKETSETU WORKS</div>
+        <h2 class="sec-title">5-Stage Real-Time ISL Translation Architecture</h2>
+        <p class="sec-sub">
+          From live camera hand tracking to 22-language regional voice synthesis and 3D avatar signing.
+        </p>
+      </div>
+
+      <div class="pipe" id="pipeline-steps-grid">
+        <div class="step o active-stage" data-pipe-step="1">
+          <span class="n">Stage 01</span>
+          <h4>3D Hand &amp; Pose Tracking</h4>
+          <p>Extracts 21 3D hand landmarks per frame from the webcam with palm-scale normalization and motion smoothing.</p>
+        </div>
+        <div class="step o" data-pipe-step="2">
+          <span class="n">Stage 02</span>
+          <h4>Sign Gesture Classifier</h4>
+          <p>Matches finger extension angles, thumb-finger pinch geometry, and two-handed postures across 70+ ISL signs.</p>
+        </div>
+        <div class="step" data-pipe-step="3">
+          <span class="n">Stage 03</span>
+          <h4>ISL Grammar Decoder</h4>
+          <p>Converts continuous ISL gloss tokens into natural sentences across Hindi, Maithili, Tamil, Bengali, and 18+ regional languages.</p>
+        </div>
+        <div class="step g" data-pipe-step="4">
+          <span class="n">Stage 04</span>
+          <h4>Regional Human Voice</h4>
+          <p>Speaks the translated sentence aloud using 24kHz native regional human voice recordings across 22 Indian languages.</p>
+        </div>
+        <div class="step g" data-pipe-step="5">
+          <span class="n">Stage 05</span>
+          <h4>3D Signing Avatar</h4>
+          <p>Translates regional speech and text back into animated two-handed ISL gestures on our 3D Signing Avatar.</p>
         </div>
       </div>
 
-      <!-- Global Voice Command Button & SOS -->
-      <div class="header-actions">
-        <button type="button" id="voice-command-btn" class="btn-voice-cmd" aria-pressed="false" aria-label="Activate Voice Command Assistant. Shortcut: Alt + V or Spacebar when not typing">
-          <span class="mic-icon" aria-hidden="true">🎙️</span>
-          <span class="btn-voice-text">
-            <strong id="voice-cmd-label">Voice Command</strong>
-            <small id="voice-cmd-sub">Say "No Text", "Sign Language", "Blind Language", or "Welcome"</small>
-          </span>
-        </button>
+      <!-- Interactive Pipeline Tester -->
+      <div class="pipeline-runner">
+        <div class="pipeline-runner-head">
+          <div>
+            <div class="sec-tag">INTERACTIVE PIPELINE TESTER</div>
+            <h3 style="font-size: 18px; font-weight: 600; margin-top: 4px;">Test a sign through all 5 stages in your selected language</h3>
+          </div>
+          <div class="pipeline-runner-controls">
+            <button type="button" class="pill active" data-pipe-sign="hello">👋 Namaste</button>
+            <button type="button" class="pill" data-pipe-sign="doctor">🏥 Doctor / Hospital</button>
+            <button type="button" class="pill" data-pipe-sign="water">💧 Water</button>
+            <button type="button" class="pill" data-pipe-sign="help">🆘 Emergency Help</button>
+            <button type="button" class="pill" data-pipe-sign="deaf">🧏 I Am Deaf</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-run-pipeline-speak">🔊 Speak Output</button>
+          </div>
+        </div>
 
-        <button type="button" id="btn-sos" class="btn-sos" aria-label="Emergency SOS Alert: Sounds audible siren and flashes high-visibility Indian Sign Language Help sign">
-          <span aria-hidden="true">🚨</span> SOS Help
-        </button>
+        <div class="pipeline-live-output">
+          <div class="pipe-out-box">
+            <span class="po-lbl">01 · Hand Landmarks</span>
+            <span class="po-val" id="pipe-out-1">21 3D Hand Landmarks (Locked)</span>
+          </div>
+          <div class="pipe-out-box">
+            <span class="po-lbl">02 · Detected Sign</span>
+            <span class="po-val" id="pipe-out-2">👋 Hello / Namaste (97%)</span>
+          </div>
+          <div class="pipe-out-box">
+            <span class="po-lbl">03 · ISL Gloss</span>
+            <span class="po-val" id="pipe-out-3">[NAMASTE] → Natural Sentence</span>
+          </div>
+          <div class="pipe-out-box">
+            <span class="po-lbl">04 · Regional Translation</span>
+            <span class="po-val" id="pipe-out-4">नमस्ते जी! आपसे मिलकर बहुत खुशी हुई।</span>
+          </div>
+          <div class="pipe-out-box">
+            <span class="po-lbl">05 · 3D Avatar Action</span>
+            <span class="po-val" id="pipe-out-5">2-Handed Namaste Posture + Smile</span>
+          </div>
+        </div>
       </div>
     </div>
+  </section>
 
-    <!-- Primary Navigation Tabs (Accessible via Keys 1, 2, 3, 4) -->
-    <nav class="main-nav" aria-label="Primary Modes (Use number keys 1 to 4 to switch)">
-      <div class="nav-tabs" role="tablist">
-        <button role="tab" id="tab-btn-camera" class="nav-tab active" aria-selected="true" aria-controls="panel-camera" data-tab="camera">
-          <span class="tab-num" aria-hidden="true">1</span>
-          <span class="tab-icon" aria-hidden="true">📷</span>
-          <span class="tab-label">
-            <strong>Sign-to-Text, Braille &amp; 22-State Speech</strong>
-            <small>Camera reads ISL signs → 22 State Human Voices &amp; Braille</small>
-          </span>
-        </button>
-
-        <button role="tab" id="tab-btn-translator" class="nav-tab" aria-selected="false" aria-controls="panel-translator" data-tab="translator">
-          <span class="tab-num" aria-hidden="true">2</span>
-          <span class="tab-icon" aria-hidden="true">🧑‍🦯</span>
-          <span class="tab-label">
-            <strong>2-Way Bridge, Avatar &amp; Braille</strong>
-            <small>Speech/Braille ⇄ Animated ISL Avatar &amp; 2-Way Chat</small>
-          </span>
-        </button>
-
-        <button role="tab" id="tab-btn-dictionary" class="nav-tab" aria-selected="false" aria-controls="panel-dictionary" data-tab="dictionary">
-          <span class="tab-num" aria-hidden="true">3</span>
-          <span class="tab-icon" aria-hidden="true">✋</span>
-          <span class="tab-label">
-            <strong>Tactile Audio ISL Dictionary</strong>
-            <small>Learn ISL + Braille dots with spoken guides</small>
-          </span>
-        </button>
-
-        <button role="tab" id="tab-btn-assist" class="nav-tab" aria-selected="false" aria-controls="panel-assist" data-tab="assist">
-          <span class="tab-num" aria-hidden="true">4</span>
-          <span class="tab-icon" aria-hidden="true">🧭</span>
-          <span class="tab-label">
-            <strong>Blind Quick-Board &amp; Guide</strong>
-            <small>One-tap audio/sign phrases &amp; voice shortcuts</small>
-          </span>
-        </button>
+  <!-- =====================================================================
+       BHASHINI × SANKETSETU: 3 PRIMARY GROUPS FOR DEAF CITIZENS (#bhashini)
+       ===================================================================== -->
+  <section class="block" id="bhashini">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-tag">BHASHINI DIGITAL INCLUSION FOR DEAF INDIA</div>
+        <h2 class="sec-title">Who SanketSetu Serves Across India</h2>
+        <p class="sec-sub">Inspired by the Government of India's Bhashini mission to eliminate language barriers for non-English speakers, rural citizens, and the Deaf community.</p>
       </div>
-    </nav>
-  </header>
 
-  <!-- Main Workspace Content -->
-  <main id="main-content" class="main-container" tabindex="-1">
-
-    <!-- =================================================================
-         PROMINENT 22-STATE LOCAL SPEAKING LANGUAGE & REAL HUMAN VOICE BAR
-         ================================================================= -->
-    <section id="global-language-bar" class="language-chooser-banner" aria-label="Choose Indian State Local Speaking Language and Real Human Voice Tone">
-      <div class="lang-chooser-top">
-        <div class="lang-chooser-title">
-          <span class="lang-globe-icon" aria-hidden="true">🗣️🇮🇳</span>
-          <div>
-            <h2>All-India 22 State Local Languages &amp; Real Human Voice <span class="welcome-divider">|</span> <span lang="hi">सभी राज्यों की अपनी स्थानीय बोली और असली मानवीय आवाज़</span></h2>
-            <p>Hear every sign spoken like a <strong>real local human</strong> with authentic regional warmth (<em>"अरे नमस्ते जी!"</em>, <em>"प्रणाम यौ!"</em>, <em>"खम्मा घणी सा!"</em>, <em>"राम-राम जी!"</em>, <em>"जय जोहार संगवारी!"</em>, <em>"नमस्कार मंडळी!"</em>):</p>
-            <div id="active-local-touch-badge" class="badge-pill" style="margin-top:0.35rem; display:inline-block;">
-              🗣️ Active Voice: 👩 Didi (Real Human Neural Voice) • 🌐 हिन्दी + English ("अरे नमस्ते जी! आपसे मिलकर बहुत खुशी हुई।")
-            </div>
+      <div class="impact-grid">
+        <div class="impact-card">
+          <div class="top-tag">
+            <span class="label">1. General Deaf Citizens &amp; Rural Families</span>
           </div>
-        </div>
-        <div class="lang-chooser-controls">
-          <label for="main-sign-output-lang" class="field-label" style="margin:0;">State / Local Language:</label>
-          <select id="main-sign-output-lang" class="a11y-select sync-sign-lang-select lang-select-prominent" aria-label="Choose Indian state or local language for sign audio output">
-            <option value="hi">🇮🇳 हिन्दी — Hindi (UP / MP / Delhi — "अरे नमस्ते जी!")</option>
-            <option value="en_hi" selected>🌐 हिन्दी + English (Hindi First + English)</option>
-            <option value="mai">🇮🇳 मैथिली — Maithili (Mithila, Bihar — "प्रणाम यौ!")</option>
-            <option value="en_mai">🌐 मैथिली + English (Maithili First + English)</option>
-            <option value="multi_top">🌐 हिन्दी + मैथिली + English</option>
-            <option value="bho">🇮🇳 भोजपुरी — Bhojpuri (Bihar / Purvanchal — "प्रणाम रउआ के!")</option>
-            <option value="mag">🇮🇳 मगही — Magahi (Magadh, Bihar — "प्रणाम भैया!")</option>
-            <option value="raj">🇮🇳 राजस्थानी / मारवाड़ी — Rajasthani ("खम्मा घणी सा!")</option>
-            <option value="bgc">🇮🇳 हरियाणवी — Haryanvi (Haryana — "राम-राम जी!")</option>
-            <option value="hne">🇮🇳 छत्तीसगढ़ी — Chhattisgarhi ("जय जोहार संगवारी!")</option>
-            <option value="mr">🇮🇳 मराठी — Marathi (Maharashtra — "नमस्कार मंडळी!")</option>
-            <option value="gu">🇮🇳 ગુજરાતી — Gujarati (Gujarat — "નમસ્તે, કેમ છો ભાઈ!")</option>
-            <option value="pa">🇮🇳 ਪੰਜਾਬੀ — Punjabi (Punjab — "ਸਤ ਸ੍ਰੀ ਅਕਾਲ ਜੀ!")</option>
-            <option value="bn">🇮🇳 বাংলা — Bengali (West Bengal — "নমস্কার দাদা!")</option>
-            <option value="as">🇮🇳 অসমীয়া — Assamese (Assam — "নমস্কাৰ দেই!")</option>
-            <option value="or">🇮🇳 ଓଡ଼ିଆ — Odia (Odisha — "ନମସ୍କାର, ଜୟ ଜଗନ୍ନାଥ!")</option>
-            <option value="ta">🇮🇳 தமிழ் — Tamil (Tamil Nadu — "வணக்கம்ங்க!")</option>
-            <option value="te">🇮🇳 తెలుగు — Telugu (AP &amp; Telangana — "నమస్కారం అండీ!")</option>
-            <option value="kn">🇮🇳 ಕನ್ನಡ — Kannada (Karnataka — "ನಮಸ್ಕಾರ ರೀ!")</option>
-            <option value="ml">🇮🇳 മലയാളം — Malayalam (Kerala — "നമസ്കാരം ചേട്ടാ!")</option>
-            <option value="ur">🇮🇳 اردو / کشمیری — Urdu / Kashmiri ("آداب جناب!")</option>
-            <option value="ne">🇮🇳 नेपाली — Nepali (Sikkim / Darjeeling — "नमस्ते हजुर!")</option>
-            <option value="kok">🇮🇳 कोंकणी — Konkani (Goa — "देव बरे करूं!")</option>
-            <option value="doi">🇮🇳 डोगरी / पहाड़ी — Dogri / Pahadi ("जय देवा जी!")</option>
-            <option value="en">🇮🇳 Indian English ("Namaste! Hello friend!")</option>
-            <option value="all">🌍 Speak All 22 State Languages</option>
-          </select>
-
-          <label for="human-voice-style-select" class="field-label" style="margin:0;">Human Voice Tone:</label>
-          <select id="human-voice-style-select" class="a11y-select sync-human-persona-select lang-select-prominent" aria-label="Choose Real Human Voice Persona and Tone">
-            <option value="warm_female" selected>👩 Didi — Warm Natural Female Human</option>
-            <option value="natural_male">👨 Bhaiya — Natural Warm Male Human</option>
-            <option value="gentle_elder">👵 Dadi / Baba — Gentle Respectful Elder</option>
-            <option value="expressive_friend">🧑 Mitra — Bright Expressive Friend</option>
-          </select>
-
-          <button type="button" id="btn-test-hindi-now" class="btn-primary btn-sm" aria-label="Hear current sign in Hindi human voice right now">
-            🗣️ 🇮🇳 सुने हिन्दी में (Hindi)
-          </button>
-          <button type="button" id="btn-test-maithili-now" class="btn-secondary btn-sm" aria-label="Hear current sign in Maithili human voice right now">
-            🗣️ 🇮🇳 मैथिली में सुनु (Maithili)
-          </button>
-        </div>
-      </div>
-
-      <!-- One-Click Quick State Language Switcher Pills (All 22 Indian State & Local Languages) -->
-      <div class="lang-quick-pills" role="group" aria-label="One-click Indian state language selection buttons">
-        <button type="button" class="lang-pill-btn" data-set-lang="hi">🇮🇳 हिन्दी (UP/MP/Delhi)</button>
-        <button type="button" class="lang-pill-btn active" data-set-lang="en_hi">🌐 हिन्दी + EN</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="mai">🇮🇳 मैथिली (Mithila)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="bho">🇮🇳 भोजपुरी (Bihar/UP)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="mag">🇮🇳 मगही (Magadh)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="raj">🇮🇳 राजस्थानी (Marwari)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="bgc">🇮🇳 हरियाणवी (Haryana)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="hne">🇮🇳 छत्तीसगढ़ी (CG)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="mr">🇮🇳 मराठी (Maharashtra)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="gu">🇮🇳 ગુજરાતી (Gujarat)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="pa">🇮🇳 ਪੰਜਾਬੀ (Punjab)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="bn">🇮🇳 বাংলা (Bengal)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="as">🇮🇳 অসমীয়া (Assam)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="or">🇮🇳 ଓଡ଼ିଆ (Odisha)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="ta">🇮🇳 தமிழ் (Tamil Nadu)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="te">🇮🇳 తెలుగు (Telugu)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="kn">🇮🇳 ಕನ್ನಡ (Karnataka)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="ml">🇮🇳 മലയാളം (Kerala)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="ur">🇮🇳 اردو / کشمیری (J&amp;K)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="ne">🇮🇳 नेपाली (Sikkim)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="kok">🇮🇳 कोंकणी (Goa)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="doi">🇮🇳 डोगरी / पहाड़ी (HP/J&amp;K)</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="en">🇮🇳 Indian English</button>
-        <button type="button" class="lang-pill-btn" data-set-lang="all">🌍 All 22 State Languages</button>
-      </div>
-    </section>
-
-    <!-- =================================================================
-         BILINGUAL WELCOME & COMMUNICATION MODE BANNER (ENGLISH + HINDI)
-         ================================================================= -->
-    <section id="welcome-bilingual-banner" class="welcome-bilingual-banner" aria-label="Welcome to Website in English and Hindi">
-      <div class="welcome-banner-top">
-        <div class="welcome-title-wrap">
-          <span class="welcome-icon" aria-hidden="true">🙏</span>
-          <div>
-            <h2 class="welcome-heading">
-              Welcome to the Website! <span class="welcome-divider">|</span> <span lang="hi">वेबसाइट में आपका स्वागत है!</span>
-            </h2>
-            <p class="welcome-sub">
-              Automatic Bilingual Greeting (English &amp; हिंदी) • Choose or Speak your communication mode: <strong>"No Text"</strong>, <strong>"Sign Language"</strong>, or <strong>"Blind Language"</strong>
-            </p>
-          </div>
-        </div>
-        <span id="welcome-active-mode-badge" class="badge-tag">Mode: Bilingual Auto-Welcome</span>
-      </div>
-
-      <div class="welcome-statements-grid" id="welcome-statement-box" aria-live="polite">
-        <div class="welcome-statement-card">
-          <span class="welcome-lang-tag">🇬🇧 English Welcome Statement</span>
-          <p id="welcome-statement-en">
-            "Welcome to the website! Welcome to SanketSetu — the Indian Sign Language, 6-Dot Braille, and Blind Audio Bridge. If you give no text, you can communicate using Sign Language, Voice, or Blind Language."
+          <div class="stat">22<span class="unit">Languages</span></div>
+          <p>
+            <strong>Non-English Speakers &amp; Low Literacy:</strong> Allows Deaf individuals and their families who only speak regional languages (Hindi, Maithili, Bhojpuri, Tamil, Bengali, Punjabi, Odia) to communicate through sign-to-voice and voice-to-avatar in hospitals, railways, schools, and rural public services.
           </p>
         </div>
-        <div class="welcome-statement-card" lang="hi">
-          <span class="welcome-lang-tag">🇮🇳 हिंदी स्वागत संदेश (Hindi Welcome)</span>
-          <p id="welcome-statement-hi">
-            "नमस्ते! वेबसाइट में आपका स्वागत है। संकेतसेतु में आपका स्वागत है — यदि आप कोई टेक्स्ट नहीं देते हैं, तो आप सांकेतिक भाषा (Sign Language), बोलकर, या नेत्रहीन ऑडियो व ब्रेल भाषा में संवाद कर सकते हैं।"
+
+        <div class="impact-card">
+          <div class="top-tag">
+            <span class="label">2. Schools, Clinics &amp; Public Service Builders</span>
+          </div>
+          <div class="stat">2-Way<span class="unit">Bridge</span></div>
+          <p>
+            <strong>Accessible Digital Services:</strong> Helps hospitals, classrooms, banks, and local businesses communicate directly with Deaf citizens in their local state language without needing a full-time interpreter on site.
           </p>
         </div>
-      </div>
 
-      <div class="welcome-mode-actions" role="group" aria-label="Select or Speak Communication Mode in English and Hindi">
-        <button type="button" id="btn-speak-bilingual-welcome" class="btn-primary btn-sm" aria-label="Replay Welcome to the website statement in English and Hindi (Shortcut: W)">
-          🔊 Speak Welcome (EN + हिंदी) <kbd>W</kbd>
-        </button>
-        <button type="button" id="btn-mode-no-text" class="btn-outline btn-sm" aria-label="Activate No Text Mode: Speaks English and Hindi welcome and enables hands-free voice and audio without typing">
-          🎙️ No Text Mode (बिना टेक्स्ट)
-        </button>
-        <button type="button" id="btn-mode-sign-lang" class="btn-outline btn-sm" aria-label="Activate Sign Language Mode: Speaks English and Hindi welcome and shows Indian Sign Language Avatar and Camera">
-          🤟 Sign Language (सांकेतिक भाषा)
-        </button>
-        <button type="button" id="btn-mode-blind-lang" class="btn-outline btn-sm" aria-label="Activate Blind Language and Braille Mode: Speaks English and Hindi welcome with Sonic 6-Dot Braille pulses">
-          🧑‍🦯 Blind Language / Braille (नेत्रहीन भाषा)
-        </button>
-      </div>
-    </section>
-
-    <!-- =================================================================
-         PANEL 1: LIVE SIGN-TO-SPEECH, SIGN-TO-TEXT & BRAILLE TRANSLATION
-         ================================================================= -->
-    <section id="panel-camera" class="tab-panel active" role="tabpanel" aria-labelledby="tab-btn-camera">
-      <div class="panel-header">
-        <div>
-          <h2>1. Live ISL Sign-to-Text, 6-Dot Braille &amp; Speech Generator</h2>
-          <p>Point the camera at an ISL signer (or click any Simulator sign). Detected signs are converted in real time into <strong>Spoken Audio (Hindi, Maithili &amp; 12 Languages)</strong>, <strong>Natural Text</strong>, <strong>6-Dot Tactile Braille</strong>, and an <strong>On-Screen ISL Avatar</strong>.</p>
-        </div>
-        <div class="panel-header-actions">
-          <button type="button" id="btn-open-custom-sign" class="btn-primary" aria-label="Add or calibrate a new custom Indian Sign Language gesture">
-            ➕ Add / Train New Sign
-          </button>
-          <button type="button" id="btn-speak-panel-1" class="btn-secondary" aria-label="Read instructions for Sign to Speech camera mode">
-            🔊 Read Instructions
-          </button>
+        <div class="impact-card">
+          <div class="top-tag">
+            <span class="label">3. "Bhasha Daan" Sign Contributors</span>
+          </div>
+          <div class="stat">Custom<span class="unit">Signs</span></div>
+          <p>
+            <strong>Community Sign Training:</strong> Deaf signers, teachers, and volunteers can record and calibrate local regional ISL signs directly using the built-in Custom Sign Trainer to expand vocabulary across all Indian states.
+          </p>
+          <span class="src"><a href="#converter" class="open-bhashadaan-link" style="text-decoration:underline;color:var(--orange-deep);font-weight:600;">➕ Open Custom Sign Trainer →</a></span>
         </div>
       </div>
+    </div>
+  </section>
 
-      <div class="camera-grid">
-        <!-- Left: Camera Viewport & Controls -->
-        <div class="card camera-card">
-          <div class="camera-toolbar">
-            <button type="button" id="btn-toggle-camera" class="btn-primary">
-              <span aria-hidden="true">📹</span> <span id="camera-btn-text">Start Live Webcam</span>
-            </button>
-            <label class="toggle-label">
-              <input type="checkbox" id="chk-auto-speak-sign" checked />
-              <span>Speak Signs Immediately</span>
-            </label>
-            <label class="toggle-label">
-              <input type="checkbox" id="chk-spatial-beep" checked />
-              <span>Hand-In-Frame Audio Beep</span>
-            </label>
-            <div class="precision-select-group">
-              <label for="camera-lang-select" class="sr-only">Camera Sign Output Language</label>
-              <select id="camera-lang-select" class="a11y-select sync-sign-lang-select" aria-label="Choose spoken language for camera sign detection">
-                <option value="hi">🇮🇳 Language: हिन्दी (Hindi)</option>
-                <option value="en_hi" selected>🌐 Language: हिन्दी + English</option>
-                <option value="mai">🇮🇳 Language: मैथिली (Maithili)</option>
-                <option value="en_mai">🌐 Language: मैथिली + English</option>
-                <option value="multi_top">🌐 Language: हिन्दी + मैथिली + EN</option>
-                <option value="bho">🇮🇳 Language: भोजपुरी (Bhojpuri)</option>
-                <option value="mag">🇮🇳 Language: मगही (Magadh)</option>
-                <option value="raj">🇮🇳 Language: राजस्थानी (Marwari)</option>
-                <option value="bgc">🇮🇳 Language: हरियाणवी (Haryanvi)</option>
-                <option value="hne">🇮🇳 Language: छत्तीसगढ़ी (Chhattisgarhi)</option>
-                <option value="mr">🇮🇳 Language: मराठी (Marathi)</option>
-                <option value="gu">🇮🇳 Language: ગુજરાતી (Gujarati)</option>
-                <option value="pa">🇮🇳 Language: ਪੰਜਾਬੀ (Punjabi)</option>
-                <option value="bn">🇮🇳 Language: বাংলা (Bengali)</option>
-                <option value="as">🇮🇳 Language: অসমীয়া (Assamese)</option>
-                <option value="or">🇮🇳 Language: ଓଡ଼ିଆ (Odia)</option>
-                <option value="ta">🇮🇳 Language: தமிழ் (Tamil)</option>
-                <option value="te">🇮🇳 Language: తెలుగు (Telugu)</option>
-                <option value="kn">🇮🇳 Language: ಕನ್ನಡ (Kannada)</option>
-                <option value="ml">🇮🇳 Language: മലയാളം (Malayalam)</option>
-                <option value="ur">🇮🇳 Language: اردو / کشمیری (Urdu)</option>
-                <option value="ne">🇮🇳 Language: नेपाली (Nepali)</option>
-                <option value="kok">🇮🇳 Language: कोंकणी (Konkani)</option>
-                <option value="doi">🇮🇳 Language: डोगरी / पहाड़ी (Dogri)</option>
-                <option value="en">🇬🇧 Language: Indian English</option>
-                <option value="all">🌍 Language: Speak All 22</option>
-              </select>
-              <label for="camera-precision-mode" class="sr-only">Camera Precision Sensitivity</label>
-              <select id="camera-precision-mode" class="a11y-select" aria-label="Select camera gesture precision and stability threshold">
-                <option value="strict">Precision: Strict (85% Conf • 6 Frames)</option>
-                <option value="high" selected>Precision: High (78% Conf • 4 Frames)</option>
-                <option value="fast">Precision: Fast (70% Conf • 2 Frames)</option>
-              </select>
-              <label for="camera-scope-mode" class="sr-only">Recognition Vocabulary Scope</label>
-              <select id="camera-scope-mode" class="a11y-select" aria-label="Select which ISL sign categories the camera detects">
-                <option value="all" selected>Detect: All Signs + Numbers + A–Z (70+)</option>
-                <option value="conversational">Detect: Conversational &amp; Custom Only</option>
-                <option value="numbers">Detect: ISL Numbers (1–9) Only</option>
-                <option value="alphabet">Detect: ISL Alphabet (A–Z) Only</option>
-              </select>
-              <label for="camera-target-sign" class="sr-only">Target Sign Focus (Competition Demo Assist)</label>
-              <select id="camera-target-sign" class="a11y-select" aria-label="Optional: Focus camera recognition on a specific sign for live stage demo">
-                <option value="auto" selected>🎯 Focus: Auto-Detect All Signs</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="video-container" aria-label="Webcam hand tracking view">
-            <video id="webcam-video" class="input-video" playsinline muted></video>
-            <canvas id="output-canvas" class="output-canvas" width="640" height="480"></canvas>
-
-            <div id="camera-placeholder" class="camera-placeholder">
-              <div class="placeholder-icon" aria-hidden="true">📷🤟</div>
-              <h3>3D Biomechanical ISL Hand Tracking Ready</h3>
-              <p>Click <strong>"Start Live Webcam"</strong> above for palm-normalized 21-point 3D joint-angle recognition, or test any of the <strong>41+ Signs &amp; Numbers</strong> in the Simulator below.</p>
-            </div>
-
-            <!-- Live HUD Overlay -->
-            <div class="camera-hud" aria-live="polite">
-              <div class="hud-badge" id="hand-presence-badge">No Hand in Frame</div>
-              <div class="hud-confidence" id="hud-confidence">Confidence: --</div>
-            </div>
-          </div>
-
-          <!-- Live 3D Biomechanical Telemetry & Stability Lock-In Bar -->
-          <div class="telemetry-panel" aria-label="Live 3D hand landmark precision telemetry">
-            <div class="telemetry-top-row">
-              <div class="lock-status">
-                <span class="telemetry-label">🎯 Gesture Lock-In Stability:</span>
-                <strong id="lock-candidate-label">Waiting for hand pose...</strong>
-              </div>
-              <span class="badge-subtle" id="telemetry-motion-badge">Palm Scale: -- • Motion: Steady</span>
-            </div>
-            <div class="lock-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="lock-progress-bar">
-              <div class="lock-progress-fill" id="lock-progress-fill" style="width: 0%"></div>
-            </div>
-            <div class="finger-telemetry-grid" aria-hidden="true">
-              <div class="finger-meter"><span class="f-name">Thumb</span><div class="f-bar"><div id="f-bar-thumb" class="f-fill"></div></div><span id="f-val-thumb" class="f-pct">--</span></div>
-              <div class="finger-meter"><span class="f-name">Index</span><div class="f-bar"><div id="f-bar-index" class="f-fill"></div></div><span id="f-val-index" class="f-pct">--</span></div>
-              <div class="finger-meter"><span class="f-name">Middle</span><div class="f-bar"><div id="f-bar-middle" class="f-fill"></div></div><span id="f-val-middle" class="f-pct">--</span></div>
-              <div class="finger-meter"><span class="f-name">Ring</span><div class="f-bar"><div id="f-bar-ring" class="f-fill"></div></div><span id="f-val-ring" class="f-pct">--</span></div>
-              <div class="finger-meter"><span class="f-name">Pinky</span><div class="f-bar"><div id="f-bar-pinky" class="f-fill"></div></div><span id="f-val-pinky" class="f-pct">--</span></div>
-            </div>
-          </div>
-
-          <!-- Instant Sign Simulator (Allows testing without webcam or alongside webcam) -->
-          <div class="simulator-box" aria-label="Interactive ISL Gesture Simulator">
-            <div class="simulator-header">
-              <h4>⚡ Instant ISL Gesture Simulator (Click any sign or number to trigger)</h4>
-              <span class="badge-subtle" id="sim-count-badge">41+ Signs Ready</span>
-            </div>
-            <div id="simulator-buttons" class="simulator-grid" role="group" aria-label="Simulated ISL gestures">
-              <!-- Populated dynamically from ISL_SIGNS data -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Right: Live Avatar, Sign-to-Text, Braille Translation & Speech Output -->
-        <div class="card output-card">
-          <div class="detected-sign-banner" id="detected-sign-banner" tabindex="0" aria-label="Currently detected sign and avatar">
-            <div class="detected-visual avatar-thumb-box" id="detected-visual" aria-hidden="true">👋</div>
-            <div class="detected-info">
-              <div class="detected-eyebrow-row">
-                <span class="eyebrow">DETECTED SIGN &amp; ON-SCREEN AVATAR</span>
-                <button type="button" id="btn-read-detected-avatar" class="btn-outline btn-xs" aria-label="Read on-screen avatar posture and text aloud">
-                  🔊 Read Avatar &amp; Text
-                </button>
-              </div>
-              <h3 id="detected-sign-name">Waiting for sign...</h3>
-              <p id="detected-sign-spoken" class="spoken-phrase">"Show a hand gesture or click a simulator sign"</p>
-              <p id="detected-sign-regional" class="regional-phrase-highlight" lang="hi">🇮🇳 हिन्दी: "नमस्ते! आपसे मिलकर बहुत खुशी हुई।" • मैथिली: "प्रणाम! अहाँ सँ मिलिकय बहुत खुशी भेल।"</p>
-              <p id="detected-sign-tactile" class="tactile-hint">On-Screen Avatar mirrors every detected sign and describes the hand posture aloud.</p>
-            </div>
-          </div>
-
-          <!-- Live Multi-Language Sign Output Box (Hindi, Maithili & 10+ Indian Regional Languages) -->
-          <div class="multilang-output-box" id="camera-multilang-box" aria-label="Detected Sign Output in All 22 Indian State Languages">
-            <div class="multilang-header">
-              <div>
-                <h4>🗣️ Sign Output in All 22 Indian State Languages (Real Human Voice) <span class="badge-pill" id="cam-multilang-sign-badge">👋 Hello / Namaste</span></h4>
-                <small class="text-secondary">Click any state language card below to hear this sign spoken aloud with authentic local human warmth</small>
-              </div>
-              <div class="multilang-actions">
-                <select class="a11y-select sync-sign-lang-select" aria-label="Choose sign output language">
-                  <option value="hi">🇮🇳 हिन्दी (Hindi)</option>
-                  <option value="en_hi" selected>🌐 हिन्दी + English</option>
-                  <option value="mai">🇮🇳 मैथिली (Maithili)</option>
-                  <option value="en_mai">🌐 मैथिली + English</option>
-                  <option value="multi_top">🌐 हिन्दी + मैथिली + EN</option>
-                  <option value="bho">🇮🇳 भोजपुरी (Bhojpuri)</option>
-                  <option value="mag">🇮🇳 मगही (Magadh)</option>
-                  <option value="raj">🇮🇳 राजस्थानी (Marwari)</option>
-                  <option value="bgc">🇮🇳 हरियाणवी (Haryanvi)</option>
-                  <option value="hne">🇮🇳 छत्तीसगढ़ी (Chhattisgarhi)</option>
-                  <option value="mr">🇮🇳 मराठी (Marathi)</option>
-                  <option value="gu">🇮🇳 ગુજરાતી (Gujarati)</option>
-                  <option value="pa">🇮🇳 ਪੰਜਾਬੀ (Punjabi)</option>
-                  <option value="bn">🇮🇳 বাংলা (Bengali)</option>
-                  <option value="as">🇮🇳 অসমীয়া (Assamese)</option>
-                  <option value="or">🇮🇳 ଓଡ଼ିଆ (Odia)</option>
-                  <option value="ta">🇮🇳 தமிழ் (Tamil)</option>
-                  <option value="te">🇮🇳 తెలుగు (Telugu)</option>
-                  <option value="kn">🇮🇳 ಕನ್ನಡ (Kannada)</option>
-                  <option value="ml">🇮🇳 മലയാളം (Malayalam)</option>
-                  <option value="ur">🇮🇳 اردو / کشمیری (Urdu)</option>
-                  <option value="ne">🇮🇳 नेपाली (Nepali)</option>
-                  <option value="kok">🇮🇳 कोंकणी (Konkani)</option>
-                  <option value="doi">🇮🇳 डोगरी / पहाड़ी (Dogri)</option>
-                  <option value="en">🇬🇧 Indian English</option>
-                  <option value="all">🌍 Speak All 22</option>
-                </select>
-                <button type="button" id="btn-speak-active-lang-cam" class="btn-primary btn-xs" aria-label="Speak detected sign in selected regional language">
-                  🗣️ Speak Selected Language
-                </button>
-                <button type="button" id="btn-speak-all-langs-cam" class="btn-secondary btn-xs" aria-label="Speak detected sign across all 22 Indian state languages">
-                  🌍 Speak All 22 Languages
-                </button>
-              </div>
-            </div>
-            <div id="camera-multilang-grid" class="multilang-grid" role="group" aria-label="Translations of detected sign in 22 Indian state languages">
-              <!-- Populated dynamically by window.renderMultiLangCardsHTML -->
-            </div>
-          </div>
-
-          <!-- Sign-to-Text & Natural Speech Generator -->
-          <div class="sentence-builder">
-            <div class="sentence-header">
-              <h4>📝 Sign-to-Text &amp; Natural Speech Generator</h4>
-              <div class="sentence-actions">
-                <button type="button" id="btn-speak-sentence" class="btn-primary btn-sm" aria-label="Generate and speak natural sentence aloud">
-                  🔊 Speak Natural Sentence
-                </button>
-                <button type="button" id="btn-send-cam-to-bridge" class="btn-secondary btn-sm" aria-label="Send signed sentence to Two-Way Conversation Bridge">
-                  💬 Send to 2-Way Chat
-                </button>
-                <button type="button" id="btn-clear-sentence" class="btn-outline btn-sm" aria-label="Clear conversation sentence">
-                  🗑️ Clear
-                </button>
-              </div>
-            </div>
-            <div id="sentence-display" class="sentence-box" tabindex="0" aria-live="polite" aria-label="Accumulated signed words">
-              <span class="placeholder-muted">Signed words will accumulate here into a full sentence...</span>
-            </div>
-            <div class="natural-speech-bar" id="natural-speech-bar">
-              <span class="natural-label">🗣️ Synthesized Speech Text:</span>
-              <strong id="natural-speech-preview">"Waiting for signed input..."</strong>
-            </div>
-          </div>
-
-          <!-- Live 6-Dot Tactile Braille Translation Box -->
-          <div class="braille-translation-box" aria-label="Live 6-Dot Braille Translation">
-            <div class="braille-header">
-              <div>
-                <h4>⠿ Live 6-Dot Braille Translation (Sign → Braille)</h4>
-                <span class="braille-unicode-pill" id="camera-braille-unicode" aria-label="Unicode Braille Output">⠓⠑⠇⠇⠕</span>
-              </div>
-              <div class="braille-actions">
-                <button type="button" id="btn-speak-braille-cam" class="btn-secondary btn-sm" aria-label="Read raised Braille dot numbers aloud">
-                  🔊 Read Braille Dots
-                </button>
-                <button type="button" id="btn-pulse-braille-cam" class="btn-outline btn-sm" aria-label="Play sonic and haptic tactile Braille dot pulses">
-                  📳 Sonic Braille Pulses
-                </button>
-              </div>
-            </div>
-            <div id="camera-braille-cells" class="braille-cells-strip" role="region" aria-label="6-dot Braille character cells">
-              <!-- Populated dynamically by BrailleEngine -->
-            </div>
-          </div>
-
-          <!-- Recent Sign Log with Timestamps -->
-          <div class="history-section">
-            <h4>🕒 Recent Spoken Signs Log</h4>
-            <ul id="sign-history-list" class="history-list" aria-label="Recently detected signs">
-              <li class="history-empty">No signs detected yet in this session.</li>
-            </ul>
-          </div>
-        </div>
+  <!-- =====================================================================
+       SIMPLE FOOTER
+       ===================================================================== -->
+  <footer>
+    <div class="wrap">
+      <div class="foot-bottom">
+        <div><strong>SanketSetu (संकेत सेतु)</strong> · Two-Way Indian Sign Language &amp; 22 Regional Language Translator</div>
+        <div>Built for India's Deaf Community</div>
       </div>
-    </section>
+    </div>
+  </footer>
 
-    <!-- =================================================================
-         PANEL 2: TWO-WAY COMMUNICATION SYSTEM, ON-SCREEN AVATAR & BRAILLE
-         ================================================================= -->
-    <section id="panel-translator" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-translator" hidden>
-      <div class="panel-header">
-        <div>
-          <h2>2. Two-Way ISL ⇄ Braille ⇄ Speech Bridge &amp; On-Screen Signing Avatar</h2>
-          <p>Speak, type, or tap 6-dot Braille to animate the <strong>On-Screen ISL Signing Avatar</strong> for a deaf partner, or let the system <strong>read any on-screen text, Braille, or Avatar gesture aloud</strong> for a blind user.</p>
-        </div>
-        <div class="panel-header-actions">
-          <button type="button" id="btn-stage-read-everything" class="btn-primary" aria-label="Read active on-screen text, ISL Avatar posture, and Braille dots aloud">
-            🔊 Read Screen Text &amp; Avatar Aloud
-          </button>
-        </div>
-      </div>
-
-      <div class="translator-grid">
-        <!-- Left Column: Voice, Text & 6-Dot Braille Input -->
-        <div class="card translator-input-card">
-          <div class="voice-capture-box">
-            <button type="button" id="btn-dictate-isl" class="btn-mic-large" aria-pressed="false" aria-label="Click to start speaking your message for ISL Avatar and Braille translation">
-              <span class="mic-ring" aria-hidden="true">🎙️</span>
-              <span id="dictate-btn-title">Click to Speak Your Message</span>
-              <small id="dictate-btn-status">Converts speech → ISL Avatar + 6-Dot Braille + Two-Way Chat</small>
-            </button>
-          </div>
-
-          <div class="input-group">
-            <label for="isl-text-input" class="field-label">Type or Edit Message (Text → ISL Avatar + Braille + Speech):</label>
-            <div class="text-input-row">
-              <input type="text" id="isl-text-input" class="text-input" placeholder="e.g., Hello my friend please help me find water" value="Hello friend thank you" aria-label="Message to translate into Indian Sign Language and Braille" />
-              <button type="button" id="btn-translate-text" class="btn-primary">Translate &amp; Sign 🤟</button>
-            </div>
-          </div>
-
-          <!-- Interactive 6-Dot Perkins-Style Braille Chord Composer -->
-          <div class="braille-composer-box" aria-label="Interactive 6-Dot Braille Input Composer">
-            <div class="braille-composer-header">
-              <strong>⠿ 6-Dot Tactile Braille Input Keyer (Toggle Dots 1–6 to Type in Braille):</strong>
-              <span id="braille-chord-preview" class="badge-pill">Preview: A (⠁)</span>
-            </div>
-            <div class="braille-keyer-row">
-              <div class="braille-6dot-pad" role="group" aria-label="Six Braille dot toggles">
-                <label class="b-key-toggle"><input type="checkbox" class="b-dot-chk" value="1" checked /> <span>Dot 1</span></label>
-                <label class="b-key-toggle"><input type="checkbox" class="b-dot-chk" value="4" /> <span>Dot 4</span></label>
-                <label class="b-key-toggle"><input type="checkbox" class="b-dot-chk" value="2" /> <span>Dot 2</span></label>
-                <label class="b-key-toggle"><input type="checkbox" class="b-dot-chk" value="5" /> <span>Dot 5</span></label>
-                <label class="b-key-toggle"><input type="checkbox" class="b-dot-chk" value="3" /> <span>Dot 3</span></label>
-                <label class="b-key-toggle"><input type="checkbox" class="b-dot-chk" value="6" /> <span>Dot 6</span></label>
-              </div>
-              <div class="braille-keyer-actions">
-                <button type="button" id="btn-braille-append" class="btn-secondary btn-sm" aria-label="Append current 6-dot Braille character to message">
-                  ➕ Add Braille Letter
-                </button>
-                <button type="button" id="btn-braille-space" class="btn-outline btn-sm" aria-label="Add space to message">
-                  ␣ Space
-                </button>
-                <button type="button" id="btn-braille-clear-dots" class="btn-outline btn-sm" aria-label="Reset 6 dots">
-                  ↺ Reset Dots
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Quick Preset Sentences for Blind Users -->
-          <div class="preset-sentences">
-            <span class="field-label">Quick Conversation Starters (Click to Sign, Speak &amp; Braille):</span>
-            <div class="chip-row" role="group" aria-label="Preset conversation sentences">
-              <button type="button" class="chip-btn" data-sentence="Hello friend how are you">👋 "Hello friend, how are you?"</button>
-              <button type="button" class="chip-btn" data-sentence="Please help me I am blind">🦯 "Please help me, I am blind"</button>
-              <button type="button" class="chip-btn" data-sentence="Where is water and food">💧 "Where is water and food?"</button>
-              <button type="button" class="chip-btn" data-sentence="Thank you very much good friend">🙏 "Thank you very much, good friend"</button>
-              <button type="button" class="chip-btn" data-sentence="Call doctor emergency help">🚑 "Call doctor, emergency help!"</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Right Column: On-Screen ISL Signing Avatar + Articulated Hand Stage + Braille -->
-        <div class="card translator-stage-card">
-          <div class="stage-header">
-            <div>
-              <span class="eyebrow">ON-SCREEN ISL SIGNING AVATAR &amp; HAND STAGE</span>
-              <h3 id="stage-current-token">Ready to Translate</h3>
-            </div>
-            <div class="stage-controls" role="group" aria-label="ISL animation playback controls">
-              <button type="button" id="btn-stage-prev" class="btn-outline btn-sm" aria-label="Previous sign in sentence">⏮ Prev</button>
-              <button type="button" id="btn-stage-play" class="btn-primary btn-sm" aria-label="Play or replay sign sequence on Avatar">▶ Play Avatar</button>
-              <button type="button" id="btn-stage-next" class="btn-outline btn-sm" aria-label="Next sign in sentence">Next ⏭</button>
-              <button type="button" id="btn-stage-describe" class="btn-secondary btn-sm" aria-label="Read on-screen Avatar action and hand posture aloud">🔊 Read Avatar</button>
-            </div>
-          </div>
-
-          <!-- Dual Visual Stage: On-Screen ISL Avatar + Articulated Hand Pose + Details -->
-          <div id="isl-active-stage" class="isl-stage-box dual-avatar-stage" tabindex="0" aria-live="polite">
-            <div class="stage-dual-visuals">
-              <div class="visual-panel">
-                <span class="visual-caption">🧑‍🦯 On-Screen ISL Avatar</span>
-                <div class="isl-stage-svg" id="stage-avatar-container" aria-hidden="true"></div>
-              </div>
-              <div class="visual-panel">
-                <span class="visual-caption">✋ Articulated 5-Finger Pose</span>
-                <div class="isl-stage-svg" id="stage-svg-container" aria-hidden="true"></div>
-              </div>
-            </div>
-            <div class="isl-stage-details">
-              <div class="stage-badges">
-                <span class="badge-isl" id="stage-type-badge">ISL Phrase</span>
-                <span class="badge-hands" id="stage-hands-badge">2-Handed ISL Sign</span>
-              </div>
-              <h4 id="stage-sign-title">Hello / Namaste</h4>
-              <p id="stage-sign-meaning" class="stage-meaning">Spoken meaning: "Hello, greetings!"</p>
-              <p id="stage-sign-regional" class="regional-phrase-highlight" lang="hi">🇮🇳 हिन्दी: "नमस्ते! आपसे मिलकर बहुत खुशी हुई।" • मैथिली: "प्रणाम! अहाँ सँ मिलिकय बहुत खुशी भेल।"</p>
-              <p id="stage-avatar-narration" class="avatar-narration-text">Avatar Action: Brings both open palms together at heart level in a respectful Namaste.</p>
-              <div class="tactile-box">
-                <strong>✋ Tactile / Physical Hand Guide (For Blind Users):</strong>
-                <p id="stage-tactile-desc">Bring both palms together in front of your chest (Namaste) or raise your dominant open palm to your forehead in a friendly salute.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Stage Multi-Language Sign Output Box -->
-          <div class="multilang-output-box" id="stage-multilang-box" aria-label="Active Stage Sign in All 22 Indian State Languages">
-            <div class="multilang-header">
-              <div>
-                <h4>🗣️ Active Sign in All 22 Indian State Languages (Real Human Voice) <span class="badge-pill" id="stage-multilang-sign-badge">👋 Hello / Namaste</span></h4>
-              </div>
-              <div class="multilang-actions">
-                <select class="a11y-select sync-sign-lang-select" aria-label="Choose stage sign output language">
-                  <option value="hi">🇮🇳 हिन्दी (Hindi)</option>
-                  <option value="en_hi" selected>🌐 हिन्दी + English</option>
-                  <option value="mai">🇮🇳 मैथिली (Maithili)</option>
-                  <option value="en_mai">🌐 मैथिली + English</option>
-                  <option value="multi_top">🌐 हिन्दी + मैथिली + EN</option>
-                  <option value="bho">🇮🇳 भोजपुरी (Bhojpuri)</option>
-                  <option value="mag">🇮🇳 मगही (Magadh)</option>
-                  <option value="raj">🇮🇳 राजस्थानी (Marwari)</option>
-                  <option value="bgc">🇮🇳 हरियाणवी (Haryanvi)</option>
-                  <option value="hne">🇮🇳 छत्तीसगढ़ी (Chhattisgarhi)</option>
-                  <option value="mr">🇮🇳 मराठी (Marathi)</option>
-                  <option value="gu">🇮🇳 ગુજરાતી (Gujarati)</option>
-                  <option value="pa">🇮🇳 ਪੰਜਾਬੀ (Punjabi)</option>
-                  <option value="bn">🇮🇳 বাংলা (Bengali)</option>
-                  <option value="as">🇮🇳 অসমীয়া (Assamese)</option>
-                  <option value="or">🇮🇳 ଓଡ଼ିଆ (Odia)</option>
-                  <option value="ta">🇮🇳 தமிழ் (Tamil)</option>
-                  <option value="te">🇮🇳 తెలుగు (Telugu)</option>
-                  <option value="kn">🇮🇳 ಕನ್ನಡ (Kannada)</option>
-                  <option value="ml">🇮🇳 മലയാളം (Malayalam)</option>
-                  <option value="ur">🇮🇳 اردو / کشمیری (Urdu)</option>
-                  <option value="ne">🇮🇳 नेपाली (Nepali)</option>
-                  <option value="kok">🇮🇳 कोंकणी (Konkani)</option>
-                  <option value="doi">🇮🇳 डोगरी / पहाड़ी (Dogri)</option>
-                  <option value="en">🇬🇧 Indian English</option>
-                  <option value="all">🌍 Speak All 22</option>
-                </select>
-                <button type="button" id="btn-speak-active-lang-stage" class="btn-primary btn-xs" aria-label="Speak active stage sign in selected regional language">
-                  🗣️ Speak Selected Language
-                </button>
-                <button type="button" id="btn-speak-all-langs-stage" class="btn-secondary btn-xs" aria-label="Speak active stage sign in all 22 languages">
-                  🌍 Speak All 22 Languages
-                </button>
-              </div>
-            </div>
-            <div id="stage-multilang-grid" class="multilang-grid" role="group" aria-label="Stage sign translations in 12 languages">
-              <!-- Populated dynamically -->
-            </div>
-          </div>
-
-          <!-- Stage 6-Dot Braille Translation Bar -->
-          <div class="braille-translation-box stage-braille-box" aria-label="Translated 6-Dot Braille Output">
-            <div class="braille-header">
-              <div>
-                <h4>⠿ On-Screen Message in 6-Dot Braille: <span class="braille-unicode-pill" id="stage-braille-unicode">⠓⠑⠇⠇⠕</span></h4>
-              </div>
-              <div class="braille-actions">
-                <button type="button" id="btn-stage-read-braille" class="btn-secondary btn-sm" aria-label="Speak Braille dot numbers for active message">
-                  🔊 Speak Braille Dots
-                </button>
-                <button type="button" id="btn-stage-pulse-braille" class="btn-outline btn-sm" aria-label="Play sonic tactile Braille pulses for active message">
-                  📳 Sonic Braille Pulses
-                </button>
-              </div>
-            </div>
-            <div id="stage-braille-cells" class="braille-cells-strip" role="region" aria-label="Active stage 6-dot Braille cells"></div>
-          </div>
-
-          <!-- Sequence Breakdown Cards -->
-          <div class="sequence-strip-wrapper">
-            <h4>Sequence Breakdown (Click any sign card to animate Avatar &amp; hear tactile/Braille guide):</h4>
-            <div id="isl-sequence-strip" class="sequence-strip" role="list" aria-label="Translated ISL sign sequence">
-              <!-- Populated dynamically -->
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- TWO-WAY LIVE COMMUNICATION DIALOGUE HUB (DEAF SIGNER ⇄ BLIND SPEAKER) -->
-      <div class="card twoway-hub-card" id="twoway-bridge-section" aria-label="Two-Way Deaf and Blind Live Conversation Hub">
-        <div class="twoway-header">
-          <div>
-            <span class="badge-pill">🔄 Live Two-Way Communication System</span>
-            <h3>Deaf Signer (ISL / Text) ⇄ Blind Listener (Audio / Braille / Avatar)</h3>
-            <p class="text-secondary">Every message from either partner is automatically translated into <strong>Spoken Audio</strong>, <strong>6-Dot Tactile Braille</strong>, and <strong>Animated On-Screen ISL Avatar Signs</strong>.</p>
-          </div>
-          <div class="twoway-header-actions">
-            <button type="button" id="btn-read-last-chat" class="btn-primary btn-sm" aria-label="Read latest conversation message and avatar posture aloud">
-              🔊 Read Latest Message &amp; Avatar
-            </button>
-            <button type="button" id="btn-clear-chat" class="btn-outline btn-sm" aria-label="Clear two-way conversation log">
-              🗑️ Clear Chat
-            </button>
-          </div>
-        </div>
-
-        <!-- Quick Deaf Partner Reply Bar (Tap ISL Signs or Type Reply to Speak Aloud to Blind User) -->
-        <div class="deaf-reply-bar">
-          <div class="deaf-reply-input-row">
-            <label for="deaf-partner-input" class="field-label">🤟 Deaf Partner Reply (Type or tap ISL signs below — speaks aloud &amp; generates Braille for Blind user):</label>
-            <div class="text-input-row">
-              <input type="text" id="deaf-partner-input" class="text-input" placeholder="Deaf partner: type reply here to speak aloud to blind user..." />
-              <button type="button" id="btn-deaf-send-reply" class="btn-secondary">🔊 Speak &amp; Send to Blind User</button>
-            </div>
-          </div>
-          <div id="deaf-quick-sign-chips" class="chip-row" role="group" aria-label="Quick ISL sign replies for Deaf partner">
-            <!-- Populated dynamically -->
-          </div>
-        </div>
-
-        <!-- Live Two-Way Conversation Log -->
-        <div id="twoway-chat-log" class="twoway-chat-log" role="log" aria-live="polite" aria-label="Two-way conversation messages">
-          <!-- Populated dynamically -->
-        </div>
-      </div>
-    </section>
-
-    <!-- =================================================================
-         PANEL 3: TACTILE AUDIO ISL DICTIONARY & BLIND LEARNING QUIZ
-         ================================================================= -->
-    <section id="panel-dictionary" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-dictionary" hidden>
-      <div class="panel-header">
-        <div>
-          <h2>3. Tactile Audio ISL Dictionary (Learn ISL by Listening)</h2>
-          <p>Designed specifically for blind and visually impaired learners: every Indian Sign Language gesture and two-handed alphabet includes a <strong>detailed spoken physical hand-shape and movement guide</strong>.</p>
-        </div>
-        <div class="panel-header-actions">
-          <button type="button" id="btn-dict-add-sign" class="btn-secondary" aria-label="Add or train a new custom ISL sign">
-            ➕ Add Custom Sign
-          </button>
-          <button type="button" id="btn-start-quiz" class="btn-primary" aria-label="Start Audio Tactile ISL Practice Quiz">
-            🎧 Start Audio ISL Quiz
-          </button>
-        </div>
-      </div>
-
-      <!-- Interactive Audio Quiz Banner (Toggled or Always Accessible) -->
-      <div id="quiz-container" class="card quiz-card" hidden>
-        <div class="quiz-header">
-          <div>
-            <span class="badge-pill">🎧 Eyes-Free Audio Quiz</span>
-            <h3 id="quiz-question-title">Listen to the physical hand description and identify the ISL sign!</h3>
-          </div>
-          <div class="quiz-score-box">
-            Score: <strong id="quiz-score">0 / 0</strong>
-            <button type="button" id="btn-close-quiz" class="btn-outline btn-sm">Close Quiz</button>
-          </div>
-        </div>
-        <p id="quiz-prompt-text" class="quiz-prompt">Press "Replay Audio Clue" to hear how the hands are positioned.</p>
-        <div class="quiz-actions">
-          <button type="button" id="btn-quiz-replay" class="btn-secondary">🔊 Replay Audio Clue</button>
-          <div id="quiz-options" class="quiz-options-grid" role="group" aria-label="Quiz answer choices"></div>
-        </div>
-      </div>
-
-      <!-- Filter & Search Bar -->
-      <div class="dict-controls card">
-        <div class="search-box">
-          <label for="dict-search" class="sr-only">Search ISL Signs by word or letter</label>
-          <input type="search" id="dict-search" class="text-input" placeholder="Search 67+ signs (e.g., 'Hello', 'Water', 'Doctor', 'Bathroom', 'Money', 'A', '5')..." aria-label="Search ISL Dictionary" />
-        </div>
-        <div class="category-filters" role="group" aria-label="Filter dictionary by category">
-          <button type="button" class="filter-btn active" data-category="all">All Signs</button>
-          <button type="button" class="filter-btn" data-category="greetings">Greetings &amp; Social</button>
-          <button type="button" class="filter-btn" data-category="needs">Daily Needs &amp; Travel</button>
-          <button type="button" class="filter-btn" data-category="emergency">Health &amp; Emergency</button>
-          <button type="button" class="filter-btn" data-category="custom">✨ Custom Trained</button>
-          <button type="button" class="filter-btn" data-category="alphabet">ISL Alphabet (A–Z)</button>
-          <button type="button" class="filter-btn" data-category="numbers">Numbers (1–9)</button>
-        </div>
-      </div>
-
-      <!-- Dictionary Grid -->
-      <div id="dictionary-grid" class="dictionary-grid" role="list" aria-label="Indian Sign Language Dictionary Cards">
-        <!-- Populated dynamically -->
-      </div>
-    </section>
-
-    <!-- =================================================================
-         PANEL 4: BLIND QUICK-BOARD & VOICE ACCESSIBILITY GUIDE
-         ================================================================= -->
-    <section id="panel-assist" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-assist" hidden>
-      <div class="panel-header">
-        <div>
-          <h2>4. Blind Assistive Quick-Board &amp; Eyes-Free Navigation Guide</h2>
-          <p>Tap any large card below (or press keys <kbd>Q</kbd> through <kbd>P</kbd>) to simultaneously <strong>speak the message aloud</strong> AND <strong>display the large Indian Sign Language visual</strong> on screen for deaf bystanders.</p>
-        </div>
-      </div>
-
-      <!-- One-Tap Dual Audio + ISL Quick Board -->
-      <div class="quickboard-grid" id="quickboard-grid" role="group" aria-label="One-tap emergency and daily communication cards">
-        <!-- Populated dynamically -->
-      </div>
-
-      <!-- Voice Command & Keyboard Shortcut Reference -->
-      <div class="assist-info-grid">
-        <div class="card">
-          <h3>🎙️ Available Voice Commands (Press <kbd>Space</kbd> or <kbd>Alt + V</kbd>)</h3>
-          <p>Speak any of these phrases after activating the Voice Command microphone:</p>
-          <ul class="cmd-list">
-            <li><strong>"Camera"</strong> or <strong>"Sign to speech"</strong> — Opens Tab 1 (Webcam ISL Reader)</li>
-            <li><strong>"Translate"</strong> or <strong>"Speech to sign"</strong> — Opens Tab 2 (Voice to ISL Visuals)</li>
-            <li><strong>"Dictionary"</strong> or <strong>"Learn"</strong> — Opens Tab 3 (Tactile Audio ISL Dictionary)</li>
-            <li><strong>"Quick board"</strong> or <strong>"Assist"</strong> — Opens Tab 4 (Quick Communication Board)</li>
-            <li><strong>"Add sign"</strong> or <strong>"Train sign"</strong> — Opens the Custom ISL Sign Calibration Studio</li>
-            <li><strong>"How to sign [word]"</strong> (e.g., <em>"How to sign thank you"</em>) — Speaks the tactile hand instructions for that sign</li>
-            <li><strong>"Translate [sentence]"</strong> (e.g., <em>"Translate please help me"</em>) — Translates and displays the sentence in ISL</li>
-            <li><strong>"High contrast"</strong> — Toggles Ultra High-Contrast Yellow-on-Black theme</li>
-            <li><strong>"Emergency"</strong> or <strong>"Help"</strong> — Triggers the audio-visual SOS alert</li>
-          </ul>
-        </div>
-
-        <div class="card">
-          <h3>⌨️ Eyes-Free Keyboard Shortcuts</h3>
-          <p>Navigate the entire platform without a mouse or screen visibility:</p>
-          <ul class="cmd-list">
-            <li><kbd>1</kbd>, <kbd>2</kbd>, <kbd>3</kbd>, <kbd>4</kbd> — Switch directly between the 4 main modes</li>
-            <li><kbd>Space</kbd> — Activate Voice Command Microphone (when not typing in a text box)</li>
-            <li><kbd>H</kbd> — Hear spoken Orientation &amp; Help Guide at any time</li>
-            <li><kbd>C</kbd> — Toggle Ultra High-Contrast Yellow-on-Black visual theme</li>
-            <li><kbd>S</kbd> — Speak current detected sign or active stage summary aloud</li>
-            <li><kbd>Escape</kbd> — Stop any ongoing speech or close modal dialogs</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Custom Sign Calibration & Training Studio Modal -->
+  <!-- =====================================================================
+       CUSTOM ISL SIGN CALIBRATION & RECORDING MODAL
+       ===================================================================== -->
   <div id="custom-sign-modal" class="sos-modal custom-modal" role="dialog" aria-modal="true" aria-labelledby="custom-modal-title" hidden>
     <div class="custom-modal-content card">
-      <div class="custom-modal-header">
+      <div class="stage-header">
         <div>
-          <span class="badge-pill">✨ Custom ISL Sign Studio</span>
-          <h2 id="custom-modal-title">Add &amp; Calibrate a New ISL Sign</h2>
-          <p class="text-secondary">Define a new sign with 3D finger extension rules or capture your live hand pose from the webcam. Saved signs work immediately in Camera Detection, Simulator, Translator, and Dictionary.</p>
+          <span class="sec-tag">✨ CUSTOM SIGN TRAINER</span>
+          <h2 id="custom-modal-title" style="font-size:22px;font-weight:600;margin-top:4px;">Train &amp; Calibrate a Custom ISL Sign</h2>
+          <p style="font-size:13.5px;color:var(--ink-2);">Capture your live 3D hand pose from the webcam or configure finger states to add a new sign to SanketSetu.</p>
         </div>
-        <button type="button" id="btn-close-custom-modal" class="btn-outline btn-sm" aria-label="Close Custom Sign Studio">✖ Close</button>
+        <button type="button" id="btn-close-custom-modal" class="btn-outline btn-sm">✖ Close</button>
       </div>
 
-      <form id="custom-sign-form" class="custom-sign-form">
+      <form id="custom-sign-form" style="display:flex;flex-direction:column;gap:14px;">
         <div class="form-grid-2">
           <div class="form-field">
-            <label for="custom-sign-word" class="field-label">Sign Word / Label *</label>
-            <input type="text" id="custom-sign-word" class="text-input" placeholder="e.g., Chai / Tea, Namaskar, Station" required />
+            <label for="custom-sign-word" class="field-label">Sign Name / Word *</label>
+            <input type="text" id="custom-sign-word" class="text-input" style="width:100%;" placeholder="e.g., Chai / Tea, Namaskar, Station" required />
           </div>
           <div class="form-field">
-            <label for="custom-sign-phrase" class="field-label">Spoken Audio Phrase (Read to Blind User) *</label>
-            <input type="text" id="custom-sign-phrase" class="text-input" placeholder="e.g., I would like a cup of hot tea." required />
+            <label for="custom-sign-phrase" class="field-label">Spoken Sentence Translation *</label>
+            <input type="text" id="custom-sign-phrase" class="text-input" style="width:100%;" placeholder="e.g., I would like a cup of hot tea." required />
           </div>
         </div>
 
         <div class="form-grid-3">
           <div class="form-field">
             <label for="custom-sign-category" class="field-label">Category</label>
-            <select id="custom-sign-category" class="text-input">
+            <select id="custom-sign-category" class="text-input" style="width:100%;">
               <option value="greetings">Greetings &amp; Social</option>
               <option value="needs" selected>Daily Needs &amp; Travel</option>
               <option value="emergency">Health &amp; Emergency</option>
@@ -963,90 +807,86 @@
           </div>
           <div class="form-field">
             <label for="custom-sign-hands" class="field-label">Hands Used</label>
-            <select id="custom-sign-hands" class="text-input">
+            <select id="custom-sign-hands" class="text-input" style="width:100%;">
               <option value="1-Handed ISL Sign" selected>1-Handed ISL Sign</option>
               <option value="2-Handed ISL Sign">2-Handed ISL Sign</option>
             </select>
           </div>
           <div class="form-field">
-            <label for="custom-sign-emoji" class="field-label">Emoji / Visual Icon</label>
-            <input type="text" id="custom-sign-emoji" class="text-input" value="🤟" maxlength="4" />
+            <label for="custom-sign-emoji" class="field-label">Emoji Icon</label>
+            <input type="text" id="custom-sign-emoji" class="text-input" style="width:100%;" value="🤟" maxlength="4" />
           </div>
         </div>
 
         <div class="form-field">
-          <label for="custom-sign-guide" class="field-label">Tactile / Physical Hand Guide (For Blind Audio Dictionary)</label>
-          <input type="text" id="custom-sign-guide" class="text-input" placeholder="Describe how the fingers and palm are positioned..." />
+          <label for="custom-sign-guide" class="field-label">Handshape Formation Notes</label>
+          <input type="text" id="custom-sign-guide" class="text-input" style="width:100%;" placeholder="Describe how the fingers and palm are positioned..." />
         </div>
 
-        <!-- 3D Finger Pose & Live Webcam Capture Box -->
-        <div class="pose-calibration-box">
-          <div class="pose-calibration-header">
+        <div class="telemetry-panel">
+          <div class="stage-header">
             <div>
-              <h4>🎯 Camera 3D Finger Pose Calibration</h4>
-              <p>Set each finger's state for camera recognition, or click <strong>"Capture Live Hand Pose"</strong> while your webcam is active.</p>
+              <h4 style="font-size:14px;font-weight:600;">🎯 3D Finger Pose Calibration</h4>
+              <p style="font-size:12px;color:var(--ink-2);">Configure each finger's state or capture directly from your active webcam.</p>
             </div>
-            <button type="button" id="btn-capture-live-pose" class="btn-secondary btn-sm">
-              📸 Capture Live Hand Pose from Webcam
-            </button>
+            <button type="button" id="btn-capture-live-pose" class="btn-secondary btn-sm">📸 Capture Live Hand Pose</button>
           </div>
-          <p id="capture-pose-status" class="capture-status-text" aria-live="polite">
-            Configure finger states below or capture directly from an active webcam hand pose.
+          <p id="capture-pose-status" style="font-size:12px;color:var(--green-deep);" aria-live="polite">
+            Configure finger states below or capture from an active webcam hand pose.
           </p>
 
           <div class="finger-config-grid">
             <div class="form-field">
               <label for="f-cfg-thumb" class="field-label">Thumb</label>
-              <select id="f-cfg-thumb" class="text-input">
+              <select id="f-cfg-thumb" class="text-input" style="width:100%;">
                 <option value="1" selected>Extended (100%)</option>
-                <option value="0.5">Curved / Pinch (50%)</option>
-                <option value="0">Curled / Folded (0%)</option>
+                <option value="0.5">Curved (50%)</option>
+                <option value="0">Curled (0%)</option>
               </select>
             </div>
             <div class="form-field">
-              <label for="f-cfg-index" class="field-label">Index Finger</label>
-              <select id="f-cfg-index" class="text-input">
+              <label for="f-cfg-index" class="field-label">Index</label>
+              <select id="f-cfg-index" class="text-input" style="width:100%;">
                 <option value="1" selected>Extended (100%)</option>
-                <option value="0.5">Curved / Hooked (50%)</option>
-                <option value="0">Curled / Fist (0%)</option>
+                <option value="0.5">Curved (50%)</option>
+                <option value="0">Curled (0%)</option>
               </select>
             </div>
             <div class="form-field">
-              <label for="f-cfg-middle" class="field-label">Middle Finger</label>
-              <select id="f-cfg-middle" class="text-input">
+              <label for="f-cfg-middle" class="field-label">Middle</label>
+              <select id="f-cfg-middle" class="text-input" style="width:100%;">
                 <option value="1">Extended (100%)</option>
                 <option value="0.5">Curved (50%)</option>
-                <option value="0" selected>Curled / Fist (0%)</option>
+                <option value="0" selected>Curled (0%)</option>
               </select>
             </div>
             <div class="form-field">
-              <label for="f-cfg-ring" class="field-label">Ring Finger</label>
-              <select id="f-cfg-ring" class="text-input">
+              <label for="f-cfg-ring" class="field-label">Ring</label>
+              <select id="f-cfg-ring" class="text-input" style="width:100%;">
                 <option value="1">Extended (100%)</option>
                 <option value="0.5">Curved (50%)</option>
-                <option value="0" selected>Curled / Fist (0%)</option>
+                <option value="0" selected>Curled (0%)</option>
               </select>
             </div>
             <div class="form-field">
-              <label for="f-cfg-pinky" class="field-label">Pinky Finger</label>
-              <select id="f-cfg-pinky" class="text-input">
+              <label for="f-cfg-pinky" class="field-label">Pinky</label>
+              <select id="f-cfg-pinky" class="text-input" style="width:100%;">
                 <option value="1" selected>Extended (100%)</option>
                 <option value="0.5">Curved (50%)</option>
-                <option value="0">Curled / Fist (0%)</option>
+                <option value="0">Curled (0%)</option>
               </select>
             </div>
           </div>
         </div>
 
         <div class="custom-modal-footer">
-          <button type="submit" class="btn-primary">💾 Save &amp; Activate New ISL Sign</button>
+          <button type="submit" class="btn-primary">💾 Save &amp; Activate Sign</button>
           <button type="button" id="btn-cancel-custom-modal" class="btn-outline">Cancel</button>
         </div>
       </form>
 
-      <!-- Saved User Custom Signs List -->
-      <div class="saved-custom-section">
-        <h4>Your Custom Trained Signs (<span id="custom-signs-count">0</span>)</h4>
+      <div class="saved-custom-section" style="margin-top: 12px;">
+        <h4 style="font-size:13.5px;font-weight:600;">Your Saved Custom Signs (<span id="custom-signs-count">0</span>)</h4>
         <div id="custom-signs-list" class="custom-signs-list">
           <p class="placeholder-muted">No custom signs added yet.</p>
         </div>
@@ -1054,25 +894,67 @@
     </div>
   </div>
 
-  <!-- Emergency SOS Modal Overlay (High-Contrast Visual ISL + Audible Siren/Speech) -->
+  <!-- =====================================================================
+       DEAF EMERGENCY SOS MODAL OVERLAY
+       ===================================================================== -->
   <div id="sos-modal" class="sos-modal" role="dialog" aria-modal="true" aria-labelledby="sos-title" hidden>
-    <div class="sos-modal-content">
-      <div class="sos-visual-banner" aria-hidden="true">🚨 🤟 🦯</div>
-      <h2 id="sos-title">EMERGENCY ASSISTANCE NEEDED</h2>
-      <p class="sos-subtitle">I am visually impaired / blind and need immediate assistance.</p>
-      <div class="sos-isl-card">
-        <div id="sos-svg-holder" class="sos-svg"></div>
+    <div class="sos-modal-content card">
+      <div style="font-size:36px;">🚨 🤟 🏥</div>
+      <h2 id="sos-title" style="font-size:24px;font-weight:700;color:var(--orange-deep);">DEAF EMERGENCY ASSISTANCE</h2>
+      <p style="font-size:15px;color:var(--ink-2);">I am Deaf and communicate using Indian Sign Language (ISL). Please read or tap below to respond.</p>
+      <div style="display:flex;gap:16px;align-items:center;padding:14px;border-radius:16px;border:1px solid var(--line-2);background:#ffffff80;">
+        <div id="sos-svg-holder" style="width:110px;height:110px;"></div>
         <div>
-          <h3>ISL Sign Shown: HELP / EMERGENCY</h3>
-          <p>Deaf Bystander Notice: This user is blind/visually impaired. Please tap the button below to respond or assist them.</p>
+          <h3 style="font-size:18px;font-weight:600;">ISL Sign Shown: HELP / EMERGENCY</h3>
+          <p style="font-size:13.5px;color:var(--ink-2);">Spoken announcement is playing in the selected regional language so nearby people can assist immediately.</p>
         </div>
       </div>
-      <div class="sos-actions">
-        <button type="button" id="btn-sos-repeat" class="btn-primary">🔊 Repeat Spoken SOS Announcement</button>
-        <button type="button" id="btn-sos-deaf-reply" class="btn-secondary">🤝 Deaf Helper: Tap to Tell User "I Am Here to Help"</button>
-        <button type="button" id="btn-sos-close" class="btn-outline">✖ Dismiss SOS Alert (Esc)</button>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;">
+        <button type="button" id="btn-sos-repeat" class="btn-primary">🔊 Repeat Regional SOS Announcement</button>
+        <button type="button" id="btn-sos-deaf-reply" class="btn-secondary">🤝 Responder: Show "I Am Here to Help" in ISL</button>
+        <button type="button" id="btn-sos-close" class="btn-outline">✖ Dismiss (Esc)</button>
       </div>
     </div>
+  </div>
+
+  <!-- Hidden legacy compatibility nodes so existing scripts never error -->
+  <div hidden aria-hidden="true">
+    <span id="audio-status-dot"></span>
+    <span id="audio-status-text"></span>
+    <button id="btn-bilingual-welcome"></button>
+    <button id="btn-welcome-audio"></button>
+    <button id="btn-read-screen-avatar"></button>
+    <button id="btn-auto-narrate"><span id="narrate-state">OFF</span></button>
+    <button id="btn-earcons"><span id="earcon-state">ON</span></button>
+    <button id="btn-contrast"></button>
+    <button id="btn-font-dec"></button>
+    <button id="btn-font-inc"></button>
+    <select id="human-voice-style-top" class="sync-human-persona-select"><option value="warm_female" selected>Didi</option></select>
+    <select id="speech-voice-select"><option value="">Default</option></select>
+    <select id="speech-rate"><option value="1" selected>1</option></select>
+    <select id="speech-pitch"><option value="1" selected>1</option></select>
+    <span id="voice-cmd-label"></span>
+    <small id="voice-cmd-sub"></small>
+    <span id="welcome-active-mode-badge"></span>
+    <p id="welcome-statement-en"></p>
+    <p id="welcome-statement-hi"></p>
+    <button id="btn-speak-bilingual-welcome"></button>
+    <button id="btn-mode-no-text"></button>
+    <button id="btn-mode-sign-lang"></button>
+    <button id="btn-mode-blind-lang"></button>
+    <button id="btn-speak-panel-1"></button>
+    <span id="camera-braille-unicode"></span>
+    <button id="btn-speak-braille-cam"></button>
+    <button id="btn-pulse-braille-cam"></button>
+    <div id="camera-braille-cells"></div>
+    <span id="braille-chord-preview"></span>
+    <button id="btn-braille-append"></button>
+    <button id="btn-braille-space"></button>
+    <button id="btn-braille-clear-dots"></button>
+    <span id="stage-braille-unicode"></span>
+    <button id="btn-stage-read-braille"></button>
+    <button id="btn-stage-pulse-braille"></button>
+    <div id="stage-braille-cells"></div>
   </div>
 
   <!-- Scripts -->

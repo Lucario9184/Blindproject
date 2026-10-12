@@ -9,7 +9,7 @@
 
 class BlindAudioEngine {
   constructor() {
-    this.autoNarrate = true;
+    this.autoNarrate = false;
     this.earconsEnabled = true;
     this.speechRate = 1.0;
     this.speechPitch = 1.0;
@@ -26,6 +26,7 @@ class BlindAudioEngine {
     this._decodedClipCache = {};
     this._activeBufferSource = null;
     this._activeHtmlAudio = null;
+    this._playbackSessionId = 0;
     window.__sanketActiveUtterances = this._activeUtterances;
 
     this.initVoices();
@@ -1114,6 +1115,7 @@ class BlindAudioEngine {
     if (interrupt) {
       this.stopSpeaking();
     }
+    const sessionId = this._playbackSessionId;
 
     const personaLabels = {
       warm_female: "👩 Didi (Warm Female Human)",
@@ -1124,6 +1126,7 @@ class BlindAudioEngine {
     const personaTag = personaLabels[this.humanVoiceStyle] || personaLabels.warm_female;
 
     const resetStatus = () => {
+      if (this._playbackSessionId !== sessionId) return;
       if (statusDot) statusDot.classList.remove("speaking");
       if (statusText) {
         statusText.innerHTML =
@@ -1133,6 +1136,7 @@ class BlindAudioEngine {
     };
 
     const playAtIndex = (idx) => {
+      if (this._playbackSessionId !== sessionId) return;
       if (idx >= translations.length) {
         resetStatus();
         return;
@@ -1156,13 +1160,17 @@ class BlindAudioEngine {
         this.playBase64AudioClip(clipB64, `${tr.langCode}_${signObj.id}`, fallbackText, {
           voice,
           lang: tr.voiceLang || "hi-IN",
-          onComplete: () => playAtIndex(idx + 1)
+          onComplete: () => {
+            if (this._playbackSessionId === sessionId) playAtIndex(idx + 1);
+          }
         });
       } else {
         this.playLiveWaveNetStream(tr.ttsLang || "hi", tr.ttsText || tr.phrase, fallbackText, {
           voice,
           lang: isNativeScriptSupported ? tr.voiceLang : "hi-IN",
-          onComplete: () => playAtIndex(idx + 1)
+          onComplete: () => {
+            if (this._playbackSessionId === sessionId) playAtIndex(idx + 1);
+          }
         });
       }
     };
@@ -1204,6 +1212,7 @@ class BlindAudioEngine {
     if (interrupt) {
       this.stopSpeaking();
     }
+    const seqSessionId = this._playbackSessionId;
 
     let primaryLang = langSetting;
     if (langSetting === "en_hi" || langSetting === "multi_top" || langSetting === "all") {
@@ -1213,6 +1222,7 @@ class BlindAudioEngine {
     }
 
     const playNextSign = (idx) => {
+      if (this._playbackSessionId !== seqSessionId) return;
       if (idx >= resolvedSigns.length) {
         if (typeof onComplete === "function") onComplete();
         return;
@@ -1220,7 +1230,9 @@ class BlindAudioEngine {
       this.speakSignInLang(resolvedSigns[idx], primaryLang, {
         interrupt: false,
         assertive: idx === 0,
-        onComplete: () => playNextSign(idx + 1)
+        onComplete: () => {
+          if (this._playbackSessionId === seqSessionId) playNextSign(idx + 1);
+        }
       });
     };
 
@@ -1228,6 +1240,7 @@ class BlindAudioEngine {
   }
 
   stopSpeaking() {
+    this._playbackSessionId++;
     if (this._speakTimer) {
       clearTimeout(this._speakTimer);
       this._speakTimer = null;

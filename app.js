@@ -112,6 +112,7 @@
     initVoiceRecognition();
     initKeyboardShortcuts();
     initFocusNarration();
+    initSanketSetuHeroAndPipeline();
 
     // Initialize default detected sign preview, Multi-Language Grid & Braille in Panel 1
     const helloSign = window.ISL_SIGNS[0];
@@ -317,38 +318,30 @@
     // Wire ALL synced sign language dropdowns across top bar, main chooser banner, camera toolbar, and stage
     document.querySelectorAll(".sync-sign-lang-select").forEach((sel) => {
       sel.addEventListener("change", (e) => {
-        setSignOutputLanguage(e.target.value, { speakSample: true });
+        window.audioEngine.stopSpeaking();
+        setSignOutputLanguage(e.target.value, { speakSample: false });
       });
     });
 
     // Wire Real Human Voice Persona selectors (.sync-human-persona-select)
     document.querySelectorAll(".sync-human-persona-select").forEach((sel) => {
       sel.addEventListener("change", (e) => {
+        window.audioEngine.stopSpeaking();
         const persona = e.target.value || "warm_female";
         document.querySelectorAll(".sync-human-persona-select").forEach((s) => {
           if (s.value !== persona) s.value = persona;
         });
         window.audioEngine.setHumanVoiceStyle(persona);
         updateActiveLocalTouchBadge();
-        const activeSign =
-          state.activeTab === "translator"
-            ? state.translatedSequence[state.currentStageIndex] || state.currentDetectedSign || window.ISL_SIGNS[0]
-            : state.currentDetectedSign || window.ISL_SIGNS[0];
-        if (activeSign) {
-          window.audioEngine.playEarcon("sign_detected");
-          window.audioEngine.speakSignInLang(activeSign, state.signOutputLang, {
-            interrupt: true,
-            assertive: true
-          });
-        }
       });
     });
 
     // Wire One-Click Quick Language Pills in #global-language-bar
     document.querySelectorAll(".lang-pill-btn[data-set-lang]").forEach((pill) => {
       pill.addEventListener("click", () => {
+        window.audioEngine.stopSpeaking();
         const lang = pill.dataset.setLang;
-        setSignOutputLanguage(lang, { speakSample: true });
+        setSignOutputLanguage(lang, { speakSample: false });
       });
     });
 
@@ -462,6 +455,264 @@
     }
   }
 
+  let currentHeroSignId = "doctor";
+  let currentPipeSignId = "hello";
+
+  function getPrimaryRegionalCode() {
+    if (
+      state.signOutputLang === "en_hi" ||
+      state.signOutputLang === "multi_top" ||
+      state.signOutputLang === "all"
+    ) {
+      return "hi";
+    }
+    if (state.signOutputLang === "en_mai") {
+      return "mai";
+    }
+    return state.signOutputLang || "hi";
+  }
+
+  function updateHeroAndPipelinePreview() {
+    if (!window.ISL_SIGNS || !window.getSignTranslation) return;
+    const langCode = getPrimaryRegionalCode();
+
+    // 1. Update Hero .demo-card (#demo)
+    const heroSign = window.ISL_SIGNS.find((s) => s.id === currentHeroSignId) || window.ISL_SIGNS[0];
+    if (heroSign) {
+      const tr = window.getSignTranslation(heroSign, langCode);
+      const wordEl = document.getElementById("hero-detect-word");
+      const langTagEl = document.getElementById("hero-output-lang-tag");
+      const glossRowEl = document.getElementById("hero-gloss-row");
+      const enTextEl = document.getElementById("hero-en-text");
+      const nativeTextEl = document.getElementById("hero-native-text");
+
+      const glossMap = {
+        doctor: ["WHERE", "NEAREST", "HOSPITAL", "?"],
+        hello: ["NAMASTE", "FRIEND", "HOW-YOU", "?"],
+        water: ["ME", "WATER", "NEED"],
+        help: ["PLEASE", "HELP", "URGENT", "!"],
+        thankyou: ["THANK-YOU", "VERY-MUCH", "FRIEND"],
+        school: ["DEAF", "SCHOOL", "LEARN", "ISL"]
+      };
+      const toks = glossMap[heroSign.id] || [heroSign.word.toUpperCase()];
+
+      if (wordEl) wordEl.textContent = heroSign.word.split("/")[0].trim().toUpperCase();
+      if (langTagEl && tr) langTagEl.textContent = `${tr.langCode} · ${tr.nativeName}`;
+      if (glossRowEl) {
+        glossRowEl.innerHTML =
+          `<span class="label">gloss</span>` +
+          toks.map((t) => `<span class="tok">${t}</span>`).join("");
+      }
+      if (enTextEl) enTextEl.textContent = heroSign.spokenPhrase;
+      if (nativeTextEl && tr) nativeTextEl.textContent = `${tr.flag} ${tr.langName}: ${tr.phrase}`;
+    }
+
+    // 2. Update 5-Stage #pipeline Live Inspector
+    const pipeSign = window.ISL_SIGNS.find((s) => s.id === currentPipeSignId) || window.ISL_SIGNS[0];
+    if (pipeSign) {
+      const tr = window.getSignTranslation(pipeSign, langCode);
+      const p1 = document.getElementById("pipe-out-1");
+      const p2 = document.getElementById("pipe-out-2");
+      const p3 = document.getElementById("pipe-out-3");
+      const p4 = document.getElementById("pipe-out-4");
+      const p5 = document.getElementById("pipe-out-5");
+
+      if (p1) p1.textContent = `21 Hand + 468 Face pts (${pipeSign.hands})`;
+      if (p2) p2.textContent = `${pipeSign.emoji} ${pipeSign.word} (Conf: 0.97)`;
+      if (p3) p3.textContent = `[${pipeSign.word.split("/")[0].trim().toUpperCase()}] → SOV Reordered`;
+      if (p4 && tr) p4.textContent = `${tr.flag} ${tr.nativeName}: "${tr.phrase}"`;
+      if (p5) p5.textContent = window.getAvatarDescription ? window.getAvatarDescription(pipeSign) : pipeSign.tactileGuide;
+    }
+  }
+
+  function initSanketSetuHeroAndPipeline() {
+    // Theme toggle (#bs-theme-toggle)
+    const themeBtn = document.getElementById("bs-theme-toggle");
+    if (themeBtn) {
+      themeBtn.addEventListener("click", () => {
+        const cur = document.documentElement.getAttribute("data-bs-theme") || "light";
+        const next = cur === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-bs-theme", next);
+        try {
+          localStorage.setItem("bs-theme", next);
+        } catch (e) {}
+      });
+    }
+
+    // Top Navbar Brand -> scroll to top
+    const brandLink = document.querySelector(".brand[data-nav-scroll='top']");
+    if (brandLink) {
+      brandLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
+
+    // Top Navbar Links (#primary-nav-links .nav-link)
+    const navLinks = document.querySelectorAll("#primary-nav-links .nav-link");
+    navLinks.forEach((link) => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        window.audioEngine.stopSpeaking();
+        const navTab = link.dataset.navTab;
+        const scrollTargetId = link.dataset.navScroll;
+
+        navLinks.forEach((l) => l.classList.toggle("active", l === link));
+
+        if (navTab) {
+          switchTab(navTab, { announce: false, syncTopNav: false });
+        }
+
+        if (scrollTargetId) {
+          const targetEl = document.getElementById(scrollTargetId);
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }
+      });
+    });
+
+    // Top Navbar "Start Camera" CTA button (#nav-start-cam-btn)
+    const navStartCamBtn = document.getElementById("nav-start-cam-btn");
+    if (navStartCamBtn) {
+      navStartCamBtn.addEventListener("click", () => {
+        switchTab("camera", { announce: false });
+        const convEl = document.getElementById("converter");
+        if (convEl) {
+          convEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        const camBtn = document.getElementById("btn-toggle-camera");
+        if (camBtn) {
+          camBtn.click();
+        }
+      });
+    }
+
+    // Open BhashaDaan links
+    document.querySelectorAll(".open-bhashadaan-link").forEach((lnk) => {
+      lnk.addEventListener("click", (e) => {
+        e.preventDefault();
+        const openModalBtn = document.getElementById("btn-open-custom-sign");
+        if (openModalBtn) openModalBtn.click();
+      });
+    });
+
+    // Scroll-spy to highlight active section in top navbar when scrolling
+    const sectionIds = ["converter", "pipeline", "bhashini", "mission", "features", "quickstart", "roadmap", "waitlist"];
+    window.addEventListener(
+      "scroll",
+      () => {
+        let currentSection = "converter";
+        const scrollPos = window.scrollY + 180;
+        for (const id of sectionIds) {
+          const el = document.getElementById(id);
+          if (el && el.offsetTop <= scrollPos) {
+            currentSection = id;
+          }
+        }
+        navLinks.forEach((link) => {
+          if (currentSection === "converter") {
+            link.classList.toggle("active", link.dataset.navTab === state.activeTab);
+          } else {
+            link.classList.toggle(
+              "active",
+              !link.dataset.navTab && link.dataset.navScroll === currentSection
+            );
+          }
+        });
+      },
+      { passive: true }
+    );
+
+    // Hero Sign -> Text / Text -> Sign mode pills
+    const pillS2T = document.getElementById("hero-mode-s2t");
+    const pillT2S = document.getElementById("hero-mode-t2s");
+    if (pillS2T && pillT2S) {
+      pillS2T.addEventListener("click", () => {
+        pillS2T.classList.add("active");
+        pillT2S.classList.remove("active");
+        switchTab("camera", { announce: false });
+      });
+      pillT2S.addEventListener("click", () => {
+        pillT2S.classList.add("active");
+        pillS2T.classList.remove("active");
+        switchTab("translator", { announce: false });
+      });
+    }
+
+    // Hero Quick Sign chips ([data-hero-sign])
+    document.querySelectorAll("[data-hero-sign]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        currentHeroSignId = btn.dataset.heroSign || "doctor";
+        document.querySelectorAll("[data-hero-sign]").forEach((b) => b.classList.toggle("active", b === btn));
+        updateHeroAndPipelinePreview();
+        const signObj = window.ISL_SIGNS.find((s) => s.id === currentHeroSignId);
+        if (signObj) {
+          window.audioEngine.speakSignInLang(signObj, state.signOutputLang, { interrupt: true });
+        }
+      });
+    });
+
+    // Hero Play Audio button (#hero-play-audio-btn)
+    const heroPlayBtn = document.getElementById("hero-play-audio-btn");
+    if (heroPlayBtn) {
+      heroPlayBtn.addEventListener("click", () => {
+        const signObj = window.ISL_SIGNS.find((s) => s.id === currentHeroSignId) || window.ISL_SIGNS[0];
+        if (signObj) {
+          window.audioEngine.speakSignInLang(signObj, state.signOutputLang, { interrupt: true });
+        }
+      });
+    }
+
+    // 5-Stage Pipeline Live Trace buttons ([data-pipe-sign])
+    document.querySelectorAll("[data-pipe-sign]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        currentPipeSignId = btn.dataset.pipeSign || "hello";
+        document.querySelectorAll("[data-pipe-sign]").forEach((b) => b.classList.toggle("active", b === btn));
+        updateHeroAndPipelinePreview();
+        // Animate stage highlight 01 -> 05
+        const steps = document.querySelectorAll("#pipeline-steps-grid .step");
+        steps.forEach((s, idx) => {
+          setTimeout(() => {
+            steps.forEach((st) => st.classList.remove("active-stage"));
+            s.classList.add("active-stage");
+          }, idx * 140);
+        });
+        const signObj = window.ISL_SIGNS.find((s) => s.id === currentPipeSignId);
+        if (signObj) {
+          window.audioEngine.speakSignInLang(signObj, state.signOutputLang, { interrupt: true });
+        }
+      });
+    });
+
+    const pipeSpeakBtn = document.getElementById("btn-run-pipeline-speak");
+    if (pipeSpeakBtn) {
+      pipeSpeakBtn.addEventListener("click", () => {
+        const signObj = window.ISL_SIGNS.find((s) => s.id === currentPipeSignId) || window.ISL_SIGNS[0];
+        if (signObj) {
+          window.audioEngine.speakSignInLang(signObj, state.signOutputLang, { interrupt: true });
+        }
+      });
+    }
+
+    // Copy SDK code button (#btn-copy-sdk-code)
+    const copyBtn = document.getElementById("btn-copy-sdk-code");
+    const codeSnippet = document.getElementById("sdk-code-snippet");
+    if (copyBtn && codeSnippet) {
+      copyBtn.addEventListener("click", () => {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(codeSnippet.innerText || codeSnippet.textContent || "");
+        }
+        copyBtn.textContent = "copied ✓";
+        setTimeout(() => {
+          copyBtn.textContent = "copy";
+        }, 1800);
+      });
+    }
+
+    updateHeroAndPipelinePreview();
+  }
+
   function setSignOutputLanguage(langSetting, { speakSample = true } = {}) {
     state.signOutputLang = langSetting || "en_hi";
     document.querySelectorAll(".sync-sign-lang-select").forEach((sel) => {
@@ -480,6 +731,7 @@
         : state.currentDetectedSign || window.ISL_SIGNS[0];
 
     updateActiveLocalTouchBadge(activeSign);
+    updateHeroAndPipelinePreview();
 
     if (state.currentDetectedSign) {
       updateCameraMultiLangDisplay(state.currentDetectedSign);
@@ -546,12 +798,20 @@
     const tabButtons = document.querySelectorAll(".nav-tab");
     tabButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
-        switchTab(btn.dataset.tab, { announce: true });
+        switchTab(btn.dataset.tab, { announce: false });
       });
     });
   }
 
-  function switchTab(tabName, { announce = true } = {}) {
+  function switchTab(tabName, { announce = false, syncTopNav = true } = {}) {
+    window.audioEngine.stopSpeaking();
+    if (state.stageTimer) {
+      clearInterval(state.stageTimer);
+      state.stageTimer = null;
+      const playBtn = document.getElementById("btn-stage-play");
+      if (playBtn) playBtn.textContent = "▶ Play Avatar";
+    }
+
     state.activeTab = tabName;
     const tabButtons = document.querySelectorAll(".nav-tab");
     const panels = document.querySelectorAll(".tab-panel");
@@ -568,20 +828,11 @@
       panel.hidden = !isMatch;
     });
 
-    window.audioEngine.playEarcon("tab");
-
-    if (announce) {
-      const descriptions = {
-        camera:
-          "Mode 1: Live ISL Sign-to-Text, 6-Dot Braille, and Speech Generator. Point the camera at a signer or click any simulator sign.",
-        translator:
-          "Mode 2: Two-Way Communication Bridge, On-Screen ISL Avatar, and 6-Dot Braille Composer.",
-        dictionary:
-          "Mode 3: Tactile Audio ISL Dictionary. Browse 67 plus signs, train new custom signs, or take the audio quiz.",
-        assist:
-          "Mode 4: Blind Quick-Board and Voice Guide. Press keys Q through P for instant spoken and signed phrases."
-      };
-      window.audioEngine.speak(descriptions[tabName] || `Switched to ${tabName}`);
+    if (syncTopNav) {
+      const navLinks = document.querySelectorAll("#primary-nav-links .nav-link");
+      navLinks.forEach((link) => {
+        link.classList.toggle("active", link.dataset.navTab === tabName);
+      });
     }
   }
 
@@ -593,9 +844,19 @@
 
     document.getElementById("btn-toggle-camera").addEventListener("click", toggleWebcam);
 
+    const autoSpeakChk = document.getElementById("chk-auto-speak-sign");
+    if (autoSpeakChk) {
+      autoSpeakChk.addEventListener("change", (e) => {
+        if (!e.target.checked) {
+          window.audioEngine.stopSpeaking();
+        }
+      });
+    }
+
     const precisionSelect = document.getElementById("camera-precision-mode");
     if (precisionSelect) {
       precisionSelect.addEventListener("change", (e) => {
+        window.audioEngine.stopSpeaking();
         state.precisionMode = e.target.value;
         if (state.precisionMode === "strict") {
           state.minConfidence = 0.68;
@@ -609,20 +870,17 @@
         }
         state.candidateFrames = 0;
         state.candidateHistory = [];
-        window.audioEngine.speak(
-          `Camera precision set to ${state.precisionMode}: minimum confidence ${Math.round(state.minConfidence * 100)} percent, ${state.requiredStableFrames} stable frames.`
-        );
       });
     }
 
     const scopeSelect = document.getElementById("camera-scope-mode");
     if (scopeSelect) {
       scopeSelect.addEventListener("change", (e) => {
+        window.audioEngine.stopSpeaking();
         state.recognitionScope = e.target.value;
         state.candidateFrames = 0;
         state.candidateHistory = [];
         renderSimulatorButtons();
-        window.audioEngine.speak(`Camera detection scope set to ${e.target.selectedOptions[0].text}.`);
       });
     }
 
@@ -630,19 +888,10 @@
     if (targetSignSelect) {
       populateTargetSignSelect(targetSignSelect);
       targetSignSelect.addEventListener("change", (e) => {
+        window.audioEngine.stopSpeaking();
         state.targetSignId = e.target.value || "auto";
         state.candidateFrames = 0;
         state.candidateHistory = [];
-        if (state.targetSignId === "auto") {
-          window.audioEngine.speak("Camera target focus set to Auto-Detect All Signs.");
-        } else {
-          const targetObj = window.ISL_SIGNS.find((s) => s.id === state.targetSignId);
-          if (targetObj) {
-            window.audioEngine.speak(
-              `Camera target focus locked to ${targetObj.word}. Show your hand in front of the camera.`
-            );
-          }
-        }
       });
     }
 
@@ -1962,17 +2211,22 @@
       precisionSelect.value = signObj.id;
     }
 
-    // Update Live Multi-Language Output Grid (Hindi, Maithili, Bhojpuri, Marathi, Bengali, Tamil, Telugu, Gujarati, Punjabi, Kannada, Urdu, English)
+    // Update Live Multi-Language Output Grid and sync Hero & 5-Stage Pipeline
+    currentHeroSignId = signObj.id;
+    currentPipeSignId = signObj.id;
+    updateHeroAndPipelinePreview();
     updateCameraMultiLangDisplay(signObj);
 
-    window.audioEngine.playEarcon("sign_detected");
     const autoSpeakEl = document.getElementById("chk-auto-speak-sign");
     const autoSpeak = !autoSpeakEl || autoSpeakEl.checked;
     if (autoSpeak) {
+      window.audioEngine.playEarcon("sign_detected");
       window.audioEngine.speakSignInLang(signObj, state.signOutputLang, {
         interrupt: true,
         assertive: true
       });
+    } else {
+      window.audioEngine.stopSpeaking();
     }
 
     // Append to Sign-to-Text Sentence Builder & Update Natural Speech + 6-Dot Braille
@@ -2216,40 +2470,45 @@
     const btnTranslate = document.getElementById("btn-translate-text");
 
     btnTranslate.addEventListener("click", () => {
-      translateTextToISL(inputEl.value, { speakConfirmation: true, addToChat: true });
+      window.audioEngine.stopSpeaking();
+      translateTextToISL(inputEl.value, { speakConfirmation: false, addToChat: true, autoPlayAvatar: true });
     });
 
     inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
-        translateTextToISL(inputEl.value, { speakConfirmation: true, addToChat: true });
+        window.audioEngine.stopSpeaking();
+        translateTextToISL(inputEl.value, { speakConfirmation: false, addToChat: true, autoPlayAvatar: true });
       }
     });
 
     document.querySelectorAll(".chip-btn").forEach((chip) => {
       chip.addEventListener("click", () => {
+        window.audioEngine.stopSpeaking();
         const sentence = chip.dataset.sentence;
         inputEl.value = sentence;
-        translateTextToISL(sentence, { speakConfirmation: true, addToChat: true });
+        translateTextToISL(sentence, { speakConfirmation: false, addToChat: true, autoPlayAvatar: true });
       });
     });
 
     document.getElementById("btn-stage-prev").addEventListener("click", () => {
+      window.audioEngine.stopSpeaking();
       stopStageAutoPlay();
       if (state.translatedSequence.length) {
         state.currentStageIndex =
           (state.currentStageIndex - 1 + state.translatedSequence.length) %
           state.translatedSequence.length;
-        renderActiveStageSign({ speakTactile: true });
+        renderActiveStageSign({ speakTactile: false });
       }
     });
 
     document.getElementById("btn-stage-next").addEventListener("click", () => {
+      window.audioEngine.stopSpeaking();
       stopStageAutoPlay();
       if (state.translatedSequence.length) {
         state.currentStageIndex =
           (state.currentStageIndex + 1) % state.translatedSequence.length;
-        renderActiveStageSign({ speakTactile: true });
+        renderActiveStageSign({ speakTactile: false });
       }
     });
 
@@ -2408,17 +2667,9 @@
     return word;
   }
 
-  function translateTextToISL(rawText, { speakConfirmation = true, addToChat = false } = {}) {
+  function translateTextToISL(rawText, { speakConfirmation = false, addToChat = false, autoPlayAvatar = false } = {}) {
     const cleaned = (rawText || "").trim();
     if (!cleaned) {
-      window.audioEngine.speakBilingual(
-        "Please speak or type a message in English or Hindi to convert into Indian Sign Language.",
-        "कृपया भारतीय सांकेतिक भाषा में बदलने के लिए अंग्रेजी या हिंदी में संदेश बोलें या टाइप करें।",
-        {
-          hindiPhonetic:
-            "Kripya Bharatiya Sign Language mein badalne ke liye English ya Hindi mein sandesh bolein ya type karein."
-        }
-      );
       return;
     }
 
@@ -2505,7 +2756,7 @@
     if (addToChat) {
       addTwoWayChatMessage({
         role: "blind",
-        speakerLabel: "🦯 Blind Speaker (Voice/Text/Braille → ISL Avatar EN + हिंदी)",
+        speakerLabel: "🦯 Speaker (Voice/Text → ISL Avatar)",
         text: cleaned,
         glossText: sequence.map((s) => `${s.word}${s.hindiWord ? " (" + s.hindiWord + ")" : ""}`).join(" → "),
         signObj: sequence[0] || window.ISL_SIGNS[0],
@@ -2518,6 +2769,8 @@
       window.audioEngine.speakSignSequenceInLang(sequence, state.signOutputLang, {
         interrupt: true
       });
+      playStageSequence();
+    } else if (autoPlayAvatar) {
       playStageSequence();
     }
   }
@@ -2543,16 +2796,17 @@
       card.className = `seq-card ${idx === state.currentStageIndex ? "active" : ""}`;
       card.setAttribute("role", "listitem");
       const hiLabel = signObj.hindiWord ? ` (${signObj.hindiWord})` : "";
-      card.setAttribute("aria-label", `Sign ${idx + 1}: ${signObj.word}${hiLabel}. Click to animate Avatar and hear English and Hindi guide.`);
+      card.setAttribute("aria-label", `Sign ${idx + 1}: ${signObj.word}${hiLabel}. Click to view sign.`);
       card.innerHTML = `
         <span class="seq-card-emoji" aria-hidden="true">${signObj.emoji}</span>
         <span class="seq-card-label">${signObj.word}${hiLabel}</span>
         <span class="seq-card-sub">${signObj.hands}</span>
       `;
       card.addEventListener("click", () => {
+        window.audioEngine.stopSpeaking();
         stopStageAutoPlay();
         state.currentStageIndex = idx;
-        renderActiveStageSign({ speakTactile: true });
+        renderActiveStageSign({ speakTactile: false });
       });
       strip.appendChild(card);
     });
