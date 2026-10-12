@@ -977,21 +977,17 @@ class BlindAudioEngine {
       this.voices.find((v) => v.lang.toLowerCase().startsWith(prefix + "-"));
     if (direct) return { voice: direct, isNativeScriptSupported: true };
 
-    // 2. For Devanagari & phonetic-Devanagari regional languages, use native Hindi voice
-    if (
-      ["hi", "mai", "bho", "mag", "raj", "bgc", "hne", "mr", "ne", "kok", "doi", "or", "pa", "as"].includes(
-        prefix
-      ) &&
-      this.hindiVoice
-    ) {
+    // 2. For Devanagari-script regional languages, use native Hindi voice which reads Devanagari perfectly
+    const devanagariPrefixes = ["hi", "mai", "bho", "mag", "raj", "bgc", "hne", "mr", "ne", "kok", "doi"];
+    if (devanagariPrefixes.includes(prefix) && this.hindiVoice) {
       return { voice: this.hindiVoice, isNativeScriptSupported: true };
     }
 
     if (fallbackLang && fallbackLang.startsWith("hi") && this.hindiVoice) {
-      return { voice: this.hindiVoice, isNativeScriptSupported: true };
+      return { voice: this.hindiVoice, isNativeScriptSupported: devanagariPrefixes.includes(prefix) };
     }
 
-    return { voice: this.hindiVoice || this.selectedVoice || null, isNativeScriptSupported: Boolean(this.hindiVoice) };
+    return { voice: this.hindiVoice || this.selectedVoice || null, isNativeScriptSupported: false };
   }
 
   /**

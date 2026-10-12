@@ -742,6 +742,20 @@
     }
     renderSentenceDisplay();
 
+    // Synchronize speech recognition dictation language to active regional voice
+    if (state.dictateRecognition && window.SIGN_LANGUAGES) {
+      const primaryLang =
+        state.signOutputLang === "en_hi" || state.signOutputLang === "multi_top" || state.signOutputLang === "all"
+          ? "hi"
+          : state.signOutputLang === "en_mai"
+          ? "mai"
+          : state.signOutputLang;
+      const langObj = window.SIGN_LANGUAGES.find((l) => l.code === primaryLang);
+      if (langObj && langObj.voiceLang) {
+        state.dictateRecognition.lang = langObj.voiceLang;
+      }
+    }
+
     if (speakSample && activeSign) {
       window.audioEngine.playEarcon("sign_detected");
       window.audioEngine.speakSignInLang(activeSign, state.signOutputLang, {
@@ -858,15 +872,33 @@
       precisionSelect.addEventListener("change", (e) => {
         window.audioEngine.stopSpeaking();
         state.precisionMode = e.target.value;
+        let detConf = 0.65;
+        let trackConf = 0.65;
         if (state.precisionMode === "strict") {
-          state.minConfidence = 0.68;
-          state.requiredStableFrames = 6;
+          state.minConfidence = 0.72;
+          state.requiredStableFrames = 5;
+          detConf = 0.75;
+          trackConf = 0.75;
         } else if (state.precisionMode === "fast") {
           state.minConfidence = 0.50;
           state.requiredStableFrames = 2;
+          detConf = 0.52;
+          trackConf = 0.52;
         } else {
-          state.minConfidence = 0.56;
-          state.requiredStableFrames = 4;
+          state.minConfidence = 0.60;
+          state.requiredStableFrames = 3;
+          detConf = 0.65;
+          trackConf = 0.65;
+        }
+        if (state.mpHands) {
+          try {
+            state.mpHands.setOptions({
+              maxNumHands: 2,
+              modelComplexity: 1,
+              minDetectionConfidence: detConf,
+              minTrackingConfidence: trackConf
+            });
+          } catch (err) {}
         }
         state.candidateFrames = 0;
         state.candidateHistory = [];
@@ -1054,8 +1086,7 @@
       gridEl.querySelectorAll(".multilang-chip").forEach((chip) => {
         chip.addEventListener("click", () => {
           const langCode = chip.dataset.lang;
-          window.audioEngine.playEarcon("sign_detected");
-          window.audioEngine.speakSignInLang(signObj, langCode, { interrupt: true, assertive: true });
+          setSignOutputLanguage(langCode, { speakSample: true });
         });
       });
     }
@@ -1178,8 +1209,8 @@
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            width: { ideal: 640 },
-            height: { ideal: 480 },
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
             frameRate: { ideal: 30 },
             facingMode: "user"
           },
@@ -1276,8 +1307,8 @@
       state.mpHands.setOptions({
         maxNumHands: 2,
         modelComplexity: 1,
-        minDetectionConfidence: 0.52,
-        minTrackingConfidence: 0.52
+        minDetectionConfidence: 0.65,
+        minTrackingConfidence: 0.65
       });
 
       state.mpHands.onResults((results) => {
@@ -1399,7 +1430,7 @@
       return hand.map((pt, pIdx) => {
         const prevPt = bestPrev[pIdx];
         const vel = Math.hypot(pt.x - prevPt.x, pt.y - prevPt.y);
-        const alpha = Math.min(0.88, Math.max(0.40, 0.40 + vel * 14.0));
+        const alpha = Math.min(0.85, Math.max(0.18, 0.18 + vel * 20.0));
         return {
           x: alpha * pt.x + (1 - alpha) * prevPt.x,
           y: alpha * pt.y + (1 - alpha) * prevPt.y,
@@ -1833,15 +1864,15 @@
     }
 
     // 7. Yes (Thumb Up) vs Bad (Thumb Down) vs Sorry (Closed Fist on Chest)
-    const fourCurled = ext.index < 0.40 && ext.middle < 0.40 && ext.ring < 0.40 && ext.pinky < 0.40;
+    const fourCurled = ext.index < 0.48 && ext.middle < 0.48 && ext.ring < 0.48 && ext.pinky < 0.48;
     if (fourCurled) {
-      if (ext.thumb > 0.48 && f1.thumbPointingUp) {
-        addCandidate("yes", 0.95);
+      if (ext.thumb > 0.44 && f1.thumbPointingUp) {
+        addCandidate("yes", 0.96);
         addCandidate("letter_a", 0.88);
-      } else if (ext.thumb > 0.45 && f1.thumbPointingDown) {
-        addCandidate("bad", 0.93);
+      } else if (ext.thumb > 0.44 && f1.thumbPointingDown) {
+        addCandidate("bad", 0.94);
       } else {
-        addCandidate("sorry", 0.88);
+        addCandidate("sorry", 0.90);
         addCandidate("letter_s", 0.85);
       }
     }
@@ -1869,27 +1900,35 @@
       const baseOpen = Math.max(fiveOpenScore, 0.82);
       const thumbInward = Math.abs(f1.thumbTip.x - 0.5) < Math.abs(f1.pinkyTip.x - 0.5);
 
-      // Always register Number 5 so "numbers" scope works at any hand height
-      addCandidate("num_5", Math.min(0.96, baseOpen + (f1.indexMiddleSpread > 0.34 ? 0.11 : 0.07)));
+      // Register Number 5
+      if (state.recognitionScope === "numbers") {
+        addCandidate("num_5", Math.min(0.98, baseOpen + 0.15));
+      } else {
+        addCandidate("num_5", Math.min(0.85, baseOpen - 0.05));
+      }
 
-      if (motion.horizWave > 0.46) {
+      if (motion.horizWave > 0.38) {
         // Waving open hand -> Hello / Namaste
-        addCandidate("hello", Math.min(0.98, baseOpen + 0.15));
+        addCandidate("hello", Math.min(0.99, baseOpen + 0.16));
       } else if (f1.indexTip.y < 0.24) {
         // Open hand held very high at upper forehead -> Father
-        addCandidate("father", Math.min(0.96, baseOpen + 0.11));
-        addCandidate("hello", baseOpen + 0.08);
+        addCandidate("father", Math.min(0.97, baseOpen + 0.13));
+        addCandidate("hello", baseOpen + 0.06);
       } else if (f1.indexTip.y >= 0.24 && f1.indexTip.y < 0.44 && thumbInward && f1.indexMiddleSpread >= 0.36) {
         // Spread 5-hand sideways at jaw level -> Mother or Hello
-        addCandidate("hello", Math.min(0.96, baseOpen + 0.11));
-        addCandidate("mother", Math.min(0.94, baseOpen + 0.09));
+        addCandidate("hello", Math.min(0.97, baseOpen + 0.13));
+        addCandidate("mother", Math.min(0.95, baseOpen + 0.10));
       } else if (f1.indexTip.y < 0.52 && f1.indexMiddleSpread < 0.24) {
         // Flat B-hand with fingers pressed tightly together near chin -> Thank You
-        addCandidate("thankyou", Math.min(0.95, baseOpen + 0.10));
-        addCandidate("hello", baseOpen + 0.07);
+        addCandidate("thankyou", Math.min(0.96, baseOpen + 0.12));
+        addCandidate("hello", baseOpen + 0.06);
       } else if (f1.palmCenter.y > 0.68) {
         // Open palm lower on chest -> Please
-        addCandidate("please", Math.min(0.95, baseOpen + 0.10));
+        addCandidate("please", Math.min(0.96, baseOpen + 0.12));
+      } else if (motion.speed < 0.20 && ext.index > 0.55 && ext.middle > 0.55) {
+        // Steady flat open hand held still -> Hello or Wait
+        addCandidate("hello", Math.min(0.97, baseOpen + 0.12));
+        addCandidate("wait", Math.min(0.94, baseOpen + 0.09));
       } else {
         // Standard open hand greeting -> Hello / Namaste
         addCandidate("hello", Math.min(0.97, baseOpen + 0.12));
@@ -1900,18 +1939,23 @@
     // 10. Only Index Extended [0, 1, 0, 0, 0] (Number 1, No, Understand, Deaf, Letter D)
     const indexOnlyScore = matchFingerPattern(arr, [0, 1, 0, 0, 0], [1.15, 1.45, 1.35, 1.25, 1.25]);
     if (indexOnlyScore > 0.64 && ext.index > 0.56 && ext.middle < 0.45 && ext.thumb < 0.50) {
-      // Always register Number 1 and Letter D so "numbers" and "alphabet" scopes work at any height
-      addCandidate("num_1", Math.min(0.96, indexOnlyScore + 0.11));
-      addCandidate("letter_d", indexOnlyScore + 0.09);
-
-      if (motion.horizWave > 0.42) {
-        addCandidate("no", Math.min(0.97, indexOnlyScore + 0.14));
-      } else if (f1.indexTip.y < 0.25) {
-        addCandidate("understand", Math.min(0.95, indexOnlyScore + 0.12));
-      } else if (f1.indexHorizontal) {
-        addCandidate("deaf", Math.min(0.95, indexOnlyScore + 0.12));
+      if (state.recognitionScope === "numbers") {
+        addCandidate("num_1", Math.min(0.98, indexOnlyScore + 0.14));
+      } else if (state.recognitionScope === "alphabet") {
+        addCandidate("letter_d", Math.min(0.98, indexOnlyScore + 0.14));
       } else {
-        addCandidate("no", indexOnlyScore + 0.07);
+        addCandidate("num_1", Math.min(0.85, indexOnlyScore - 0.05));
+        addCandidate("letter_d", Math.min(0.85, indexOnlyScore - 0.05));
+      }
+
+      if (motion.horizWave > 0.36) {
+        addCandidate("no", Math.min(0.98, indexOnlyScore + 0.16));
+      } else if (f1.indexTip.y < 0.26) {
+        addCandidate("understand", Math.min(0.97, indexOnlyScore + 0.14));
+      } else if (f1.indexHorizontal) {
+        addCandidate("deaf", Math.min(0.97, indexOnlyScore + 0.14));
+      } else {
+        addCandidate("no", Math.min(0.95, indexOnlyScore + 0.10));
       }
     }
 
@@ -1925,12 +1969,18 @@
       ext.pinky < 0.46 &&
       ext.thumb < 0.50
     ) {
-      addCandidate("num_2", Math.min(0.96, twoFingerScore + 0.11));
-      addCandidate(f1.indexMiddleSpread > 0.28 ? "letter_v" : "letter_u", twoFingerScore + 0.09);
-      if (f1.indexHorizontal || f1.indexTip.y < 0.34) {
-        addCandidate("blind", Math.min(0.96, twoFingerScore + 0.13));
+      if (state.recognitionScope === "numbers") {
+        addCandidate("num_2", Math.min(0.98, twoFingerScore + 0.14));
+      } else if (state.recognitionScope === "alphabet") {
+        addCandidate(f1.indexMiddleSpread > 0.28 ? "letter_v" : "letter_u", Math.min(0.98, twoFingerScore + 0.14));
       } else {
-        addCandidate("blind", twoFingerScore + 0.07);
+        addCandidate("num_2", Math.min(0.85, twoFingerScore - 0.05));
+      }
+
+      if (f1.indexHorizontal || f1.indexTip.y < 0.36) {
+        addCandidate("blind", Math.min(0.97, twoFingerScore + 0.14));
+      } else {
+        addCandidate("blind", Math.min(0.95, twoFingerScore + 0.10));
       }
     }
 
@@ -2027,6 +2077,16 @@
     }
 
     if (!candidates.length) return null;
+
+    // Prioritize conversational signs over generic numbers/letters in default "all" scope
+    if (state.recognitionScope === "all") {
+      candidates.forEach((c) => {
+        const sObj = window.ISL_SIGNS.find((s) => s.id === c.signId);
+        if (sObj && sObj.category !== "numbers" && sObj.category !== "alphabet") {
+          c.confidence = Math.min(0.99, c.confidence + 0.08);
+        }
+      });
+    }
 
     candidates.sort((a, b) => b.confidence - a.confidence);
     return {
@@ -2173,7 +2233,7 @@
     const now = Date.now();
     const timeSinceLast = now - state.lastSignTime;
     // Prevent hand transition while lowering hand from immediately cancelling the sign that is speaking
-    const cooldownMs = state.lastSignId === dominantId ? 3000 : 1400;
+    const cooldownMs = state.lastSignId === dominantId ? 2600 : 750;
 
     if (state.candidateFrames >= state.requiredStableFrames && timeSinceLast > cooldownMs) {
       const signObj = window.ISL_SIGNS.find((s) => s.id === dominantId);
@@ -2675,10 +2735,10 @@
 
     state.lastTranslatedText = cleaned;
 
-    // Preserve both English alphanumeric and Hindi Devanagari (\u0900-\u097F) tokens
+    // Preserve English, Devanagari, and all 22 Indian regional scripts (Tamil, Telugu, Bengali, Punjabi, Gujarati, Odia, Kannada, Malayalam, Urdu, etc.)
     let normalizedSentence = cleaned
       .toLowerCase()
-      .replace(/[^a-z0-9\u0900-\u097F\s]/g, " ")
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
       .replace(/\s+/g, " ")
       .trim();
 
@@ -2862,9 +2922,20 @@
 
     const regLineEl = document.getElementById("stage-sign-regional");
     if (regLineEl) {
+      const primaryCode =
+        state.signOutputLang === "en_hi" || state.signOutputLang === "multi_top" || state.signOutputLang === "all"
+          ? "hi"
+          : state.signOutputLang === "en_mai"
+          ? "mai"
+          : state.signOutputLang;
+      const activeTr = window.getSignTranslation(signObj, primaryCode);
       const hiTr = window.getSignTranslation(signObj, "hi");
-      const maiTr = window.getSignTranslation(signObj, "mai");
-      regLineEl.textContent = `🇮🇳 हिन्दी: ${hiTr.word} ("${hiTr.phrase}") • मैथिली: ${maiTr.word} ("${maiTr.phrase}")`;
+      if (primaryCode !== "hi" && primaryCode !== "mai" && activeTr) {
+        regLineEl.textContent = `🗣️ ${activeTr.flag} ${activeTr.shortName || activeTr.langName} (${activeTr.nativeName}): "${activeTr.phrase}" • हिन्दी: "${hiTr.phrase}"`;
+      } else {
+        const maiTr = window.getSignTranslation(signObj, "mai");
+        regLineEl.textContent = `🗣️ 🇮🇳 हिन्दी: "${hiTr.phrase}" • मैथिली: "${maiTr.phrase}"`;
+      }
     }
 
     const gridEl = document.getElementById("stage-multilang-grid");
@@ -2873,8 +2944,7 @@
       gridEl.querySelectorAll(".multilang-chip").forEach((chip) => {
         chip.addEventListener("click", () => {
           const langCode = chip.dataset.lang;
-          window.audioEngine.playEarcon("sign_detected");
-          window.audioEngine.speakSignInLang(signObj, langCode, { interrupt: true, assertive: true });
+          setSignOutputLanguage(langCode, { speakSample: true });
         });
       });
     }

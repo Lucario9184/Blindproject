@@ -450,6 +450,35 @@ const ISL_ALPHABET_DATA = [
   { letter: "Z", hands: "2-Handed ISL", guide: "Hold your left palm upright and touch the fingertips of your bent right hand against the center of the left palm." }
 ];
 
+const ISL_ALPHABET_FINGER_STATES = {
+  A: [1, 0, 0, 0, 0],
+  B: [0, 1, 1, 1, 1],
+  C: [0.5, 0.5, 0.5, 0.5, 0.5],
+  D: [0, 1, 0, 0, 0],
+  E: [0.3, 0.3, 0.3, 0.3, 0.3],
+  F: [0.5, 0.5, 1, 1, 1],
+  G: [0.8, 0.8, 0, 0, 0],
+  H: [0, 1, 1, 0, 0],
+  I: [0, 0, 0, 0, 1],
+  J: [0, 0, 0, 0, 1],
+  K: [0.8, 1, 0.6, 0, 0],
+  L: [1, 1, 0, 0, 0],
+  M: [0, 0.5, 0.5, 0.5, 0],
+  N: [0, 0.5, 0.5, 0.5, 0],
+  O: [0.4, 0.4, 0.4, 0.4, 0.4],
+  P: [0.5, 1, 0.5, 0, 0],
+  Q: [0.8, 0.5, 0, 0, 0],
+  R: [0, 1, 1, 0, 0],
+  S: [0, 0, 0, 0, 0],
+  T: [0.5, 0.3, 0, 0, 0],
+  U: [0, 1, 1, 0, 0],
+  V: [0, 1, 1, 0, 0],
+  W: [0, 1, 1, 1, 0],
+  X: [0, 0.6, 0, 0, 0],
+  Y: [1, 0, 0, 0, 1],
+  Z: [0, 1, 0, 0, 0]
+};
+
 ISL_ALPHABET_DATA.forEach((item) => {
   window.ISL_SIGNS.push({
     id: `letter_${item.letter.toLowerCase()}`,
@@ -461,7 +490,8 @@ ISL_ALPHABET_DATA.forEach((item) => {
     spokenPhrase: `Letter ${item.letter}`,
     tactileGuide: `Indian Sign Language for Letter ${item.letter} (${item.hands}): ${item.guide}`,
     poseType: "letter",
-    letterChar: item.letter
+    letterChar: item.letter,
+    fingerState: ISL_ALPHABET_FINGER_STATES[item.letter] || [0, 1, 0, 0, 0]
   });
 });
 
@@ -1371,6 +1401,16 @@ function getPoseVisualSpec(signObj) {
   }
 }
 
+// Ensure every sign in ISL_SIGNS has an accurate biomechanical fingerState array for camera landmark classification
+window.ISL_SIGNS.forEach((sign) => {
+  if (!sign.fingerState || !Array.isArray(sign.fingerState)) {
+    const spec = getPoseVisualSpec(sign);
+    if (spec && spec.hands && spec.hands[0]) {
+      sign.fingerState = spec.hands[0];
+    }
+  }
+});
+
 window.getAvatarDescription = function (signObj) {
   if (!signObj) return "Avatar is standing ready in neutral posture.";
   const spec = getPoseVisualSpec(signObj);
@@ -1673,7 +1713,7 @@ window.SIGN_LANGUAGES = [
     "flag": "🇮🇳",
     "voiceLang": "or-IN",
     "fallbackVoice": "hi-IN",
-    "ttsLang": "hi"
+    "ttsLang": "or"
   },
   {
     "code": "ta",
@@ -6181,6 +6221,9 @@ window.naturalizeISLGloss = function (signWordsArray, langCode = "en") {
   }
   if (langCode === "multi_top") {
     return `${_originalNaturalizeEnglish(signWordsArray)} | ${window.naturalizeISLGloss(signWordsArray, "hi")} | ${window.naturalizeISLGloss(signWordsArray, "mai")}`;
+  }
+  if (langCode === "all") {
+    return `${_originalNaturalizeEnglish(signWordsArray)} | ${window.naturalizeISLGloss(signWordsArray, "hi")}`;
   }
 
   const matchedSigns = signWordsArray.map((w) => {
