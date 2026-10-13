@@ -893,8 +893,11 @@
 
   function toggleUltraContrast() {
     state.highContrastYellow = !state.highContrastYellow;
-    const theme = state.highContrastYellow ? "yellow-black" : "dark-hc";
-    document.documentElement.setAttribute("data-theme", theme);
+    if (state.highContrastYellow) {
+      document.documentElement.setAttribute("data-theme", "yellow-black");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
     const btnContrast = document.getElementById("btn-contrast");
     btnContrast.classList.toggle("active", state.highContrastYellow);
     btnContrast.setAttribute("aria-pressed", String(state.highContrastYellow));
