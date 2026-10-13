@@ -3926,3 +3926,17 @@ select,
   outline: 3px solid var(--accent-text);
   outline-offset: 2px;
 }
+
+/* Placeholder text contrast fix */
+::placeholder {
+  color: var(--ink-3);
+  opacity: 1;
+}
+
+:-ms-input-placeholder {
+  color: var(--ink-3);
+}
+
+::-ms-input-placeholder {
+  color: var(--ink-3);
+}
