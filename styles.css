@@ -42,8 +42,7 @@
   --font-scale: 1;
 }
 
-[data-bs-theme="dark"],
-[data-theme="yellow-black"] {
+[data-bs-theme="dark"], [data-theme="yellow-black"], [data-theme="dark-hc"] {
   --bg: #0b1120;
   --ink: #f8fafc;
   --ink-2: #cbd5e1;
@@ -3012,6 +3011,20 @@ footer {
 [data-bs-theme="dark"] .badge-tag {
   background: #ffffff12;
   color: var(--ink-2);
+}
+
+[data-theme="yellow-black"] .badge-isl,
+[data-theme="yellow-black"] .badge-hands,
+[data-theme="yellow-black"] .badge-pill,
+[data-theme="yellow-black"] .badge-subtle,
+[data-theme="yellow-black"] .badge-tag,
+[data-theme="dark-hc"] .badge-isl,
+[data-theme="dark-hc"] .badge-hands,
+[data-theme="dark-hc"] .badge-pill,
+[data-theme="dark-hc"] .badge-subtle,
+[data-theme="dark-hc"] .badge-tag {
+  background: rgba(0,0,0,0.3);
+  color: var(--ink);
 }
 .tactile-box {
   margin-top: 8px;
